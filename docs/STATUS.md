@@ -29,7 +29,7 @@ Update this file at the end of every work session: what got done, what's next, w
 - [ ] JD safety gate (adapted from ai-job-search)
 - [ ] Ingestion: Greenhouse + Lever for a starter list of small companies → raw tables
 - [ ] Ingestion: freehire.me; LinkedIn public listings behind a flag (default off)
-- [ ] Idempotent load + dedupe; daily run script
+- [ ] Idempotent load + dedupe (including the same job arriving from freehire and Greenhouse/Lever); daily run script
 - [ ] Fake sample profile in `data/sample/`: a made-up DE-transition candidate (resume, Evidence Bank, Applicant Profile) in exactly the formats the real ones will use
 
 ### Milestone 2 · Week 2 · Agents
@@ -66,3 +66,4 @@ FL: install Docker Desktop. Then Claude writes `docker-compose.yml` with Postgre
 - 2026-10-27 — Design finalized in the claude.ai Project; starter kit written.
 - 2026-10-28 — Decided to build the full system first on a fake sample profile; real resume plugged in at Milestone 5.
 - 2026-10-28 — Unzipped starter kit into place; git init on `main`; removed FL's name and employer from public files (decision #17); first commit pushed to GitHub. `.gitignore` now also covers `*.zip` and `.claude/settings.local.json`.
+- 2026-10-28 — Cloned ai-job-search into `reference/` (gitignored, commit `83c788d`); added the "Borrowed from ai-job-search" table to DESIGN.md, the MIT header rule to CLAUDE.md, `LICENSES/ai-job-search-MIT.txt`, decision #18.

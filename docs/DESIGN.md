@@ -60,6 +60,31 @@ Found → Scored → Tailored → Awaiting approval → Applied → Recruiter sc
 - **BIE → DE framing:** keep the official title; signal direction in the headline; lead BI bullets with the engineering, dashboards as the outcome.
 - **Outreach:** peer DE on the team first (they refer most), people who share FL's current or past employer next, hiring manager only with a specific note; small ask (15-minute chat) before a referral ask; 5–10 personal notes a day, all sent by FL.
 
+## Borrowed from ai-job-search
+
+Source: [ai-job-search](https://github.com/ai-job-search-dev/ai-job-search), MIT, read at commit `83c788d` (2026-10-27). A read-only clone lives in `reference/ai-job-search/` (gitignored); never import from it. See DECISIONS #12 and #18.
+
+| Piece | Their file(s) | Our target | How | Milestone |
+| --- | --- | --- | --- | --- |
+| JD safety gate | `tools/posting_guard.py` + `tools/page_decode.py` | `pipeline/safety_gate.py` | **Copy**: keep the detection logic; replace the CLI/file interface with a function whose result is stored with the posting | M1 |
+| PDF text-layer check | `tools/verify_pdf.py` | `agents/pdf_checks.py` | **Copy**: page count, keyword presence, ASCII date ranges (pypdf) | M2 |
+| PDF layout check | `tools/verify_layout.py` | `agents/pdf_checks.py` | **Idea**: measure layout instead of eyeballing it. Theirs targets moderncv/LaTeX and needs Poppler; rebuild in pure Python once the template engine is chosen | M2 |
+| LinkedIn public listings | `.agents/skills/linkedin-search/` (TypeScript/bun) | `ingestion/linkedin.py` | **Port to Python**: same logged-out guest endpoints, card/detail parsing, retry with backoff, honest User-Agent; off by default | M1 |
+| freehire.me | `.agents/skills/freehire-search/` (TypeScript/bun) | `ingestion/freehire.py` | **Port to Python**: API client, retry with backoff. freehire aggregates ~50 ATSs, so dedupe must catch the same job arriving from freehire and Greenhouse/Lever | M1 |
+| Drafter → reviewer → revise | `.claude/commands/apply.md`, `.claude/agents/application-reviewer.md` | `agents/tailor.py`, `agents/reviewer.py` | **Idea**: reviewer in a fresh context returns exact old → new edits, drafter applies them, then compile-and-inspect until clean. No cover letter; grounding follows DECISIONS #9, not their stricter audit | M2 |
+| Interview prep | `.claude/skills/job-application-assistant/07-interview-prep.md` | `.claude/skills/interview-prep/SKILL.md` (new) | **Idea**: STAR stories, tough questions, questions to ask; rewritten for DE interviews (SQL, pipeline design, modeling) | M5 |
+| Outcome tracking | `.claude/commands/outcome.md` | applications table in Postgres + dbt funnel mart | **Idea**: fixed status vocabulary, follow-up after N quiet days, stale sweep to Ghosted, outcomes feed back into fit scoring | M3 |
+
+**License rule:** any file that copies or ports their code (Copy and Port rows) starts with this header, and the full MIT text is kept in `LICENSES/ai-job-search-MIT.txt`:
+
+```python
+# Adapted from ai-job-search (https://github.com/ai-job-search-dev/ai-job-search),
+# <their file> at commit <hash>.
+# Copyright (c) 2026 Mads Lorentzen. MIT License; full text in LICENSES/ai-job-search-MIT.txt
+```
+
+Idea rows need no header; the README credit covers them.
+
 ## Full design doc
 
 https://claude.ai/artifact/DCFpJPhEQohhgLPdZhHNRb

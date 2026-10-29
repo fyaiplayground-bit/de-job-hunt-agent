@@ -85,3 +85,8 @@ Format: number · date · decision · why · alternatives considered.
 - **Decision:** Committed files refer to her only as "FL" and to her employer only generically ("a large tech company", "FL's current employer"). The real name and employer live only in `private/` (resume, Evidence Bank, Applicant Profile).
 - **Why:** The repo is public and its history is permanent; it shouldn't tell coworkers she is job hunting. Agent rules work the same with the employer read from the Evidence Bank.
 - **Alternatives:** Name and employer in the open (fine once the repo link goes on her resume; can be revisited then).
+
+### #18 · 2026-10-28 · How each ai-job-search piece is borrowed
+- **Decision:** Copy the two Python tools (JD safety gate, PDF text-layer check); port the TypeScript LinkedIn and freehire clients to Python; borrow only the idea for the layout check, drafter-reviewer loop, interview prep and outcome tracking. Full table in `docs/DESIGN.md`. Copied or ported files carry an MIT header; the full license is in `LICENSES/ai-job-search-MIT.txt`. Reference clone pinned at commit `83c788d`.
+- **Why:** Copy where their code is already Python and hard to match (the gate covers many hidden-text tricks); port so the repo stays one language FL can explain; ideas only where theirs is prompt prose or tied to their LaTeX template and Poppler.
+- **Alternatives:** Vendor their code as-is with bun (two languages in the repo); git submodule (would ship their skills and commands into ours).

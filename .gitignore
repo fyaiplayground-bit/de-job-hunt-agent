@@ -40,3 +40,6 @@ Thumbs.db
 
 # Claude Code personal settings
 .claude/settings.local.json
+
+# Read-only reference clones (never import from them)
+reference/

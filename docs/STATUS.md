@@ -1,6 +1,6 @@
 # Status
 
-**Last updated:** 2026-10-28 · **Phase:** Setup (before Milestone 1)
+**Last updated:** 2026-10-28 · **Phase:** Milestone 1 (skeleton + ingestion)
 
 Update this file at the end of every work session: what got done, what's next, what's blocked.
 
@@ -8,13 +8,13 @@ Update this file at the end of every work session: what got done, what's next, w
 
 - Design confirmed (see `docs/DESIGN.md`, `docs/DECISIONS.md`).
 - Starter kit created: `CLAUDE.md`, docs, 6 skill files, `.gitignore`, `.env.example`, `private/README.md`.
-- No code yet.
+- Repo is on GitHub (public): https://github.com/fyaiplayground-bit/de-job-hunt-agent. No code yet.
 - FL's real resume and Evidence Bank come last (Milestone 5). Until then everything is built and tested against the fake sample profile in `data/sample/` (decision #16).
 
 ## Waiting on FL
 
-- [ ] Put the starter kit in a folder named `de-job-hunt-agent` and open it in Claude Code
-- [ ] GitHub account + empty **public** repo named `de-job-hunt-agent` (no README, no .gitignore — we have our own)
+- [x] Put the starter kit in a folder named `de-job-hunt-agent` and open it in Claude Code
+- [x] GitHub account + empty **public** repo named `de-job-hunt-agent` (no README, no .gitignore — we have our own)
 - [ ] Install Docker Desktop
 - [ ] Anthropic API key from the Claude Console, with a monthly spending limit → put it in `.env` (never in chat, never committed) — needed by Milestone 2
 - [ ] Personal AWS account + S3 bucket for backups (not the work account) — needed by Milestone 4
@@ -23,7 +23,7 @@ Update this file at the end of every work session: what got done, what's next, w
 ## Milestones
 
 ### Milestone 1 · Week 1 · Skeleton + ingestion
-- [ ] git init, first commit, push to GitHub
+- [x] git init, first commit, push to GitHub
 - [ ] `docker-compose.yml` with Postgres; confirm it starts
 - [ ] Python project setup (dependencies, ruff, pytest)
 - [ ] JD safety gate (adapted from ai-job-search)
@@ -59,9 +59,10 @@ Update this file at the end of every work session: what got done, what's next, w
 
 ## Next action
 
-FL: put the starter kit in place and open it in Claude Code, then paste the first prompt.
+FL: install Docker Desktop. Then Claude writes `docker-compose.yml` with Postgres and confirms it starts.
 
 ## Session log
 
 - 2026-10-27 — Design finalized in the claude.ai Project; starter kit written.
 - 2026-10-28 — Decided to build the full system first on a fake sample profile; real resume plugged in at Milestone 5.
+- 2026-10-28 — Unzipped starter kit into place; git init on `main`; removed FL's name and employer from public files (decision #17); first commit pushed to GitHub. `.gitignore` now also covers `*.zip` and `.claude/settings.local.json`.

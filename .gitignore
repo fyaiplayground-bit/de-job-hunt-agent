@@ -1,0 +1,42 @@
+# Personal data — never commit
+private/*
+!private/README.md
+.env
+
+# Generated outputs
+output/
+*.pdf
+!data/sample/*.pdf
+
+# Local data
+data/raw/
+data/backup/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+
+# dbt
+dbt/target/
+dbt/logs/
+dbt/dbt_packages/
+
+# Airflow
+logs/
+airflow.db
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Archives (the starter-kit zip, downloads)
+*.zip
+
+# Claude Code personal settings
+.claude/settings.local.json

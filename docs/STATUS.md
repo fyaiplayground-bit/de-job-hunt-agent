@@ -15,7 +15,7 @@ Update this file at the end of every work session: what got done, what's next, w
 
 - [x] Put the starter kit in a folder named `de-job-hunt-agent` and open it in Claude Code
 - [x] GitHub account + empty **public** repo named `de-job-hunt-agent` (no README, no .gitignore — we have our own)
-- [ ] Install Docker Desktop
+- [x] Install Docker Desktop
 - [ ] Anthropic API key from the Claude Console, with a monthly spending limit → put it in `.env` (never in chat, never committed) — needed by Milestone 2
 - [ ] Personal AWS account + S3 bucket for backups (not the work account) — needed by Milestone 4
 - [ ] Open questions (can wait until Milestone 5): target archetype(s); location / remote, comp floor, work-authorization answers; companies to exclude; daily application target
@@ -24,7 +24,7 @@ Update this file at the end of every work session: what got done, what's next, w
 
 ### Milestone 1 · Week 1 · Skeleton + ingestion
 - [x] git init, first commit, push to GitHub
-- [ ] `docker-compose.yml` with Postgres; confirm it starts
+- [x] `docker-compose.yml` with Postgres; confirm it starts
 - [ ] Python project setup (dependencies, ruff, pytest)
 - [ ] JD safety gate (adapted from ai-job-search)
 - [ ] Ingestion: Greenhouse + Lever for a starter list of small companies → raw tables
@@ -59,7 +59,7 @@ Update this file at the end of every work session: what got done, what's next, w
 
 ## Next action
 
-FL: install Docker Desktop. Then Claude writes `docker-compose.yml` with Postgres and confirms it starts.
+Claude: propose the Python project setup (dependencies, ruff, pytest) and wait for FL's OK.
 
 ## Session log
 
@@ -67,3 +67,4 @@ FL: install Docker Desktop. Then Claude writes `docker-compose.yml` with Postgre
 - 2026-10-28 — Decided to build the full system first on a fake sample profile; real resume plugged in at Milestone 5.
 - 2026-10-28 — Unzipped starter kit into place; git init on `main`; removed FL's name and employer from public files (decision #17); first commit pushed to GitHub. `.gitignore` now also covers `*.zip` and `.claude/settings.local.json`.
 - 2026-10-28 — Cloned ai-job-search into `reference/` (gitignored, commit `83c788d`); added the "Borrowed from ai-job-search" table to DESIGN.md, the MIT header rule to CLAUDE.md, `LICENSES/ai-job-search-MIT.txt`, decision #18.
+- 2026-10-28 — Docker Desktop installed (per-user, WSL 2). Added `docker-compose.yml`: Postgres 17, values from `.env`, port bound to 127.0.0.1, `pgdata` volume, health check. Verified: healthy, password login works, a test row survived `down` + `up`. `.env` created locally with a generated DB password (not committed).

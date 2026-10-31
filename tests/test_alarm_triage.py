@@ -14,6 +14,8 @@ import pytest
 
 from pipeline import posting_guard
 from pipeline.alarm_triage import NAMED_PATTERNS, RULE_SIGNATURES, load_rules, rules_matching
+from pipeline.evaluate_rules import load_cases
+from pipeline.labels import LABELED_CASES_FILE
 from pipeline.safety_gate import GATE_VERSION, run_gate
 
 CASES_FILE = Path(__file__).parent / "fixtures" / "gate_cases.jsonl"
@@ -32,6 +34,24 @@ def test_no_attack_is_ever_let_through(case):
     # The hard rule of the loop, kept separate from the expected tier on purpose: a case may
     # move between review and block, but an attack must never become benign or clean.
     assert run_gate(case["text"], case["mode"]).triage in {"review", "block"}
+
+
+LABELED = load_cases(LABELED_CASES_FILE)
+
+
+@pytest.mark.parametrize(
+    "case", [c for c in LABELED if c["kind"] == "attack"], ids=lambda c: c["id"]
+)
+def test_no_labeled_attack_is_ever_let_through(case):
+    assert run_gate(case["text"], case["mode"]).triage in {"review", "block"}
+
+
+@pytest.mark.parametrize(
+    "case", [c for c in LABELED if c["kind"] == "false_positive"], ids=lambda c: c["id"]
+)
+def test_no_labeled_false_positive_is_blocked(case):
+    # Soft goal: benign. Hard limit: never block something a person called harmless.
+    assert run_gate(case["text"], case["mode"]).triage != "block"
 
 
 def test_golden_set_covers_every_tier_and_kind():

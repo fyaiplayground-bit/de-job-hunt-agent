@@ -102,7 +102,7 @@ def rules_matching(line: str) -> list[str]:
     return [name for name, pattern in NAMED_PATTERNS.items() if pattern.search(line)]
 
 
-def _visible_line(excerpt: str, cleaned_text: str) -> str | None:
+def visible_line(excerpt: str, cleaned_text: str) -> str | None:
     """The full visible line an excerpt came from, or None if it isn't in the visible text.
 
     Excerpts are cut to 200 characters with an ellipsis; steering words are checked against the
@@ -135,7 +135,7 @@ def triage(
             blocks.append(f"instruction rule in hidden content: {', '.join(rules_matching(block))}")
     visible_lines = {}
     for excerpt in findings.get("instruction_like") or []:
-        line = _visible_line(excerpt, cleaned_text)
+        line = visible_line(excerpt, cleaned_text)
         if line is None:
             blocks.append("instruction-like line that is not in the visible text")
         else:

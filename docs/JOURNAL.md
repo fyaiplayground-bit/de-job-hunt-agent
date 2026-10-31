@@ -118,5 +118,24 @@
 - **撤回：** `git revert` 这个提交。数据库里 `d1-t1` 版本的结果可以留着，不影响旧版本；要删就执行 `delete from gate.results where gate_version = 'd1-t1'`。
 - **备注：** 两个坑：Write 工具把规则文件里的 `'` 直接写成了撇号，导致 TOML 字符串提前结束；改用 sed 时反斜杠又被 shell 吃掉了。最后改用编辑工具解决，见 `NOTES.md` 第 5 节。残留风险：只用弱规则里的说法、又避开所有信号词的攻击句会被放行。这样的句子本身不在指挥 AI，而且 M2 的 AI 助手会有自己的"只当数据"规则作为第二道防线。下一步是循环第 B 步：标签表和评估命令。
 
+### 1.6 · 2026-10-30 · 规则循环第 B 步：标签和评估，并完整走一遍
+- **做了什么：** 新增标签表 `gate.labels`（只追加；同一个职位以最新的标签为准，旧的保留），记录标签类别、备注、谁标的、什么时候，以及当时的规则版本、档位和看到的触发句。新增打标签命令 `pipeline.labels`（add / list / export）：导出时**只导出触发的那一句话**，不导出整个职位；相同的句子合并成一条；隐藏的内容重新藏起来；隐形文字重新用隐形字符写出来。导出的结果写进 `tests/fixtures/gate_cases_labeled.jsonl`。新增评估命令 `pipeline.evaluate_rules`：用当前规则和提议规则把所有标准答案、所有历史职位各判一遍，输出硬性检查、软性指标、各档数量的前后对比，以及哪些职位的档位会变；只读，不写任何东西。报告命令现在会显示职位编号，方便打标签。新增 `config/proposals/` 文件夹，存放规则修改的提议。
+- **为什么：** DECISIONS #23。
+- **文件：** `db/migrations/004_gate_labels.sql`、`pipeline/labels.py`、`pipeline/evaluate_rules.py`、`pipeline/alarm_report.py`、`pipeline/alarm_triage.py`（`visible_line` 改为公开函数）、`pipeline/safety_gate.py`（`is_alarmed` 改为公开函数）、`config/proposals/README.md`、`tests/fixtures/gate_cases_labeled.jsonl`、`tests/test_labels.py`、`tests/test_evaluate_rules.py`、`tests/test_alarm_triage.py`
+- **提交：** 见本条所在的提交（`git log -- pipeline/evaluate_rules.py`）
+- **完整走一遍循环（真实数据）：**
+  1. 报告：14 个放行的职位，每个都显示了编号
+  2. 打标签：14 个都标为 `false_positive`（你在对话里确认过），备注写明原因
+  3. 导出：合并成 5 条标准答案（10 个 Samsara 职位是同一个模板）
+  4. 提议和评估：
+     - "所有规则都改成弱规则" → **48 项硬性检查不通过**，命令报失败
+     - "只把 chat_template_token 改成弱规则" → **不通过**，`<|im_start|>system` 会被放行。注意：只看 2300 个真实职位，结果是"0 个变化"，看起来完全无害，**是标准答案集拦住了它**
+     - "只改注释" → 通过，0 个变化
+  5. 正式规则保持第 1 版：没有真实数据要求改规则，所以不改
+- **验证：** 191 个测试通过，1 个跳过（还没有已标注的真实攻击）；ruff 通过。写测试时发现了一件事：只放宽"忘记之前的指令"这条规则，并不会放过 "Forget your previous instructions."，因为句子里的 *instructions* 是信号词，两层规则各自起了作用。这一点也写成了测试。
+- **撤回：** `git revert` 这个提交；标签表里的数据可以用 `drop table gate.labels` 删除，同时从 `public.schema_migrations` 里删掉 `004_gate_labels.sql` 这一行。
+- **备注：** 标签时间按 UTC 记录，所以在美国晚上标的会显示成第二天的日期。
+
+
 - **撤回：** `git revert` 这个提交；要清空数据库里的数据，执行 `drop schema raw cascade; drop schema gate cascade; drop table public.schema_migrations;`（会删掉所有已抓到的职位）。
 - **备注：** 这一步的坑：默认地址 `localhost` 每次连接要慢好几秒（Windows 先尝试 IPv6），已改为 `127.0.0.1`，见 `NOTES.md` 第 5 节。起步清单里大多是中大型公司，只用来跑通管道；小公司为主的目标清单在 M5。跨来源去重和每日运行脚本还没做。

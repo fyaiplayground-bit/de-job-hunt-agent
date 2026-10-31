@@ -4,7 +4,8 @@
     uv run python -m pipeline.alarm_report --show benign   # spot-check what was let through
     uv run python -m pipeline.alarm_report --show all --limit 20
 
-This is step 2 of the rules loop (decision #22): what a person reads before labeling.
+This is step 2 of the rules loop (decision #22): what a person reads before labeling. Each
+posting shows its id; label it with `uv run python -m pipeline.labels add <id> <label>`.
 """
 
 import argparse
@@ -32,7 +33,7 @@ def flagged_postings(
     conn: psycopg.Connection, tiers: list[str], limit: int, gate_version: str = GATE_VERSION
 ) -> list[tuple]:
     return conn.execute(
-        "select r.triage, p.source, p.company, p.source_job_id,"
+        "select r.triage, p.posting_version_id, p.source, p.company,"
         "  coalesce(p.payload->>'title', p.payload->>'text'),"
         "  coalesce(p.payload->>'absolute_url', p.payload->>'hostedUrl'),"
         "  r.triage_reasons, r.findings"
@@ -67,8 +68,9 @@ def main(argv: list[str] | None = None) -> int:
     print(f"gate version {GATE_VERSION}: " + ", ".join(f"{t} {counts[t]}" for t in TIERS))
     if not rows:
         print(f"\nnothing to show for --show {args.show}")
-    for n, (tier, source, company, job_id, title, url, reasons, findings) in enumerate(rows, 1):
-        print(f"\n#{n} [{tier.upper()}] {source}/{company} {job_id} | {title}")
+    for tier, posting_id, source, company, title, url, reasons, findings in rows:
+        # The id is what a label refers to: uv run python -m pipeline.labels add <id> <label>
+        print(f"\n[{tier.upper()}] id {posting_id} | {source}/{company} | {title}")
         if url:
             print(f"   {url}")
         for reason in reasons:

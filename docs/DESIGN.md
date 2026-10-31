@@ -50,7 +50,7 @@ agent proposes a rules change ──► evaluate: every labeled case + every sto
 FL approves ──► bump version ──► recompute from raw ──► DECISIONS entry
 ```
 
-First use: gate triage (`clean` / `benign` / `review` / `block`), rules in `config/triage_rules.toml`. In M2 the same applies to LLM steps: outputs cached by (input hash, prompt version, model), prompt changes evaluated against golden sets.
+First use: gate triage (`clean` / `benign` / `review` / `block`), rules in `config/triage_rules.toml`. Commands for each step: `pipeline.alarm_report` (report), `pipeline.labels add | export` (labels → `tests/fixtures/gate_cases_labeled.jsonl`), proposals in `config/proposals/`, `pipeline.evaluate_rules` (evaluate), `pipeline.ingest --gate-only` (recompute). In M2 the same applies to LLM steps: outputs cached by (input hash, prompt version, model), prompt changes evaluated against golden sets.
 
 ## Agents
 

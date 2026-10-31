@@ -36,13 +36,13 @@ class GateResult:
     cleaned_text: str  # visible text with hidden content and invisible characters removed
     findings: dict[str, Any]  # everything the gate found (hidden blocks, flagged lines, ...)
     verdict: str  # one-line summary, e.g. "posting_guard: clean"
-    alarmed: bool  # True when a signal points at targeting; see _is_alarmed
+    alarmed: bool  # True when a signal points at targeting; see is_alarmed
     triage: Tier  # clean / benign / review / block; see pipeline/alarm_triage.py
     triage_reasons: tuple[str, ...]  # why, in words a person can check
     gate_version: str = GATE_VERSION
 
 
-def _is_alarmed(findings: dict[str, Any]) -> bool:
+def is_alarmed(findings: dict[str, Any]) -> bool:
     """The same signals that put a warning in posting_guard.verdict().
 
     Hidden blocks and hidden URLs alone are not alarms: nearly every real page hides
@@ -68,7 +68,7 @@ def run_gate(raw: str, mode: Mode = "auto", rules: TriageRules | None = None) ->
         raise ValueError(f"mode must be one of {MODES}, got {mode!r}")
     rules = rules or default_rules()
     cleaned, findings = posting_guard.guard(raw, mode)
-    alarmed = _is_alarmed(findings)
+    alarmed = is_alarmed(findings)
     judged = triage(findings, cleaned, alarmed, rules)
     return GateResult(
         cleaned_text=cleaned,

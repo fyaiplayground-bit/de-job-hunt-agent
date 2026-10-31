@@ -1,0 +1,20 @@
+[
+  {
+    "id": "aaaaaaaa-1111-2222-3333-444444444444",
+    "text": "Analytics Engineer",
+    "createdAt": 1761000000000,
+    "categories": {"commitment": "Full-time", "location": "Remote - US", "team": "Data"},
+    "workplaceType": "remote",
+    "country": "US",
+    "description": "<div>We are looking for an Analytics Engineer to own our dbt project.</div>",
+    "descriptionPlain": "We are looking for an Analytics Engineer to own our dbt project.",
+    "lists": [
+      {"text": "What you'll do", "content": "<li>Build models in dbt and SQL</li><li>Partner with analysts</li>"},
+      {"text": "Requirements", "content": "<li>2+ years of SQL</li>"}
+    ],
+    "additional": "<div><strong>Compensation</strong><br aria-hidden=\"true\">$120K - $150K</div>",
+    "additionalPlain": "Compensation\n$120K - $150K",
+    "hostedUrl": "https://jobs.lever.co/example/aaaaaaaa-1111-2222-3333-444444444444",
+    "applyUrl": "https://jobs.lever.co/example/aaaaaaaa-1111-2222-3333-444444444444/apply"
+  }
+]

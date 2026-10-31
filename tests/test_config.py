@@ -25,7 +25,7 @@ def test_settings_read_from_environment(clean_env):
 
     settings = load_settings(env_file=None)
 
-    assert settings.postgres_host == "localhost"
+    assert settings.postgres_host == "127.0.0.1"
     assert settings.postgres_port == 6543
     assert settings.postgres_db == "testdb"
     assert "password=secret" in settings.postgres_conninfo()

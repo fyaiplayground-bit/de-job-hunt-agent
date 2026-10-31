@@ -93,3 +93,16 @@
   4. 一共 76 个测试全部通过（数据库开着），`ruff check` 和 `ruff format --check` 都通过
 - **撤回：** 删除上面新增的文件，把 `test_config.py` 改回 `test_smoke.py`（`git revert` 这个提交即可）。
 - **备注：** 已知误报：`ssh`、`curl`、`.env` 出现在正常的技能描述里也会报警，专门写了一个测试把这个行为记录下来。规则先不改，等有了真实数据再调（#20）。生成复制文件和改写测试用的是一次性脚本，没有放进仓库。
+
+### 1.4 · 2026-10-30 · Greenhouse + Lever 抓取进原始层
+- **做了什么：** 抓取 19 家公司的公开招聘页（14 家 Greenhouse、5 家 Lever），原样存进 Postgres，再全部过一遍安全闸门。共建了 4 张表：`raw.ingest_runs`（每次运行一行）、`raw.job_postings`（每个职位的每个内容版本一行，原始 JSON 不改）、`raw.job_sightings`（每个职位每天被看到一次就记一行）、`gate.results`（闸门结果，带版本号）。建表用编了号的 SQL 文件，只会执行一次。手动运行命令：`uv run python -m pipeline.ingest`。
+- **为什么：** DECISIONS #21。
+- **文件：** `config/companies.toml`、`db/migrations/001_raw.sql`、`db/migrations/002_gate.sql`、`pipeline/db.py`、`pipeline/load.py`、`pipeline/gate_step.py`、`pipeline/ingest.py`、`ingestion/http.py`、`ingestion/greenhouse.py`、`ingestion/lever.py`、`ingestion/sources.py`、`pipeline/config.py`（新增 `is_source_enabled`，默认地址改为 127.0.0.1）、`.env.example`；测试：`tests/conftest.py`、`tests/fixtures/*.json`、`tests/test_sources.py`、`tests/test_http.py`、`tests/test_ingest_db.py`
+- **提交：** 见本条所在的提交（`git log -- pipeline/ingest.py`）
+- **验证：**
+  1. 97 个测试全部通过，用时 2 秒，ruff 也通过。新增 21 个测试：8 个测解析和内容指纹（`updated_at` 变化不算改版；内容改了才算；部门顺序不影响），5 个测网络请求（遵守 `Retry-After`；遇到 5xx 按 1/2/4 秒退避，3 次后放弃；404 不重试；连接错误会重试），8 个数据库测试，在单独的 `jobhunt_test` 库里跑（重复加载新增为 0；内容改一处只多 1 个版本；隔一天只多看到记录；一家公司失败不影响其他公司；闸门每个版本只检查一次）
+  2. 真实运行第 1 次：19 家全部成功，共 2300 个职位、2300 个版本，闸门检查 2300 个、报警 14 个，用时 62 秒
+  3. 马上运行第 2 次：新增版本 0，闸门检查 0。**幂等得到证明**
+- **真实数据观察：** 2300 个职位里，标题像 DE 的有 58 个。14 个报警**全部是误报**：10 个是同一句 "You are an AI pragmatist"（Samsara 销售岗），4 个是 SSH 出现在 JumpCloud 的技能描述里。58 个 DE 类职位都没有报警。没有发现真正的攻击。这组数据就是以后调规则的依据（#20）。
+- **撤回：** `git revert` 这个提交；要清空数据库里的数据，执行 `drop schema raw cascade; drop schema gate cascade; drop table public.schema_migrations;`（会删掉所有已抓到的职位）。
+- **备注：** 这一步的坑：默认地址 `localhost` 每次连接要慢好几秒（Windows 先尝试 IPv6），已改为 `127.0.0.1`，见 `NOTES.md` 第 5 节。起步清单里大多是中大型公司，只用来跑通管道；小公司为主的目标清单在 M5。跨来源去重和每日运行脚本还没做。

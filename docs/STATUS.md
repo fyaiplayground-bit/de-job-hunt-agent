@@ -27,9 +27,9 @@ Update this file at the end of every work session: what got done, what's next, w
 - [x] `docker-compose.yml` with Postgres; confirm it starts
 - [x] Python project setup (dependencies, ruff, pytest)
 - [x] JD safety gate (adapted from ai-job-search)
-- [ ] Ingestion: Greenhouse + Lever for a starter list of small companies → raw tables
+- [x] Ingestion: Greenhouse + Lever for a starter list of companies → raw tables (19 boards; the small-company target list comes in M5)
 - [ ] Ingestion: freehire.me; LinkedIn public listings behind a flag (default off)
-- [ ] Idempotent load + dedupe (including the same job arriving from freehire and Greenhouse/Lever); daily run script
+- [ ] Idempotent load + dedupe (including the same job arriving from freehire and Greenhouse/Lever); daily run script — idempotent load done (#21); cross-source dedupe and daily script still to do
 - [ ] Fake sample profile in `data/sample/`: a made-up DE-transition candidate (resume, Evidence Bank, Applicant Profile) in exactly the formats the real ones will use
 
 ### Milestone 2 · Week 2 · Agents
@@ -59,7 +59,7 @@ Update this file at the end of every work session: what got done, what's next, w
 
 ## Next action
 
-Claude: propose the Greenhouse + Lever ingestion design (raw tables, starter company list, how the gate result is stored) and wait for FL's OK.
+Claude: propose the freehire.me + LinkedIn public ingestion design (ports per DESIGN "Borrowed from ai-job-search"; LinkedIn behind its flag, off by default) and wait for FL's OK.
 
 ## Session log
 
@@ -71,3 +71,4 @@ Claude: propose the Greenhouse + Lever ingestion design (raw tables, starter com
 - 2026-10-28 — Added `docs/JOURNAL.md` (step log with commits and undo) and `docs/NOTES.md` (study notes by topic); CLAUDE.md now says which doc holds what and to write the journal entry in the same commit as each step.
 - 2026-10-30 — Python project set up with uv: Python 3.12.16, httpx / psycopg / python-dotenv, pytest + ruff, `pipeline/config.py`, smoke tests (4 pass with the DB up; DB test skips when it is down). Decision #19.
 - 2026-10-30 — JD safety gate: copied the detection logic into `pipeline/posting_guard.py` (identical to upstream, 389 lines), our wrapper `pipeline/safety_gate.py`, their 59 tests ported plus 13 of ours; smoke tests split into unit (`test_config.py`) and smoke (`test_db_smoke.py`). Decision #20.
+- 2026-10-30 — Greenhouse + Lever ingestion: 4 raw/gate tables via migrations, 19 boards, 2300 postings loaded; second same-day run added 0 (idempotent). Gate: 14 alarms, all false positives (10 "You are an AI pragmatist", 4 SSH), 0 among 58 DE-type titles. DB host default → 127.0.0.1 (tests 69s → 2s). Decision #21.

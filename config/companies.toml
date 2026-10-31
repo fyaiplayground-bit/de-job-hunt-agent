@@ -1,0 +1,34 @@
+# Starter job boards for Milestone 1. They exist to exercise the pipeline, not to target jobs:
+# mostly mid-size and large tech companies, picked because their public board answered and listed
+# at least one data-engineering-type role on 2026-10-30. FL's real target list (small companies
+# first) comes in Milestone 5 and lives in private/.
+#
+# Each value is the company's public board token: the name in its job-board URL, e.g.
+# boards.greenhouse.io/<token> or jobs.lever.co/<token>.
+
+[greenhouse]
+boards = [
+    "sigmacomputing",
+    "starburst",
+    "discord",
+    "faire",
+    "brex",
+    "chime",
+    "figma",
+    "asana",
+    "zocdoc",
+    "vercel",
+    "reddit",
+    "samsara",
+    "coinbase",
+    "lyft",
+]
+
+[lever]
+boards = [
+    "metabase",
+    "ro",
+    "jumpcloud",
+    "spotify",
+    "zoox",
+]

@@ -37,6 +37,15 @@ def _required(name: str) -> str:
     return value
 
 
+def is_source_enabled(source: str) -> bool:
+    """`<SOURCE>_ENABLED` from the environment (e.g. GREENHOUSE_ENABLED); on unless set to false.
+
+    Call after load_settings() so values from .env are already in the environment.
+    """
+    value = os.environ.get(f"{source.upper()}_ENABLED", "true").strip().lower()
+    return value not in {"false", "0", "no", "off"}
+
+
 def load_settings(env_file: str | None = ".env") -> Settings:
     """Read settings. Values already in the environment win over the file.
 
@@ -52,7 +61,7 @@ def load_settings(env_file: str | None = ".env") -> Settings:
         raise ConfigError(f"POSTGRES_PORT must be a number, got {port_text!r}.") from exc
 
     return Settings(
-        postgres_host=os.environ.get("POSTGRES_HOST", "localhost").strip() or "localhost",
+        postgres_host=os.environ.get("POSTGRES_HOST", "127.0.0.1").strip() or "127.0.0.1",
         postgres_port=port,
         postgres_db=_required("POSTGRES_DB"),
         postgres_user=_required("POSTGRES_USER"),

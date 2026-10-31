@@ -32,7 +32,7 @@ marts (dbt)               ← fit scores, skill frequency, coverage, application
    └─► Streamlit dashboard
 ```
 
-Facts about FL come only from `private/evidence_bank.md` and `private/applicant_profile.md`.
+Facts about FL come only from `evidence_bank.toml` and `applicant_profile.toml` in the profile folder (`PROFILE_DIR`: the fictional `data/sample/` until Milestone 5, then `private/`; DECISIONS #28). `<profile>/` in the skill files means that folder.
 
 ## Determinism and the rules loop
 

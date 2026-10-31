@@ -1,0 +1,56 @@
+# Applicant Profile: SAMPLE, entirely fictional (decision #28).
+# Contact details use reserved fictional values: example.com addresses and a 555-01xx number.
+#
+# Answers for application forms and knockout questions, and the candidate's dealbreakers
+# (fit-scoring skips a job that hits one). Facts about experience live in evidence_bank.toml,
+# not here.
+#
+# Check after every edit:  uv run python -m agents.profile check
+
+schema_version = 1
+sample = true
+
+[contact]
+name = "Alex Sample"
+email = "alex.sample@example.com"
+phone = "(303) 555-0142"
+city = "Denver"
+state = "CO"
+country = "US"
+
+[links]
+# Only links the candidate wants on applications. "" = leave the field empty.
+portfolio = "https://example.com/alex-sample"
+github = "https://example.com/alex-sample/code"
+linkedin = ""
+
+[work_authorization]
+authorized_us = true
+needs_sponsorship_now = false
+needs_sponsorship_future = false
+
+[availability]
+notice_period_weeks = 2
+
+[compensation]
+# Base salary per year. Below the floor is a dealbreaker; the target is what forms get.
+currency = "USD"
+base_salary_floor = 120000
+base_salary_target = 140000
+
+[location]
+# work_modes: any of remote, hybrid, onsite. Hybrid or onsite only in the cities listed.
+work_modes = ["remote", "hybrid"]
+office_cities = ["Denver, CO", "Boulder, CO"]
+relocate = false
+
+[background]
+age_18_or_over = true
+background_check_ok = true
+
+[eeo]
+# Voluntary self-identification. "decline" = "I don't wish to answer".
+gender = "decline"
+race_ethnicity = "decline"
+veteran_status = "decline"
+disability_status = "decline"

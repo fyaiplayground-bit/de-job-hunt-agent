@@ -105,6 +105,8 @@
   3. 马上运行第 2 次：新增版本 0，闸门检查 0。**幂等得到证明**
 - **真实数据观察：** 2300 个职位里，标题像 DE 的有 58 个。14 个报警**全部是误报**：10 个是同一句 "You are an AI pragmatist"（Samsara 销售岗），3 个是 SSH 出现在 JumpCloud 的技能描述里，1 个是 "as an AI/Tech evangelist"（JumpCloud；原规则只放过 "As an AI Engineer" 这类职位名称，豁免名单里没有 evangelist）。58 个 DE 类职位都没有报警。没有发现真正的攻击。这组数据就是以后调规则的依据（#20）。
 - **怎么判断是误报的（每一条都核对过）：** ① 读完整的触发句：是在描述候选人或技能，还是在命令 AI 做事；② 检查其他信号：隐藏内容、隐形字符、隐形文字、隐藏网址、混用字母，14 条全部为 0，句子都是明面上所有人可见的，而攻击通常要藏起来；③ 合不合常理：都在公司官方招聘页上，10 条是同一个招聘模板。这是有依据的人工判断，不是证明。（更正：第一次汇总时只看了每句前 110 个字符，误把 "as an AI" 那条归进了 SSH，已改正。）
+- **撤回：** `git revert` 这个提交；要清空数据库里的数据，执行 `drop schema raw cascade; drop schema gate cascade; drop table public.schema_migrations;`（会删掉所有已抓到的职位）。
+- **备注：** 这一步的坑：默认地址 `localhost` 每次连接要慢好几秒（Windows 先尝试 IPv6），已改为 `127.0.0.1`，见 `NOTES.md` 第 5 节。起步清单里大多是中大型公司，只用来跑通管道；小公司为主的目标清单在 M5。跨来源去重和每日运行脚本还没做。
 
 ### 1.5 · 2026-10-30 · 报警分档：把人工判断写成确定的规则（规则循环第 A 步）
 - **做了什么：** 把 1.4 里判断误报的标准写成了代码。每个闸门结果自动分到四档之一：clean（干净）/ benign（放行）/ review（人工看）/ block（拦截），并附上原因。规则放在数据文件 `config/triage_rules.toml` 里，包括哪些是"弱规则"、哪些是"指挥 AI 的信号词"，以及版本号。上游的每条指令规则都起了一个固定的名字（`RULE_SIGNATURES`），规则文件按名字引用。闸门版本改成"检测版本 + 规则版本"，也就是 `d1-t1`。新增报告命令 `pipeline.alarm_report`，以及只重算、不抓取的 `pipeline.ingest --gate-only`。"代码在运行时判断、AI 只提建议、规则只能通过循环修改"这条原则写进了 `CLAUDE.md` 的硬性规定。
@@ -204,6 +206,20 @@
   1. 创建时触发时间被存成了 `08:30-07:00`（固定的夏令时偏移），而 11/01 夏令时结束，下次运行就变成了 7:30。改成不带偏移的本地时间 `08:30` 后，全年都是 8:30。
   2. 快捷方式名和桌面路径里有中文，在 PowerShell 命令里变成了 `??`；Windows 创建快捷方式用的老组件也存不了这种路径。解决办法是先存到英文路径，再用 PowerShell 移到桌面。
 
-
-- **撤回：** `git revert` 这个提交；要清空数据库里的数据，执行 `drop schema raw cascade; drop schema gate cascade; drop table public.schema_migrations;`（会删掉所有已抓到的职位）。
-- **备注：** 这一步的坑：默认地址 `localhost` 每次连接要慢好几秒（Windows 先尝试 IPv6），已改为 `127.0.0.1`，见 `NOTES.md` 第 5 节。起步清单里大多是中大型公司，只用来跑通管道；小公司为主的目标清单在 M5。跨来源去重和每日运行脚本还没做。
+### 1.11 · 2026-10-31 · 假样本档案和档案检查（M1 最后一项）
+- **做了什么：**
+  - `data/sample/` 放了一个虚构的候选人 Alex Sample（BI 工程师转 DE），三个文件就是以后你真文件的格式：`evidence_bank.toml`（事实库：工作经历、项目、学历、13 条经历、19 个技能及别名）、`applicant_profile.toml`（申请表资料和硬性条件）、`resume.md`（未定制的主简历）。另有 `README.md`，声明全部虚构，并列出给 M2 准备的测试场景（换个说法、只碰过一点、在学、从没碰过、模糊处理的数字、硬性条件）
+  - `agents/profile.py`：读取并检查三个文件，命令是 `uv run python -m agents.profile check [文件夹]`。检查内容：字段齐全、类型正确；id 不重复；每条经历指向存在的工作或项目；技能用标准名；每个技能至少有一条证据；别名不撞车；简历的标题、日期、技能、数字都能在事实库里找到
+  - `pipeline/config.py` 新增 `profile_dir()`，`.env.example` 新增 `PROFILE_DIR=data/sample`。M5 时把它改成 `private` 就切换到真档案
+  - `private/README.md` 和四个 skill 文件改为指向 `<profile>/evidence_bank.toml` 这类路径；`DESIGN.md` 同步
+  - 新建 `docs/INTERVIEW_NOTES.md`，写好 M1 的面试笔记（英文）
+  - 顺手修了本文件 1.4 条的"撤回 / 备注"两行，它们之前跑到了文件末尾
+- **为什么：** DECISIONS #16、#28。
+- **文件：** `data/sample/README.md`、`data/sample/evidence_bank.toml`、`data/sample/applicant_profile.toml`、`data/sample/resume.md`、`agents/__init__.py`、`agents/profile.py`、`pipeline/config.py`、`.env.example`、`tests/test_profile.py`、`private/README.md`、`.claude/skills/{coverage-report,fit-scoring,resume-tailoring}/SKILL.md`、`docs/DESIGN.md`、`docs/INTERVIEW_NOTES.md`
+- **提交：** 见本条所在的提交（`git log -- data/sample/evidence_bank.toml`）
+- **验证：**
+  1. `agents.profile check` 对样本输出 OK（2 份工作、2 个项目、13 条经历、19 个技能，其中 1 个在学）
+  2. 新增 25 个测试：样本通过全部检查；**隐私护栏**（邮箱只能是 example.com，网址只能是 example.com，电话只能是 555-01xx，公司和学校只能是那三个虚构名字）；README 承诺的测试场景都在；每条检查都能抓到它要抓的错误（简历写了没证据的 Kafka、简历出现事实库里没有的数字、日期和工作经历对不上、标题不标准、经历指向不存在的工作、技能没用标准名、技能没有证据、别名撞车、级别或日期写错、缺字段、薪资下限高于目标）；命令行在样本上返回 0，在改坏的副本和空文件夹上返回 1
+  3. 全部 269 个测试通过（1 个跳过），ruff 通过
+- **撤回：** `git revert` 这个提交。不涉及数据库。
+- **备注：** 简历上的数字检查会跳过粘在字母上的数字（S3、EC2 不算声称"3""2"）。日期只看格式为 "Mar 2021 – Present" 的那一种。

@@ -140,6 +140,20 @@ dbt：清洗 → 提取技能 → 汇总（打分、技能频率、覆盖率、�
 | 爬虫的标准身份 | `Mozilla/5.0 (compatible; 名字/版本; +网址)`，Googlebot 也是这个格式。它说明了"我是谁"，并不是冒充浏览器。冒充指的是模仿网站自己页面才会带的请求头 |
 | 重算 recompute | 规则升版本后，用 `--gate-only` 从原始数据把所有职位按新规则重新判断一遍；旧版本的结果保留，作为历史 |
 
+### 候选人档案（事实库、申请资料、简历）
+| 词 | 大白话 |
+| --- | --- |
+| 档案文件夹 `PROFILE_DIR` | agent 从哪个文件夹读你的资料。现在是虚构样本 `data/sample`，M5 改成 `private`，代码一行都不用改 |
+| 事实库 Evidence Bank | 关于你的**唯一事实来源**：做过什么、用了哪些技能、哪些数字。agent 只能写这里有依据的东西 |
+| 申请资料 Applicant Profile | 填申请表用的：联系方式、工作许可、薪资下限、远程偏好等。也是打分时的"硬性条件"（比如薪资低于下限就跳过） |
+| 简历是事实库的"视图" | 简历上的每个技能、每个数字都必须在事实库里找得到，由代码检查。类似数据库的外键：引用的东西必须存在 |
+| 级别 level | 技能是怎么用过的：production（工作中的真实系统）/ project（个人项目）/ practiced（练习、课程）。只用于面试准备，不用来筛掉技能。一个技能的级别取它所有证据里最强的那个，由代码算出来，不用手填 |
+| 状态 have / learning | 已经会的 / 正在学的。在学的也算进覆盖率 |
+| 别名 alias | 同一个技能的不同叫法："Airflow" = "Apache Airflow"，"data pipelines" = "ETL"。匹配 JD 时按别名查，不区分大小写，结果是确定的 |
+| TOML | 一种配置文件格式（2013 年就有了），`键 = 值` 一行一个，`[[evidence]]` 表示"再加一条"，`#` 后面是注释。`pyproject.toml` 和规则文件都是这个格式。选它是因为人能读、程序能准确读取，而且 Python 自带读取工具 |
+| 数据契约 data contract | 事先约定数据长什么样（有哪些字段、取什么值、互相怎么引用），再用代码检查。上下游都按这个约定来，一方改坏了，检查会立刻报错 |
+| 检查档案 | `uv run python -m agents.profile check`：读取三个文件，跑全部检查，输出 OK 或者具体哪里不对 |
+
 ### 三种终端
 PowerShell（Windows 自带）、Git Bash（装 Git 时附带）、Ubuntu/WSL（Windows 里的真 Linux），都只是"输入命令的窗口"。本项目需要 Linux 的部分都放进 Docker，所以你只需要 PowerShell，大多数时候连它都不用开。
 
@@ -182,6 +196,7 @@ PowerShell（Windows 自带）、Git Bash（装 Git 时附带）、Ubuntu/WSL（
 | 想改规则 | 让 Claude 在 `config/proposals/` 写一份提议，跑 `uv run python -m pipeline.evaluate_rules <提议文件>`，你看了报告再决定批不批（流程见 `config/proposals/README.md`） |
 | 改了规则之后重算 | 让 Claude 跑 `uv run python -m pipeline.ingest --gate-only`（不抓取，只重新判断） |
 | 加一家公司 | 在 `config/companies.toml` 里加上它的招聘页代号，也就是招聘网址里公司名那一段 |
+| 检查档案（事实库、申请资料、简历） | 让 Claude 跑 `uv run python -m agents.profile check`；M5 之后检查真档案用 `... check private` |
 | ⚠️ 千万别做 | `docker compose down -v`（`-v` 会删掉所有数据） |
 | 每次开工 | 跟 Claude 说"继续"，它会先读 `CLAUDE.md` 和 `STATUS.md` |
 
@@ -238,4 +253,5 @@ PowerShell（Windows 自带）、Git Bash（装 Git 时附带）、Ubuntu/WSL（
 - **可重算的派生数据：** 闸门结果带版本号，原始职位永远不改。规则一变，就从原始数据重新计算，而不是去修改旧结果。
 - **安全意识：** JD 是不可信输入，先过安全闸门再给 AI 读（防 prompt injection）；机密只放 `.env`；公开仓库提交前做隐私检查。
 - **工程取舍：** 借用开源组件时逐个判断是复制、改写还是只借思路，保持整个仓库只有一种语言，并遵守 MIT 许可证。
-- **数据质量：** 多个来源会抓到同一个职位，必须跨来源去重，加载要能重复运行而不产生重复数据（M1 待做）。
+- **数据质量：** 多个来源会抓到同一个职位，必须跨来源去重，加载要能重复运行而不产生重复数据（M1 已完成，见上面的"原始层设计"和"跨来源去重"）。
+- **候选人档案的数据契约：** agent 读的简历、事实库、申请资料都是结构化的 TOML，有校验程序。事实库是唯一的事实来源，简历只是它的一个视图：简历上的每个技能、每个数字都必须在事实库里找得到，相当于引用完整性检查。JD 里的 "Airflow" 对上候选人的 "Apache Airflow"，靠的是确定的别名查找，不是让 AI 去猜。整个系统先用一个虚构的样本档案开发，公开仓库不含任何个人数据也能跑；有一个测试专门保证样本只用 example.com 和 555-01xx 这类保留的虚构值。

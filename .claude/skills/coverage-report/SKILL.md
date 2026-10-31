@@ -8,7 +8,7 @@ description: Daily report answering one question — do FL's current and in-prog
 ## Inputs
 
 - Every JD ingested in the last day and a rolling 30 days (from the `skills` / `marts` tables)
-- `private/evidence_bank.md`, including skills marked `learning`
+- `<profile>/evidence_bank.toml`, including skills marked `learning`
 
 ## Sections
 

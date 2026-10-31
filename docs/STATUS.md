@@ -1,15 +1,15 @@
 # Status
 
-**Last updated:** 2026-10-30 · **Phase:** Milestone 1 (skeleton + ingestion)
+**Last updated:** 2026-10-31 · **Phase:** Milestone 1 done → Milestone 2 (agents) next
 
 Update this file at the end of every work session: what got done, what's next, what's blocked.
 
 ## Where we are
 
 - Design confirmed (see `docs/DESIGN.md`, `docs/DECISIONS.md`).
-- Starter kit created: `CLAUDE.md`, docs, 6 skill files, `.gitignore`, `.env.example`, `private/README.md`.
-- Repo is on GitHub (public): https://github.com/fyaiplayground-bit/de-job-hunt-agent. No code yet.
-- FL's real resume and Evidence Bank come last (Milestone 5). Until then everything is built and tested against the fake sample profile in `data/sample/` (decision #16).
+- Repo is on GitHub (public): https://github.com/fyaiplayground-bit/de-job-hunt-agent.
+- **Milestone 1 complete (2026-10-31):** daily ingestion from Greenhouse, Lever and freehire into Postgres (raw, idempotent), safety gate with deterministic triage and the rules loop, cross-source dedupe, scheduled daily run with report. M1 interview note in `docs/INTERVIEW_NOTES.md`.
+- FL's real resume and Evidence Bank come last (Milestone 5). Until then everything is built and tested against the fictional sample profile in `data/sample/` (decisions #16, #28); `PROFILE_DIR` switches it to `private/`.
 
 ## Waiting on FL
 
@@ -32,7 +32,8 @@ Update this file at the end of every work session: what got done, what's next, w
 - [x] Idempotent load + dedupe (including the same job arriving from freehire and Greenhouse/Lever); daily run script — #21, #24, #27; scheduled 8:30 LA daily, desktop shortcut to the report
 - [x] Alarm triage + rules loop step A: deterministic tiers, `config/triage_rules.toml`, golden set, `pipeline.alarm_report` (#22)
 - [x] Rules loop step B: labels table, labeling command, `evaluate_rules` comparing proposed vs current rules; walked once end to end (#23)
-- [ ] Fake sample profile in `data/sample/`: a made-up DE-transition candidate (resume, Evidence Bank, Applicant Profile) in exactly the formats the real ones will use
+- [x] Fake sample profile in `data/sample/`: a made-up DE-transition candidate (resume, Evidence Bank, Applicant Profile) in exactly the formats the real ones will use — TOML + resume.md, checked by `agents.profile check` (#28)
+- [x] M1 interview note in `docs/INTERVIEW_NOTES.md`
 
 ### Milestone 2 · Week 2 · Agents
 - [ ] Agent modules loading rules from `.claude/skills/`
@@ -61,7 +62,7 @@ Update this file at the end of every work session: what got done, what's next, w
 
 ## Next action
 
-Claude: propose the fake sample profile (last M1 item: made-up DE-transition candidate, resume + Evidence Bank + Applicant Profile in data/sample/), then INTERVIEW_NOTES for M1. The daily run now happens by itself at 8:30 LA; check it at session start.
+Claude: start Milestone 2 with a design proposal for the first agent modules (load rules from `.claude/skills/`, read the profile through `agents/profile.py`, cache LLM outputs by input hash + prompt version + model per #22) and the resume template engine choice (LaTeX vs Typst). Needs FL's Anthropic API key in `.env` before any live LLM call. The daily run happens by itself at 8:30 LA (first automatic run 2026-11-01); check it at session start.
 
 ## Session log
 
@@ -80,3 +81,4 @@ Claude: propose the fake sample profile (last M1 item: made-up DE-transition can
 - 2026-10-31 — First real turn of the rules loop: 9 freehire alarms labeled false positive (13 golden cases), triage rules v2 adopted (zero-width editing artifacts no longer block; evaluation PASS, only the 5 labeled postings moved), recomputed 7,118 postings → block 0. HTTP identity per #25 (conventional crawler UA, Accept headers, jitter, LinkedIn 404 skip; no site-imitating header). 233 tests pass. Decisions #25, #26.
 - 2026-10-31 — Daily run `pipeline.daily`: Docker auto-start, advisory lock, adaptive search window (2–7 days), report in `output/daily/` + `ops.daily_runs`; "new" by run ids. Two real runs ok, lock verified. CLAUDE.md: summarize the last daily run at session start. 244 tests pass. Decision #27.
 - 2026-10-31 — Created the Windows scheduled task (8:30 LA, catch-up, on battery, headless) and the desktop shortcut "每日职位报告" with FL's OK; a manual trigger succeeded (result 0). Fixed a trigger saved with a fixed DST offset (would have run at 7:30 after Nov 1).
+- 2026-10-31 — Fictional sample profile (Alex Sample, BI engineer → DE) in `data/sample/`: `evidence_bank.toml`, `applicant_profile.toml`, `resume.md`; `agents/profile.py` loads and checks them (resume traces to the Evidence Bank); `PROFILE_DIR` setting; private/README and skill files point at the profile folder; M1 interview note written. **Milestone 1 complete.** 269 tests pass. Decision #28.

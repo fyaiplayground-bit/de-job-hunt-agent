@@ -6,6 +6,7 @@ itself, so there is one place that knows which variables exist and what their de
 
 import os
 from dataclasses import dataclass
+from pathlib import Path
 
 from dotenv import load_dotenv
 
@@ -52,6 +53,22 @@ def is_source_enabled(source: str) -> bool:
         return value in {"true", "1", "yes", "on"}
     value = os.environ.get(f"{source.upper()}_ENABLED", "true").strip().lower()
     return value not in {"false", "0", "no", "off"}
+
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
+DEFAULT_PROFILE_DIR = "data/sample"
+
+
+def profile_dir(env_file: str | None = ".env") -> Path:
+    """Folder holding the candidate profile (decision #28): PROFILE_DIR, relative to the repo root
+    unless absolute. Defaults to the fictional sample; Milestone 5 points it at `private`.
+
+    Reads `.env` itself (no database settings needed). Pass env_file=None in tests.
+    """
+    if env_file is not None:
+        load_dotenv(env_file, override=False)
+    folder = Path(os.environ.get("PROFILE_DIR", "").strip() or DEFAULT_PROFILE_DIR)
+    return folder if folder.is_absolute() else REPO_ROOT / folder
 
 
 def load_settings(env_file: str | None = ".env") -> Settings:

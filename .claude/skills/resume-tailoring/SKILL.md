@@ -10,7 +10,8 @@ Write for two readers in order: a parser that reads every word literally, then a
 ## Inputs
 
 - JD brief (`jd-analysis`), fit result (`fit-scoring`)
-- `private/evidence_bank.md` — the only source of facts
+- `<profile>/evidence_bank.toml` — the only source of facts
+- `<profile>/resume.md` — the current master resume, the starting point
 - The resume template in `templates/`
 
 ## The keyword rule (advertise, don't invent)

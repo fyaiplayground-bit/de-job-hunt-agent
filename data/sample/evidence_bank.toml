@@ -1,0 +1,278 @@
+# Evidence Bank: SAMPLE, entirely fictional (decision #28).
+# The person, employers, school, links and every number below are made up.
+#
+# This is the only source of facts about the candidate. resume-tailoring, fit-scoring, ats-critic
+# and coverage-report may claim only what an entry here supports. A skill with no entry is
+# "not covered" and never goes on a resume.
+#
+# Check after every edit:  uv run python -m agents.profile check
+#
+# Levels (how the skill was used, recorded for interview prep, never to filter):
+#   production = at work on real systems · project = built with it in a personal project
+#   practiced  = exercises, courses, small experiments
+# A skill's level is the strongest level among its evidence entries (computed, not typed).
+
+schema_version = 1
+sample = true
+
+# ---------------------------------------------------------------- work history
+# Official titles, as a background check would confirm them. end = "" means present.
+
+[[roles]]
+id = "quillfeather-bie"
+title = "Business Intelligence Engineer"
+employer = "Quillfeather Outdoor"
+employer_blurb = "online outdoor-gear retailer, about 800 employees"
+location = "Denver, CO"
+start = "2021-03"
+end = ""
+
+[[roles]]
+id = "brightmoor-analyst"
+title = "Data Analyst"
+employer = "Brightmoor Logistics"
+employer_blurb = "regional freight and warehousing company"
+location = "Denver, CO"
+start = "2017-06"
+end = "2021-02"
+
+# ---------------------------------------------------------------- projects outside the day job
+
+[[projects]]
+id = "bikeshare-pipeline"
+name = "Bike-Share Trips Pipeline"
+status = "in_progress"
+start = "2026-07"
+url = "https://example.com/alex-sample/bikeshare-pipeline"
+description = "Daily ingestion of public bike-share trip files into S3 and Postgres, modeled with dbt, running in Docker."
+
+[[projects]]
+id = "spark-course"
+name = "Spark practice (online course)"
+status = "in_progress"
+start = "2026-09"
+url = ""
+description = "Course exercises in PySpark on sample datasets."
+
+# ---------------------------------------------------------------- education
+
+[[education]]
+degree = "B.A. Economics"
+school = "Front Range State University"
+end = "2017-05"
+
+# ---------------------------------------------------------------- evidence
+# One entry per thing done. where = a role or project id. metrics = the only numbers a resume
+# may use. rounded = true when a number is internal to the employer and was rounded on purpose.
+# story = how to tell it in an interview (situation, what I did, result).
+
+[[evidence]]
+id = "qf-glue-redshift"
+where = "quillfeather-bie"
+summary = "Built daily AWS Glue jobs in Python that load 6 source systems into Amazon Redshift, replacing manual CSV exports."
+skills = ["AWS Glue", "Python", "Amazon Redshift", "Amazon S3", "ETL"]
+level = "production"
+metrics = ["6 source systems", "daily refresh cut from about 5 hours to 40 minutes"]
+rounded = false
+story = "Finance waited until mid-morning for yesterday's numbers because analysts exported CSVs by hand. I wrote Glue jobs that land each source in S3 and COPY it into Redshift, scheduled with Glue triggers. The refresh now finishes before the workday starts."
+
+[[evidence]]
+id = "qf-star-schema"
+where = "quillfeather-bie"
+summary = "Designed a star schema in Redshift for orders, returns and inventory that most company dashboards are built on."
+skills = ["Data modeling", "SQL", "Amazon Redshift"]
+level = "production"
+metrics = ["4 fact tables", "12 dimension tables", "30+ dashboards"]
+rounded = false
+story = "Every dashboard had its own copy of the order logic, and numbers disagreed. I modeled orders, returns and inventory as facts with shared dimensions (product, customer, date, warehouse), so one definition feeds every report."
+
+[[evidence]]
+id = "qf-query-tuning"
+where = "quillfeather-bie"
+summary = "Tuned the slowest Redshift queries with sort and distribution keys and pre-aggregated tables."
+skills = ["SQL", "Amazon Redshift"]
+level = "production"
+metrics = ["main sales dashboard load from 90 seconds to 8 seconds"]
+rounded = false
+story = "The sales dashboard timed out in the Monday meeting. I read the query plans, changed the distribution key on the order lines table and added a daily pre-aggregate, which took the load from 90 seconds to 8."
+
+[[evidence]]
+id = "qf-athena-clickstream"
+where = "quillfeather-bie"
+summary = "Set up Athena tables over clickstream logs in S3, partitioned by day, so analysts query web events without loading them into Redshift."
+skills = ["Amazon Athena", "Amazon S3", "SQL"]
+level = "production"
+metrics = ["2 years of web events", "about 1.5 billion rows"]
+rounded = true
+story = "Loading clickstream into Redshift would have doubled the cluster. I defined partitioned external tables in Athena over the existing S3 logs, so analysts pay per query instead."
+
+[[evidence]]
+id = "qf-data-quality"
+where = "quillfeather-bie"
+summary = "Added daily row-count, freshness and null checks on the Glue loads, with Slack alerts to the BI team."
+skills = ["Data quality", "SQL", "Python"]
+level = "production"
+metrics = ["finance-reported data incidents from about 3 a month to under 1"]
+rounded = true
+story = "Finance kept finding broken numbers before we did. I added checks after each load that alert us in Slack, so we fix a failed load before anyone opens a dashboard."
+
+[[evidence]]
+id = "qf-quicksight-migration"
+where = "quillfeather-bie"
+summary = "Migrated Tableau dashboards to Amazon QuickSight on top of the new Redshift model."
+skills = ["Tableau", "Amazon QuickSight"]
+level = "production"
+metrics = ["25 dashboards"]
+rounded = false
+story = "The company moved off Tableau licenses. I rebuilt the dashboards in QuickSight against the star schema, which also removed per-dashboard SQL."
+
+[[evidence]]
+id = "qf-git"
+where = "quillfeather-bie"
+summary = "Moved the BI team's SQL and Glue scripts into Git with code review."
+skills = ["Git"]
+level = "production"
+metrics = ["team of 4"]
+rounded = false
+story = "Scripts lived on shared drives and nobody knew which version ran. I put them in a Git repo and we started reviewing each other's changes."
+
+[[evidence]]
+id = "bm-nightly-etl"
+where = "brightmoor-analyst"
+summary = "Wrote nightly ETL jobs in Python and SQL Server reports on shipment and warehouse data, feeding Tableau."
+skills = ["ETL", "Python", "SQL", "Microsoft SQL Server", "Tableau"]
+level = "production"
+metrics = ["14 warehouses"]
+rounded = false
+story = "Operations managers had no daily view across warehouses. I wrote Python jobs that pulled each warehouse's data into SQL Server overnight and built the Tableau reports on top."
+
+[[evidence]]
+id = "bm-excel-automation"
+where = "brightmoor-analyst"
+summary = "Replaced a weekly Excel carrier-cost report with a Python script."
+skills = ["Python", "Excel"]
+level = "production"
+metrics = ["about 6 hours a week saved"]
+rounded = false
+story = "One analyst spent most of a day each week copying carrier invoices into Excel. A Python script now builds the same workbook in minutes."
+
+[[evidence]]
+id = "bs-ingest"
+where = "bikeshare-pipeline"
+summary = "Python job downloads the monthly public bike-share trip files to S3 and loads them into PostgreSQL idempotently: re-runs add no duplicates."
+skills = ["Python", "Amazon S3", "PostgreSQL", "ETL"]
+level = "project"
+metrics = ["about 3 million trips a month"]
+rounded = false
+story = "I wanted to practice the parts BI work hides: landing raw files, loading them safely twice, and keeping history. Each file is loaded with a content hash so re-running a month changes nothing."
+
+[[evidence]]
+id = "bs-dbt-models"
+where = "bikeshare-pipeline"
+summary = "dbt models from staging to marts for trips and stations, with tests, on Postgres in Docker."
+skills = ["dbt", "SQL", "Data modeling", "Data quality", "PostgreSQL", "Docker"]
+level = "project"
+metrics = ["9 dbt models", "21 tests"]
+rounded = false
+story = "Same modeling ideas as at work, but as code with tests: staging cleans each source, marts answer questions like station demand by hour."
+
+[[evidence]]
+id = "bs-airflow-trial"
+where = "bikeshare-pipeline"
+summary = "Ran Airflow locally in Docker and wrote a first DAG that triggers the daily bike-share load; the load still runs from a cron script."
+skills = ["Apache Airflow", "Docker", "Python"]
+level = "practiced"
+metrics = []
+rounded = false
+story = "At work Glue triggers did the scheduling, so I tried Airflow on my own project: one DAG, retries, a backfill. Moving the real schedule to it is next."
+
+[[evidence]]
+id = "spark-exercises"
+where = "spark-course"
+summary = "PySpark exercises: joins, window functions and partitioned Parquet writes on sample datasets."
+skills = ["Apache Spark", "Python"]
+level = "practiced"
+metrics = []
+rounded = false
+story = "Taking a Spark course to cover the most common pipeline-DE requirement I don't use at work."
+
+# ---------------------------------------------------------------- skills
+# Canonical name = the form most job postings use. aliases = other spellings a JD may use;
+# matching is case-insensitive. status: have, or learning (counts toward coverage, decision #13).
+# Every skill needs at least one evidence entry above.
+
+[skills."SQL"]
+aliases = []
+status = "have"
+
+[skills."Python"]
+aliases = []
+status = "have"
+
+[skills."Amazon Redshift"]
+aliases = ["Redshift", "AWS Redshift"]
+status = "have"
+
+[skills."AWS Glue"]
+aliases = ["Glue"]
+status = "have"
+
+[skills."Amazon Athena"]
+aliases = ["Athena", "AWS Athena"]
+status = "have"
+
+[skills."Amazon S3"]
+aliases = ["S3", "AWS S3"]
+status = "have"
+
+[skills."ETL"]
+aliases = ["extract, transform, load", "data pipelines", "data pipeline"]
+status = "have"
+
+[skills."Data modeling"]
+aliases = ["data modelling", "dimensional modeling", "star schema"]
+status = "have"
+
+[skills."Data quality"]
+aliases = ["data validation", "data quality checks"]
+status = "have"
+
+[skills."PostgreSQL"]
+aliases = ["Postgres"]
+status = "have"
+
+[skills."Microsoft SQL Server"]
+aliases = ["SQL Server", "MSSQL"]
+status = "have"
+
+[skills."dbt"]
+aliases = ["dbt Core", "data build tool"]
+status = "have"
+
+[skills."Docker"]
+aliases = []
+status = "have"
+
+[skills."Git"]
+aliases = ["GitHub"]
+status = "have"
+
+[skills."Apache Airflow"]
+aliases = ["Airflow"]
+status = "have"
+
+[skills."Apache Spark"]
+aliases = ["Spark", "PySpark"]
+status = "learning"
+
+[skills."Tableau"]
+aliases = []
+status = "have"
+
+[skills."Amazon QuickSight"]
+aliases = ["QuickSight"]
+status = "have"
+
+[skills."Excel"]
+aliases = ["Microsoft Excel"]
+status = "have"

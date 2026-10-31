@@ -10,8 +10,8 @@ Decide whether a job is worth an application. Lean toward applying: postings are
 ## Inputs
 
 - The JD brief from `jd-analysis`
-- `private/evidence_bank.md` (the only source of facts about FL)
-- `private/applicant_profile.md` and `private/target_companies.md` (dealbreakers, exclusions, target lists)
+- `<profile>/evidence_bank.toml` (the only source of facts about FL)
+- `<profile>/applicant_profile.toml` and `private/target_companies.md` (dealbreakers, exclusions, target lists)
 
 ## How a skill counts
 

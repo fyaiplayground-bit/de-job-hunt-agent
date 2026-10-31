@@ -90,3 +90,8 @@ Format: number · date · decision · why · alternatives considered.
 - **Decision:** Copy the two Python tools (JD safety gate, PDF text-layer check); port the TypeScript LinkedIn and freehire clients to Python; borrow only the idea for the layout check, drafter-reviewer loop, interview prep and outcome tracking. Full table in `docs/DESIGN.md`. Copied or ported files carry an MIT header; the full license is in `LICENSES/ai-job-search-MIT.txt`. Reference clone pinned at commit `83c788d`.
 - **Why:** Copy where their code is already Python and hard to match (the gate covers many hidden-text tricks); port so the repo stays one language FL can explain; ideas only where theirs is prompt prose or tied to their LaTeX template and Poppler.
 - **Alternatives:** Vendor their code as-is with bun (two languages in the repo); git submodule (would ship their skills and commands into ours).
+
+### #19 · 2026-10-30 · Python environment: uv
+- **Decision:** Manage Python 3.12 and dependencies with uv (`pyproject.toml` + committed `uv.lock`, environment in the project's `.venv/`). Add dependencies only when a milestone needs them; Airflow runs in Docker, not in this environment.
+- **Why:** The machine only had Anaconda's Python 3.9. uv installs 3.12 for this project without touching Anaconda, the lockfile makes the environment reproducible for anyone who clones the repo, and `uv run` needs no environment activation (one less terminal step for FL).
+- **Alternatives:** A Python 3.12 conda environment in the existing Anaconda (lives outside the project, no standard lockfile, needs `conda activate`); plain venv + pip (no Python version management, no lockfile).

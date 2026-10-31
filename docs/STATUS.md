@@ -1,6 +1,6 @@
 # Status
 
-**Last updated:** 2026-10-28 · **Phase:** Milestone 1 (skeleton + ingestion)
+**Last updated:** 2026-10-30 · **Phase:** Milestone 1 (skeleton + ingestion)
 
 Update this file at the end of every work session: what got done, what's next, what's blocked.
 
@@ -25,7 +25,7 @@ Update this file at the end of every work session: what got done, what's next, w
 ### Milestone 1 · Week 1 · Skeleton + ingestion
 - [x] git init, first commit, push to GitHub
 - [x] `docker-compose.yml` with Postgres; confirm it starts
-- [ ] Python project setup (dependencies, ruff, pytest)
+- [x] Python project setup (dependencies, ruff, pytest)
 - [ ] JD safety gate (adapted from ai-job-search)
 - [ ] Ingestion: Greenhouse + Lever for a starter list of small companies → raw tables
 - [ ] Ingestion: freehire.me; LinkedIn public listings behind a flag (default off)
@@ -59,7 +59,7 @@ Update this file at the end of every work session: what got done, what's next, w
 
 ## Next action
 
-Claude: propose the Python project setup (dependencies, ruff, pytest) and wait for FL's OK.
+Claude: propose the JD safety gate design (copy of `posting_guard.py`, see DESIGN "Borrowed from ai-job-search") and wait for FL's OK.
 
 ## Session log
 
@@ -69,3 +69,4 @@ Claude: propose the Python project setup (dependencies, ruff, pytest) and wait f
 - 2026-10-28 — Cloned ai-job-search into `reference/` (gitignored, commit `83c788d`); added the "Borrowed from ai-job-search" table to DESIGN.md, the MIT header rule to CLAUDE.md, `LICENSES/ai-job-search-MIT.txt`, decision #18.
 - 2026-10-28 — Docker Desktop installed (per-user, WSL 2). Added `docker-compose.yml`: Postgres 17, values from `.env`, port bound to 127.0.0.1, `pgdata` volume, health check. Verified: healthy, password login works, a test row survived `down` + `up`. `.env` created locally with a generated DB password (not committed).
 - 2026-10-28 — Added `docs/JOURNAL.md` (step log with commits and undo) and `docs/NOTES.md` (study notes by topic); CLAUDE.md now says which doc holds what and to write the journal entry in the same commit as each step.
+- 2026-10-30 — Python project set up with uv: Python 3.12.16, httpx / psycopg / python-dotenv, pytest + ruff, `pipeline/config.py`, smoke tests (4 pass with the DB up; DB test skips when it is down). Decision #19.

@@ -1,0 +1,32 @@
+[project]
+name = "de-job-hunt-agent"
+version = "0.1.0"
+description = "Data-engineering pipeline that ingests job postings and feeds job-hunting agents."
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "httpx>=0.28.1",
+    "psycopg[binary]>=3.3.6",
+    "python-dotenv>=1.2.4",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.2.0",
+    "ruff>=0.17.3",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# Lets tests import the top-level packages (ingestion, pipeline) without installing the project.
+pythonpath = ["."]
+markers = ["db: needs the local Postgres from docker-compose (skipped when it isn't running)"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = ["reference"]
+
+[tool.ruff.lint]
+# E/F: errors and pyflakes · I: import order · B: common bugs · UP: modern Python syntax
+select = ["E", "F", "I", "B", "UP"]

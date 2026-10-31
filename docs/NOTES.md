@@ -54,6 +54,19 @@ dbt：清洗 → 提取技能 → 汇总（打分、技能频率、覆盖率、�
 | 健康检查 | 定时问一句"能接受连接吗？"。healthy 说明真的能用，而不只是进程在跑 |
 | 端口绑定 `127.0.0.1` | 只有本机能连，同一 Wi-Fi 下的其他设备连不上 |
 
+### Python 项目（uv）
+| 词 | 大白话 |
+| --- | --- |
+| uv | 一个工具包办三件事：装指定版本的 Python、建项目专用的环境、装库 |
+| 虚拟环境 `.venv/` | 项目自己的"库房"，装在项目文件夹里，不影响电脑上的其他 Python（比如 Anaconda），不提交到 git |
+| `pyproject.toml` | 项目说明书：Python 版本、要用哪些库，以及 pytest 和 ruff 的设置 |
+| `uv.lock` | 锁定每个库的精确版本，换台电脑也能装出一模一样的环境，要提交到 git |
+| `uv run <命令>` | 在项目环境里运行命令，不需要先"激活环境" |
+| 运行依赖 vs 开发依赖 | 运行依赖是程序本身要用的（httpx、psycopg）；开发依赖只在写代码时用（pytest、ruff） |
+| pytest | 跑测试。`passed` 是通过，`skipped` 是条件不满足（比如数据库没开）所以没跑，`failed` 才是真的出错 |
+| ruff | 检查代码：有没有错误、写法规不规范、import 顺序对不对 |
+| 冒烟测试 | 最基本的检查："能启动吗？能连上吗？"。通过了才值得往下做 |
+
 ### 配置和机密
 - **`.env`：** 存放真实的配置值（数据库密码、以后的 API key），只在本机，不提交到 git。
 - **`.env.example`：** 一份清单，列出所有需要的变量，但不填真实值，会提交到 git。别人克隆仓库后照着它填。
@@ -80,7 +93,9 @@ PowerShell（Windows 自带）、Git Bash（装 Git 时附带）、Ubuntu/WSL（
 | GitHub | `fyaiplayground-bit/de-job-hunt-agent`，公开 |
 | Docker Desktop | 29.9.2，Compose v5.6.1，WSL 2 后端；**仅当前用户安装**，位置在 `%LOCALAPPDATA%\Programs\DockerDesktop` |
 | 数据库 | Postgres 17.11，库名和用户名都是 `jobhunt`，地址 `127.0.0.1:5432`，密码在 `.env` 里 |
-| Python | 还没检查（M1 下一步会检查） |
+| Python（本项目） | 3.12.16，由 uv 管理，环境在项目里的 `.venv/` |
+| Python（系统） | Anaconda 3.9，本项目不用它，也不去改它 |
+| uv | 0.13.6，装在 `%USERPROFILE%\.local\bin`；uv 的命令在 PowerShell 里运行（Git Bash 下创建的链接 Windows 识别不了） |
 
 ---
 
@@ -93,6 +108,8 @@ PowerShell（Windows 自带）、Git Bash（装 Git 时附带）、Ubuntu/WSL（
 | 启动数据库 | 打开 Docker Desktop 就行（已设为自动重启） |
 | 停止数据库 | 关掉 Docker Desktop。数据会保留 |
 | 看数据库在不在跑 | Docker Desktop → Containers → `jobhunt-postgres` 显示绿色 |
+| Docker 显示 "paused" | 在 Docker Desktop 窗口或任务栏的鲸鱼图标菜单里点 **Resume** |
+| 跑测试 / 检查代码 | 让 Claude 跑 `uv run pytest` 和 `uv run ruff check .` |
 | ⚠️ 千万别做 | `docker compose down -v`（`-v` 会删掉所有数据） |
 | 每次开工 | 跟 Claude 说"继续"，它会先读 `CLAUDE.md` 和 `STATUS.md` |
 
@@ -109,6 +126,9 @@ PowerShell（Windows 自带）、Git Bash（装 Git 时附带）、Ubuntu/WSL（
 - **`docker: command not found`** → 仅当前用户安装后，Claude Code 读到的还是旧的命令路径 → Claude 用 Docker 的完整路径运行。
 - **`docker-credential-desktop ... not found in %PATH%`** → 拉取镜像时 Docker 要调用同一个文件夹里的另一个小工具 → 运行前把 Docker 的 `resources\bin` 文件夹临时加进命令路径。
 - **Docker Desktop 装好了，但引擎没在跑** → 应用没打开 → 打开 Docker Desktop；第一次打开要你自己同意服务条款，登录可以跳过。
+- **`Docker Desktop is manually paused`** → Docker Desktop 被暂停了（手动点了暂停，或者电脑休眠之后） → 点 Resume。这时数据库测试会显示 skipped，不会报 failed。
+- **装完 uv 后找不到 uv 命令** → 安装程序改的命令路径要等终端重开才生效 → Claude 用完整路径 `%USERPROFILE%\.local\bin\uv.exe` 运行。
+- **uv 报 `Missing expected target directory for Python minor version link`** → 在 Git Bash 里运行 uv 时，它建的链接是 Windows 认不出的那种 → 删掉 `%APPDATA%\uv\python\cpython-3.12-windows-x86_64-none`，在 PowerShell 里执行 `uv python install 3.12 --reinstall` 重新创建。之后那行报错可能还会出现，但 `uv python find 3.12` 能找到就不影响使用。
 
 ---
 
@@ -117,6 +137,8 @@ PowerShell（Windows 自带）、Git Bash（装 Git 时附带）、Ubuntu/WSL（
 每个里程碑结束时，从这里挑出来整理进 `docs/INTERVIEW_NOTES.md`（英文）。
 
 - **本地数据库：** 用 Docker Compose 跑 Postgres；配置从环境变量读取；端口只绑定本机；数据放在命名卷里，容器重建也不会丢；用健康检查确认数据库真的能接受连接。
+- **可复现的环境：** 用 uv 锁定 Python 版本和依赖（`uv.lock`），任何人克隆仓库后一条命令就能装出同样的环境；依赖按需添加，比如 Airflow 放在 Docker 里，避免依赖冲突。
+- **测试策略：** 冒烟测试分成两类：不依赖外部条件的单元测试随时都能跑；需要数据库的测试在没有数据库时自动跳过，以后在 CI 里也能用。
 - **安全意识：** JD 是不可信输入，先过安全闸门再给 AI 读（防 prompt injection）；机密只放 `.env`；公开仓库提交前做隐私检查。
 - **工程取舍：** 借用开源组件时逐个判断是复制、改写还是只借思路，保持整个仓库只有一种语言，并遵守 MIT 许可证。
 - **数据质量：** 多个来源会抓到同一个职位，必须跨来源去重，加载要能重复运行而不产生重复数据（M1 待做）。

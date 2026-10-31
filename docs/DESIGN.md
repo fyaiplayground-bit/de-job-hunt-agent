@@ -66,7 +66,7 @@ Source: [ai-job-search](https://github.com/ai-job-search-dev/ai-job-search), MIT
 
 | Piece | Their file(s) | Our target | How | Milestone |
 | --- | --- | --- | --- | --- |
-| JD safety gate | `tools/posting_guard.py` + `tools/page_decode.py` | `pipeline/safety_gate.py` | **Copy**: keep the detection logic; replace the CLI/file interface with a function whose result is stored with the posting | M1 |
+| JD safety gate | `tools/posting_guard.py` (+ its tests) | `pipeline/posting_guard.py` (copy), `pipeline/safety_gate.py` (our wrapper), `tests/test_posting_guard.py` | **Copy**: detection logic unchanged (checked line by line); CLI and file reading dropped; `run_gate()` returns a `GateResult` with a gate version. Their `tools/page_decode.py` charset fallback is **idea only** (our sources return UTF-8 JSON) | M1 (done) |
 | PDF text-layer check | `tools/verify_pdf.py` | `agents/pdf_checks.py` | **Copy**: page count, keyword presence, ASCII date ranges (pypdf) | M2 |
 | PDF layout check | `tools/verify_layout.py` | `agents/pdf_checks.py` | **Idea**: measure layout instead of eyeballing it. Theirs targets moderncv/LaTeX and needs Poppler; rebuild in pure Python once the template engine is chosen | M2 |
 | LinkedIn public listings | `.agents/skills/linkedin-search/` (TypeScript/bun) | `ingestion/linkedin.py` | **Port to Python**: same logged-out guest endpoints, card/detail parsing, retry with backoff, honest User-Agent; off by default | M1 |

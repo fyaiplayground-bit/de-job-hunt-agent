@@ -1,10 +1,8 @@
-"""Smoke tests: settings load correctly, and the local Postgres answers.
+"""Unit tests for pipeline/config.py: settings are read from the environment with clear errors.
 
-The database test is skipped (not failed) when Postgres isn't running, so the rest of the
-suite still works with Docker Desktop closed.
+These use fake environment variables and never touch a real database.
 """
 
-import psycopg
 import pytest
 
 from pipeline.config import ConfigError, load_settings
@@ -49,18 +47,3 @@ def test_bad_port_gives_clear_error(clean_env):
 
     with pytest.raises(ConfigError, match="POSTGRES_PORT"):
         load_settings(env_file=None)
-
-
-@pytest.mark.db
-def test_can_query_local_postgres():
-    settings = load_settings()
-    try:
-        conn = psycopg.connect(settings.postgres_conninfo(), connect_timeout=3)
-    except psycopg.OperationalError:
-        pytest.skip("Postgres isn't running (open Docker Desktop to run this test)")
-
-    with conn:
-        row = conn.execute("select current_database(), version()").fetchone()
-
-    assert row[0] == settings.postgres_db
-    assert row[1].startswith("PostgreSQL 17")

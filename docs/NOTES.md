@@ -108,6 +108,19 @@ dbt：清洗 → 提取技能 → 汇总（打分、技能频率、覆盖率、�
 | 闸门版本 `gate_version` | 规则的版本号。规则一改，就用新版本从原始数据把所有职位重新跑一遍，旧结果不手动改 |
 | 外壳 wrapper | 复制来的代码保持原样，外面套一层我们自己的接口。好处：以后好和原版对比，我们的代码也不受影响 |
 
+### 确定性和规则循环
+| 词 | 大白话 |
+| --- | --- |
+| 确定性 deterministic | 同样的输入加同样的规则版本，结果永远一样。每天的判断都由代码来做，AI 只负责提修改建议 |
+| 四档 triage | clean 干净；benign 放行（明面上、只命中弱规则、没有信号词）；review 人工看；block 拦截（有任何"藏"的迹象） |
+| 弱规则 / 强规则 | 弱规则在正常招聘文字里也常出现（SSH、"you are an AI…"）；强规则几乎只出现在攻击里（"ignore previous instructions"、"system prompt"） |
+| 信号词 steering words | "指挥 AI"的词：rate、score、candidate、10/10、邮箱、网址…… 弱规则的句子里只要出现一个，就不放行 |
+| 规则即数据 rules as data | 规则写在 `config/triage_rules.toml` 里，不散落在代码中。改了什么、为什么改，用 `git diff` 一眼就能看出来 |
+| 标准答案集 golden set | 打过标签的例子（`tests/fixtures/gate_cases.jsonl`），规则怎么改都不能违反。AI 工程里叫 **evals** |
+| 规则循环 | 报告 → 你打标签 → AI 提议 → 代码评估 → 你批准 → 升版本 → 从原始数据重算 → 记进 DECISIONS |
+| 数据投毒 data poisoning | 攻击者先喂一批"看起来无害"的数据，诱导系统自动放宽规则，再发真正的攻击。所以规则不能自动更新 |
+| 重算 recompute | 规则升版本后，用 `--gate-only` 从原始数据把所有职位按新规则重新判断一遍；旧版本的结果保留，作为历史 |
+
 ### 三种终端
 PowerShell（Windows 自带）、Git Bash（装 Git 时附带）、Ubuntu/WSL（Windows 里的真 Linux），都只是"输入命令的窗口"。本项目需要 Linux 的部分都放进 Docker，所以你只需要 PowerShell，大多数时候连它都不用开。
 
@@ -139,6 +152,8 @@ PowerShell（Windows 自带）、Git Bash（装 Git 时附带）、Ubuntu/WSL（
 | Docker 显示 "paused" | 在 Docker Desktop 窗口或任务栏的鲸鱼图标菜单里点 **Resume** |
 | 跑测试 / 检查代码 | 让 Claude 跑 `uv run pytest` 和 `uv run ruff check .` |
 | 抓一次职位 | 让 Claude 跑 `uv run python -m pipeline.ingest`（大约 1 分钟；可以重复跑，不会重复存） |
+| 看哪些职位需要人工看 | 让 Claude 跑 `uv run python -m pipeline.alarm_report`；抽查放行的就加 `--show benign` |
+| 改了规则之后重算 | 让 Claude 跑 `uv run python -m pipeline.ingest --gate-only`（不抓取，只重新判断） |
 | 加一家公司 | 在 `config/companies.toml` 里加上它的招聘页代号，也就是招聘网址里公司名那一段 |
 | ⚠️ 千万别做 | `docker compose down -v`（`-v` 会删掉所有数据） |
 | 每次开工 | 跟 Claude 说"继续"，它会先读 `CLAUDE.md` 和 `STATUS.md` |
@@ -159,6 +174,7 @@ PowerShell（Windows 自带）、Git Bash（装 Git 时附带）、Ubuntu/WSL（
 - **`Docker Desktop is manually paused`** → Docker Desktop 被暂停了（手动点了暂停，或者电脑休眠之后） → 点 Resume。这时数据库测试会显示 skipped，不会报 failed。
 - **Claude 的工作目录被切进了 `reference/` 里，相对路径找不到文件** → 读参考仓库的文件时，工作目录跟着变了 → 命令里先切回项目根目录，或者全部改用绝对路径。参考仓库自己的 `CLAUDE.md` 也会因此被自动加载，Claude 只把它当资料看。
 - **数据库测试特别慢（9 个测试要 69 秒）** → 用 `localhost` 连接时，Windows 先尝试 IPv6（`::1`），而数据库只在 IPv4 的 `127.0.0.1` 上监听，每次都要等 IPv6 失败后才改用 IPv4 → 默认地址改成 `127.0.0.1`，测试降到 2 秒。教训：先测量（`pytest --durations`）再修，不要猜。
+- **TOML 规则文件报 `Unclosed array`** → 正则里写的 `'`（撇号）被写文件的工具直接换成了真的撇号，把单引号字符串提前结束了；改用 sed 时反斜杠又被 shell 吃掉了 → 用编辑工具直接改那一行。规则里尽量别写引号字符，比如用 `don.?t` 匹配 don't、don’t 和 dont。
 - **猜公司的招聘页代号命中率很低** → 很多公司用的不是 Greenhouse/Lever，或者代号和公司名不一样 → 用一个脚本批量试，只保留真正能返回结果的。
 - **装完 uv 后找不到 uv 命令** → 安装程序改的命令路径要等终端重开才生效 → Claude 用完整路径 `%USERPROFILE%\.local\bin\uv.exe` 运行。
 - **uv 报 `Missing expected target directory for Python minor version link`** → 在 Git Bash 里运行 uv 时，它建的链接是 Windows 认不出的那种 → 删掉 `%APPDATA%\uv\python\cpython-3.12-windows-x86_64-none`，在 PowerShell 里执行 `uv python install 3.12 --reinstall` 重新创建。之后那行报错可能还会出现，但 `uv python find 3.12` 能找到就不影响使用。
@@ -174,6 +190,7 @@ PowerShell（Windows 自带）、Git Bash（装 Git 时附带）、Ubuntu/WSL（
 - **测试策略：** 冒烟测试分成两类：不依赖外部条件的单元测试随时都能跑；需要数据库的测试在没有数据库时自动跳过，以后在 CI 里也能用。
 - **原始层设计：** 原始 JSON 不可变；用内容指纹判断是否改版，避免 `updated_at` 这类字段每天都制造新版本；"职位内容"和"每天看到"分成两张表，既不重复存，又能算出职位开放了多久；每次运行都有记录，一家失败不影响其他家。幂等可以实际演示：同一天跑两次，第二次新增 0。
 - **用数据说话：** 首次真实运行 2300 个职位，安全闸门误报 14 个（0.6%）：10 个 "You are an AI pragmatist"、3 个技能列表里的 SSH、1 个 "as an AI/Tech evangelist"，DE 职位一个都没误报。判断误报有三个标准：完整的句子是在描述人还是在命令 AI；有没有隐藏或隐形之类的其他信号；合不合常理。规则怎么调，用这组数据来决定。
+- **把人工判断变成确定的规则：** 安全闸门报警之后，由代码分档（放行 / 人工看 / 拦截），每档都附原因。规则写在数据文件里并带版本号；用一组标准答案（真实误报加已知攻击写法）做回归测试，任何改动都不能放过一条已知攻击；规则只能经过"评估 + 人工批准"才能修改，以防漂移和数据投毒。规则升版本后从原始数据全部重算，旧结果保留。这和 AI 工程里的 evals 是同一个思路。
 - **性能排查：** 测试从 69 秒降到 2 秒。先用 `pytest --durations` 找出慢在建立连接，再对比 `localhost` 和 `127.0.0.1` 的连接时间，定位到 Windows 先尝试 IPv6。
 - **借用代码的方法：** 复制开源的安全闸门时，连同它的测试一起搬过来，并逐行比对，证明我们的版本和原版行为一致；复制的代码保持原样，外面套一层自己的接口；误报不凭感觉改，等有了真实数据、量出误报率再调。
 - **可重算的派生数据：** 闸门结果带版本号，原始职位永远不改。规则一变，就从原始数据重新计算，而不是去修改旧结果。

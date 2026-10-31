@@ -105,5 +105,18 @@
   3. 马上运行第 2 次：新增版本 0，闸门检查 0。**幂等得到证明**
 - **真实数据观察：** 2300 个职位里，标题像 DE 的有 58 个。14 个报警**全部是误报**：10 个是同一句 "You are an AI pragmatist"（Samsara 销售岗），3 个是 SSH 出现在 JumpCloud 的技能描述里，1 个是 "as an AI/Tech evangelist"（JumpCloud；原规则只放过 "As an AI Engineer" 这类职位名称，豁免名单里没有 evangelist）。58 个 DE 类职位都没有报警。没有发现真正的攻击。这组数据就是以后调规则的依据（#20）。
 - **怎么判断是误报的（每一条都核对过）：** ① 读完整的触发句：是在描述候选人或技能，还是在命令 AI 做事；② 检查其他信号：隐藏内容、隐形字符、隐形文字、隐藏网址、混用字母，14 条全部为 0，句子都是明面上所有人可见的，而攻击通常要藏起来；③ 合不合常理：都在公司官方招聘页上，10 条是同一个招聘模板。这是有依据的人工判断，不是证明。（更正：第一次汇总时只看了每句前 110 个字符，误把 "as an AI" 那条归进了 SSH，已改正。）
+
+### 1.5 · 2026-10-30 · 报警分档：把人工判断写成确定的规则（规则循环第 A 步）
+- **做了什么：** 把 1.4 里判断误报的标准写成了代码。每个闸门结果自动分到四档之一：clean（干净）/ benign（放行）/ review（人工看）/ block（拦截），并附上原因。规则放在数据文件 `config/triage_rules.toml` 里，包括哪些是"弱规则"、哪些是"指挥 AI 的信号词"，以及版本号。上游的每条指令规则都起了一个固定的名字（`RULE_SIGNATURES`），规则文件按名字引用。闸门版本改成"检测版本 + 规则版本"，也就是 `d1-t1`。新增报告命令 `pipeline.alarm_report`，以及只重算、不抓取的 `pipeline.ingest --gate-only`。"代码在运行时判断、AI 只提建议、规则只能通过循环修改"这条原则写进了 `CLAUDE.md` 的硬性规定。
+- **为什么：** DECISIONS #22。
+- **文件：** `config/triage_rules.toml`、`pipeline/alarm_triage.py`、`pipeline/alarm_report.py`、`pipeline/safety_gate.py`、`pipeline/gate_step.py`、`pipeline/ingest.py`、`db/migrations/003_gate_triage.sql`、`tests/fixtures/gate_cases.jsonl`、`tests/test_alarm_triage.py`、`tests/test_safety_gate.py`、`tests/test_ingest_db.py`、`CLAUDE.md`、`docs/DESIGN.md`
+- **提交：** 见本条所在的提交（`git log -- pipeline/alarm_triage.py`）
+- **验证：**
+  1. 标准答案集共 39 条：5 条真实误报必须放行；25 条攻击写法必须是"人工看"或"拦截"（其中 19 条来自上游测试，6 条是专门针对我们规则写的，比如把指令放在 200 个字符的截断之后、把已知无害的句子藏进隐藏内容）；另有干净和混用字母的例子。**全部落在预期的档位**
+  2. 一共 174 个测试全部通过，ruff 也通过；另有测试保证上游每条规则都恰好有一个名字，上游一改，测试就会失败
+  3. 用新规则从原始数据重算 2300 个职位：clean 2286、benign 14、review 0、block 0；再跑一次，新增 0；旧版本 `1` 的 2300 条结果仍然保留
+- **撤回：** `git revert` 这个提交。数据库里 `d1-t1` 版本的结果可以留着，不影响旧版本；要删就执行 `delete from gate.results where gate_version = 'd1-t1'`。
+- **备注：** 两个坑：Write 工具把规则文件里的 `'` 直接写成了撇号，导致 TOML 字符串提前结束；改用 sed 时反斜杠又被 shell 吃掉了。最后改用编辑工具解决，见 `NOTES.md` 第 5 节。残留风险：只用弱规则里的说法、又避开所有信号词的攻击句会被放行。这样的句子本身不在指挥 AI，而且 M2 的 AI 助手会有自己的"只当数据"规则作为第二道防线。下一步是循环第 B 步：标签表和评估命令。
+
 - **撤回：** `git revert` 这个提交；要清空数据库里的数据，执行 `drop schema raw cascade; drop schema gate cascade; drop table public.schema_migrations;`（会删掉所有已抓到的职位）。
 - **备注：** 这一步的坑：默认地址 `localhost` 每次连接要慢好几秒（Windows 先尝试 IPv6），已改为 `127.0.0.1`，见 `NOTES.md` 第 5 节。起步清单里大多是中大型公司，只用来跑通管道；小公司为主的目标清单在 M5。跨来源去重和每日运行脚本还没做。

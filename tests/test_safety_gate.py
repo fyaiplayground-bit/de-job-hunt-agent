@@ -76,9 +76,10 @@ def test_unknown_mode_is_rejected():
 
 
 def test_known_false_positive_ssh_in_a_real_skill_line():
-    # Documented behaviour, not a bug: the copied rules flag ssh/curl/.env even in honest skill
-    # lines. We keep the rules as-is until real ingested postings show how often this happens.
+    # The copied detection rules flag ssh/curl/.env even in honest skill lines (the alarm stays,
+    # quoted, never removed); triage then sorts this shape as benign (decision #22).
     result = run_gate("Data Engineer\nComfortable with Linux, SSH and shell scripting.", "text")
 
     assert result.alarmed is True
     assert "SSH" in result.cleaned_text  # flagged and quoted, never removed
+    assert result.triage == "benign"

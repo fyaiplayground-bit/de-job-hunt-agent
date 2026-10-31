@@ -30,6 +30,8 @@ Update this file at the end of every work session: what got done, what's next, w
 - [x] Ingestion: Greenhouse + Lever for a starter list of companies → raw tables (19 boards; the small-company target list comes in M5)
 - [ ] Ingestion: freehire.me; LinkedIn public listings behind a flag (default off)
 - [ ] Idempotent load + dedupe (including the same job arriving from freehire and Greenhouse/Lever); daily run script — idempotent load done (#21); cross-source dedupe and daily script still to do
+- [x] Alarm triage + rules loop step A: deterministic tiers, `config/triage_rules.toml`, golden set, `pipeline.alarm_report` (#22)
+- [ ] Rules loop step B: labels table, labeling command, `evaluate_rules` comparing proposed vs current rules; walk the loop once end to end (#22)
 - [ ] Fake sample profile in `data/sample/`: a made-up DE-transition candidate (resume, Evidence Bank, Applicant Profile) in exactly the formats the real ones will use
 
 ### Milestone 2 · Week 2 · Agents
@@ -59,7 +61,7 @@ Update this file at the end of every work session: what got done, what's next, w
 
 ## Next action
 
-Claude: propose the freehire.me + LinkedIn public ingestion design (ports per DESIGN "Borrowed from ai-job-search"; LinkedIn behind its flag, off by default) and wait for FL's OK.
+Claude: build rules loop step B (labels table + labeling command + `evaluate_rules`; show the short design first), then propose the freehire.me + LinkedIn public ingestion design.
 
 ## Session log
 
@@ -72,3 +74,4 @@ Claude: propose the freehire.me + LinkedIn public ingestion design (ports per DE
 - 2026-10-30 — Python project set up with uv: Python 3.12.16, httpx / psycopg / python-dotenv, pytest + ruff, `pipeline/config.py`, smoke tests (4 pass with the DB up; DB test skips when it is down). Decision #19.
 - 2026-10-30 — JD safety gate: copied the detection logic into `pipeline/posting_guard.py` (identical to upstream, 389 lines), our wrapper `pipeline/safety_gate.py`, their 59 tests ported plus 13 of ours; smoke tests split into unit (`test_config.py`) and smoke (`test_db_smoke.py`). Decision #20.
 - 2026-10-30 — Greenhouse + Lever ingestion: 4 raw/gate tables via migrations, 19 boards, 2300 postings loaded; second same-day run added 0 (idempotent). Gate: 14 alarms, all false positives (10 "You are an AI pragmatist", 3 SSH in skill lists, 1 "as an AI/Tech evangelist"), 0 among 58 DE-type titles. DB host default → 127.0.0.1 (tests 69s → 2s). Decision #21.
+- 2026-10-30 — Deterministic alarm triage (clean/benign/review/block) with rules in `config/triage_rules.toml` and a 39-case golden set; gate version now `d1-t1`, all 2300 postings recomputed from raw (clean 2286, benign 14, review 0, block 0), old results kept. Principle "code decides, AI proposes, rules change only through the loop" added to CLAUDE.md. Decision #22.

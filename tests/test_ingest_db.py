@@ -127,6 +127,7 @@ def test_gate_checks_every_new_version_once_and_flags_the_injection(db, greenhou
     second = gate_pending(db)
 
     assert (first.checked, first.alarmed) == (2, 1)
+    assert first.tiers == {"clean": 1, "block": 1}  # the injection is hidden with display:none
     assert second.checked == 0
     alarmed_title, cleaned = db.execute(
         "select p.payload->>'title', r.cleaned_text from gate.results r"

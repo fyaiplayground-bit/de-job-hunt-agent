@@ -105,6 +105,12 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Ingest job boards into the raw layer.")
     parser.add_argument("--source", choices=sorted(SOURCES), help="only this source")
     parser.add_argument("--board", help="only this board token (use with --source)")
+    parser.add_argument(
+        "--gate-only",
+        action="store_true",
+        help="don't fetch; only run the gate on postings not yet checked by the current rules "
+        "(use after a rules change to recompute from raw)",
+    )
     args = parser.parse_args(argv)
 
     settings = load_settings()
@@ -115,7 +121,9 @@ def main(argv: list[str] | None = None) -> int:
         and (args.source is None or source == args.source)
         and (args.board is None or token == args.board)
     ]
-    if args.board and args.source and not boards:
+    if args.gate_only:
+        boards = []
+    elif args.board and args.source and not boards:
         boards = [(args.source, args.board)]  # allow trying a board that isn't in the file yet
 
     with connect(settings) as conn, make_client() as client:
@@ -134,6 +142,10 @@ def main(argv: list[str] | None = None) -> int:
         f"{sum(r.versions_new for r in results)} · gate checked: {gate.checked}, "
         f"alarmed: {gate.alarmed}"
     )
+    if gate.checked:
+        print("triage: " + ", ".join(f"{tier} {n}" for tier, n in sorted(gate.tiers.items())))
+    if gate.tiers.get("review") or gate.tiers.get("block"):
+        print("postings need a look: uv run python -m pipeline.alarm_report")
     return 1 if failed else 0
 
 

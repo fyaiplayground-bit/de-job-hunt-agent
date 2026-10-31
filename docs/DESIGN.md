@@ -34,6 +34,24 @@ marts (dbt)               ← fit scores, skill frequency, coverage, application
 
 Facts about FL come only from `private/evidence_bank.md` and `private/applicant_profile.md`.
 
+## Determinism and the rules loop
+
+Code decides at runtime; AI only proposes (DECISIONS #22). Every pipeline judgment is code plus a versioned rules or prompt file, checked by a golden set of labeled cases, and changed only through this loop:
+
+```
+daily run ──► results stored with the rules version
+   │
+report (pipeline.alarm_report) ──► FL labels: false positive / attack / unsure
+   │
+labels ──► golden set (tests/fixtures/*.jsonl)
+   │
+agent proposes a rules change ──► evaluate: every labeled case + every stored posting
+   │                               (no known attack may become benign)
+FL approves ──► bump version ──► recompute from raw ──► DECISIONS entry
+```
+
+First use: gate triage (`clean` / `benign` / `review` / `block`), rules in `config/triage_rules.toml`. In M2 the same applies to LLM steps: outputs cached by (input hash, prompt version, model), prompt changes evaluated against golden sets.
+
 ## Agents
 
 | # | Agent | Job | Skill file |

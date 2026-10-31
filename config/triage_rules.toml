@@ -1,0 +1,48 @@
+# Alarm triage rules: how an alarmed posting is sorted into benign / review / block.
+# Read by pipeline/alarm_triage.py. Decision #22.
+#
+# Changing this file changes how postings are judged, so it goes through the rules loop:
+# propose -> run the evaluation against every labeled case -> FL approves -> bump `version`
+# -> recompute from raw -> record it in docs/DECISIONS.md. Never edit it to wave one posting through.
+
+version = 1
+
+# Instruction rules (named in pipeline/alarm_triage.py RULE_SIGNATURES) that are known to fire on
+# honest job-posting text. A line flagged ONLY by these can be benign. Every other rule is strong:
+# a line it flags always goes to review.
+# Evidence: 2026-10-30, 2300 real postings, 14 alarms, all from these rules, all false positives.
+weak_rules = [
+    "you_are_an_ai",   # "You are an AI pragmatist: ..." (sales role describing the candidate)
+    "as_an_ai",        # "... a strong presence as an AI/Tech evangelist ..."
+    "network_tools",   # "Knowledge of ... Secure Shell (SSH) ..." in skill lists
+    "dotenv",          # ".env" files in DevOps/security postings (no real cases yet)
+]
+
+# Words that steer an AI toward an action or a verdict. A weak-rule line that also contains one
+# of these goes to review instead of benign. Python regular expressions, matched case-insensitively
+# against the full visible line.
+steering_terms = [
+    '\brat(e|es|ed|ing)\b',
+    '\bscor(e|es|ed|ing)\b',
+    '\brank(s|ed|ing)?\b',
+    '\b\d+\s*/\s*10\b',
+    '\bapprov(e|es|ed|al|ing)\b',
+    '\brecommend',
+    '\b(best|perfect|strong|great|ideal|top)\s+(fit|match|candidate)\b',
+    '\b(reply|respond|answer|output|say|write|print)\b[^.]{0,30}\bonly\b',
+    '\bonly\s+(reply|respond|answer|output|say|write|print)\b',
+    '\bcandidates?\b',
+    '\bhire\b',
+    '\b(e-?mail|send|forward|submit|upload|share|post)\b',
+    '\bclick\b',
+    'https?://',
+    '[\w.+-]+@[\w-]+\.[\w.]+',
+    '\binstructions?\b',
+    '\bprompts?\b',
+    '\byou (must|shall|will now|should now)\b',
+    '\b(no|without|ignore|bypass)\s+(restrictions?|limits?|limitations?|rules?|guidelines?|filters?|safety)\b',
+    '\bpretend\b',
+    '\bdo not\b',
+    '\bdon.?t\b',          # don't / don’t / dont
+    '\bnever\b',
+]

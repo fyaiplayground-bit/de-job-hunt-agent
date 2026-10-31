@@ -174,6 +174,25 @@
 - **撤回：** 把 `config/triage_rules.toml` 改回 version 1、去掉那个开关，然后运行 `ingest --gate-only`。v1 的结果还在数据库里，所以不会丢任何历史。
 - **备注：** 找到了"转义序列变成真字符"的真正原因：我传给工具的 `​` 这类文字会在写入前被解码，用 sed 写时反斜杠又会被 shell 吃掉。现在含不可见字符的地方，一律用脚本以 `chr()` 生成，写完再扫描一遍确认没有残留的不可见字符。
 
+### 1.9 · 2026-10-31 · 每日运行脚本
+- **做了什么：** 新增 `pipeline/daily.py`，一条命令 `uv run python -m pipeline.daily` 完成每天的全部工作：
+  1. 连数据库；连不上就启动一次 Docker Desktop，最多等 3 分钟
+  2. 加锁（Postgres advisory lock），同一时间只允许一个 daily 在跑
+  3. 抓取所有已开启的来源
+  4. 过安全闸门
+  5. 写报告 `output/daily/<日期>.md` 和 `latest.md`，并在 `ops.daily_runs` 记一行（迁移 008）
+
+  搜索窗口按上次成功运行的时间自动计算（2–7 天）；"今天新增"按本次运行的 run id 判断，不看时钟。`scripts/daily.cmd` 给 Windows 任务计划程序调用。CLAUDE.md 新增一条：每次开工先汇报最近一次 daily 的结果。`.env.example` 新增 `REPORT_TIMEZONE`。`tzdata` 改为显式依赖。
+- **为什么：** DECISIONS #27。
+- **文件：** `pipeline/daily.py`、`db/migrations/008_daily_runs.sql`、`scripts/daily.cmd`、`tests/test_daily.py`、`tests/conftest.py`（测试库也清理 `ops` 和 `dedupe`）、`CLAUDE.md`、`.env.example`、`pyproject.toml`、`uv.lock`
+- **提交：** 见本条所在的提交（`git log -- pipeline/daily.py`）
+- **验证：**
+  1. 244 个测试通过，覆盖：窗口计算（第一次 2 天、隔天 2 天、隔 4 天 5 天、最多 7 天、失败的运行不算）、跨来源去重后的"新增"、同一天第二次运行新增为 0、锁、报告内容确定、数据库连不上时只启动一次 Docker 然后放弃并给出提示
+  2. 真实运行两次都 ok，用时约 80 秒；第二次运行进行中时启动的第三次，被锁挡住并直接退出
+  3. 排查了一个疑点：Coinbase 每次运行都"新增 1 个"，查证后发现是 3 个**不同**的新职位（Coinbase 正在发布新岗位），没有任何职位出现重复版本，幂等没有问题
+- **撤回：** `git revert` 这个提交；`drop schema ops cascade`；删掉 `output/daily/`。
+- **备注：** 第一版用时间戳判断"今天新增"，在测试里因为模拟时间和真实时间不一致而失败，改用 run id 之后就不依赖时钟了。定时任务和桌面快捷方式**还没有创建**，需要你同意。
+
 
 - **撤回：** `git revert` 这个提交；要清空数据库里的数据，执行 `drop schema raw cascade; drop schema gate cascade; drop table public.schema_migrations;`（会删掉所有已抓到的职位）。
 - **备注：** 这一步的坑：默认地址 `localhost` 每次连接要慢好几秒（Windows 先尝试 IPv6），已改为 `127.0.0.1`，见 `NOTES.md` 第 5 节。起步清单里大多是中大型公司，只用来跑通管道；小公司为主的目标清单在 M5。跨来源去重和每日运行脚本还没做。

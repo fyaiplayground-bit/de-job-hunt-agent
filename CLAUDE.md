@@ -38,7 +38,7 @@ Context gets lost between sessions, and long sessions get compacted. The files i
 | `docs/NOTES.md` | FL's study notes: concepts in plain language, machine setup, how-tos, problems → fixes, interview material | Topic (edit in place) |
 | `docs/INTERVIEW_NOTES.md` | Polished "how to explain this" per milestone (English) | Milestone |
 
-- **Start of session:** read `CLAUDE.md`, then `docs/STATUS.md`. Read `JOURNAL.md` / `NOTES.md` when the task touches earlier work.
+- **Start of session:** read `CLAUDE.md`, then `docs/STATUS.md`. Read `JOURNAL.md` / `NOTES.md` when the task touches earlier work. Then check the last daily run (`ops.daily_runs`, report in `output/daily/latest.md`) and tell FL in two or three lines: did it run, new DE jobs, alarms that need her, failed sources. If it didn't run or failed, say so first.
 - **Write as you go, not at the end:** when a step is done, add its `JOURNAL.md` entry (and any new concept or problem → fix to `NOTES.md`) in the same commit as the step's work. Don't wait for the end of the session; compaction can drop details first, with no warning.
 - **Decisions are written when FL says OK**, as a `DECISIONS.md` entry in the same commit as the step that uses them. Don't record options still under discussion.
 - **"记下来" / "write it down" means now:** when FL says it, write the current state or idea to the right file immediately, even mid-discussion.

@@ -29,7 +29,7 @@ Update this file at the end of every work session: what got done, what's next, w
 - [x] JD safety gate (adapted from ai-job-search)
 - [x] Ingestion: Greenhouse + Lever for a starter list of companies → raw tables (19 boards; the small-company target list comes in M5)
 - [x] Ingestion: freehire.me; LinkedIn public listings behind a flag (default off) — LinkedIn built and tested, no live request yet (#24)
-- [ ] Idempotent load + dedupe (including the same job arriving from freehire and Greenhouse/Lever); daily run script — idempotent load (#21) and exact cross-source dedupe (#24) done; daily script still to do
+- [x] Idempotent load + dedupe (including the same job arriving from freehire and Greenhouse/Lever); daily run script — #21, #24, #27 (scheduled task pending FL OK)
 - [x] Alarm triage + rules loop step A: deterministic tiers, `config/triage_rules.toml`, golden set, `pipeline.alarm_report` (#22)
 - [x] Rules loop step B: labels table, labeling command, `evaluate_rules` comparing proposed vs current rules; walked once end to end (#23)
 - [ ] Fake sample profile in `data/sample/`: a made-up DE-transition candidate (resume, Evidence Bank, Applicant Profile) in exactly the formats the real ones will use
@@ -61,7 +61,7 @@ Update this file at the end of every work session: what got done, what's next, w
 
 ## Next action
 
-Claude: propose the daily run script (one command for every source, then gate; schedule on Windows; how failures surface), then the fake sample profile. Open item for FL: the 4 review postings are labeled false positives and stay in review on purpose (#26).
+FL: OK to create the Windows scheduled task (8:30 LA, catch-up, on battery) and the desktop shortcut to the report? Then Claude: fake sample profile (last M1 item), then INTERVIEW_NOTES for M1.
 
 ## Session log
 
@@ -78,3 +78,4 @@ Claude: propose the daily run script (one command for every source, then gate; s
 - 2026-10-30 — Rules loop step B: `gate.labels`, `pipeline.labels` (add/list/export), `pipeline.evaluate_rules`, `config/proposals/`. Walked the loop on real data: 14 false positives labeled → 5 golden cases; two weakening proposals rejected (one showed 0 changed postings and was caught only by the golden set), comment-only proposal passed. Rules stay v1. 191 tests pass. Decision #23.
 - 2026-10-31 — freehire ingestion (7-day backfill, capped at 5000), LinkedIn built but off, exact cross-source dedupe views (7118 → 7073 jobs), `discover_boards`. Fixed a dedupe view that stalled at 7k rows (migration 007, 0.59 s). 211 tests pass. 9 new alarms await FL. Decision #24.
 - 2026-10-31 — First real turn of the rules loop: 9 freehire alarms labeled false positive (13 golden cases), triage rules v2 adopted (zero-width editing artifacts no longer block; evaluation PASS, only the 5 labeled postings moved), recomputed 7,118 postings → block 0. HTTP identity per #25 (conventional crawler UA, Accept headers, jitter, LinkedIn 404 skip; no site-imitating header). 233 tests pass. Decisions #25, #26.
+- 2026-10-31 — Daily run `pipeline.daily`: Docker auto-start, advisory lock, adaptive search window (2–7 days), report in `output/daily/` + `ops.daily_runs`; "new" by run ids. Two real runs ok, lock verified. CLAUDE.md: summarize the last daily run at session start. 244 tests pass. Decision #27.

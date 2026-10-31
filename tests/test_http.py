@@ -42,7 +42,7 @@ def test_server_errors_back_off_then_give_up():
     client = client_returning(*[httpx.Response(503) for _ in range(4)])
 
     with pytest.raises(FetchError, match="HTTP 503") as error:
-        get_json(client, "https://api.example/jobs", sleep=waits.append)
+        get_json(client, "https://api.example/jobs", sleep=waits.append, jitter=lambda: 0.0)
 
     assert waits == [1.0, 2.0, 4.0]  # 3 retries, then stop
     assert error.value.status_code == 503
@@ -67,6 +67,37 @@ def test_connection_errors_are_retried_then_reported():
     client = make_client(transport=httpx.MockTransport(handler))
 
     with pytest.raises(FetchError, match="connection refused"):
-        get_json(client, "https://api.example/jobs", sleep=waits.append)
+        get_json(client, "https://api.example/jobs", sleep=waits.append, jitter=lambda: 0.0)
 
     assert len(waits) == 3
+
+
+def test_user_agent_uses_the_crawler_convention_and_names_this_project():
+    # The Googlebot shape: "Mozilla/5.0 (compatible; <name>/<version>; +<url>)" (decision #25).
+    assert USER_AGENT.startswith("Mozilla/5.0 (compatible; de-job-hunt-agent/")
+    assert USER_AGENT.endswith("+https://github.com/fyaiplayground-bit/de-job-hunt-agent)")
+
+
+def test_sends_content_negotiation_headers_but_nothing_that_imitates_a_site():
+    seen = []
+    client = client_returning(httpx.Response(200, json={}), seen=seen)
+
+    get_json(client, "https://api.example/jobs")
+
+    headers = seen[0].headers
+    assert headers["Accept-Language"].startswith("en-US")
+    assert "json" in headers["Accept"]
+    assert "X-Requested-With" not in headers
+
+
+def test_backoff_adds_jitter_but_retry_after_is_honored_exactly():
+    waits = []
+    client = client_returning(
+        httpx.Response(503),
+        httpx.Response(429, headers={"Retry-After": "5"}),
+        httpx.Response(200, json=[]),
+    )
+
+    get_json(client, "https://api.example/jobs", sleep=waits.append, jitter=lambda: 0.25)
+
+    assert waits == [1.25, 5.0]

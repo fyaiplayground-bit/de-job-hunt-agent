@@ -12,6 +12,7 @@ companies' text, and the repo is public.
 import argparse
 import html
 import json
+import re
 import sys
 from pathlib import Path
 from typing import Any
@@ -19,6 +20,7 @@ from typing import Any
 import psycopg
 from psycopg.types.json import Jsonb
 
+from ingestion.sources import get_source
 from pipeline.alarm_triage import visible_line
 from pipeline.db import connect, migrate
 from pipeline.safety_gate import GATE_VERSION
@@ -27,6 +29,9 @@ LABELS = ("false_positive", "attack", "unsure")
 LABELED_CASES_FILE = (
     Path(__file__).resolve().parent.parent / "tests" / "fixtures" / "gate_cases_labeled.jsonl"
 )
+
+
+MAX_EXPORTED_LINE = 300  # longer flagged lines are exported as the excerpt around the trigger
 
 
 class LabelError(ValueError):
@@ -95,17 +100,32 @@ def _tag_spelled(text: str) -> str:
     return "".join(chr(0xE0000 + ord(c)) for c in text)
 
 
-def case_inputs(findings: dict[str, Any], cleaned_text: str) -> list[tuple[str, str]]:
+# A word with a zero-width character or BOM inside it, or a bidi override/isolate with a few
+# characters around it: the shapes the gate counts as invisible_flagged.
+_FLAGGED_INVISIBLE = re.compile(
+    "[^\\W\\d_]+(?:[\u200b-\u200d\u2060-\u2064\ufeff]+[^\\W\\d_]+)+"
+    "|.{0,12}[\u202d\u202e\u2066-\u2069].{0,12}"
+)
+
+
+def case_inputs(
+    findings: dict[str, Any], cleaned_text: str, posting_html: str | None = None
+) -> list[tuple[str, str]]:
     """Minimal (mode, text) inputs that reproduce what the gate flagged, without the posting.
 
     A visible line stays a visible line; a line from hidden content is re-hidden; invisible
-    text is re-spelled in tag characters; look-alike words are kept as they were.
+    text is re-spelled in tag characters; look-alike words are kept as they were; a word with
+    invisible characters inside it is copied as is (needs the posting's HTML, since the cleaned
+    text no longer contains those characters).
     """
     inputs = []
     for excerpt in findings.get("instruction_like") or []:
         line = visible_line(excerpt, cleaned_text)
         if line is not None:
-            inputs.append(("text", f"Job.\n{line}\n"))
+            # A posting without line breaks is one huge "line": keep only the excerpt around the
+            # trigger, so a whole description never ends up in the public golden set.
+            short = line if len(line) <= MAX_EXPORTED_LINE else excerpt.strip("…")
+            inputs.append(("text", f"Job.\n{short}\n"))
         else:
             hidden = html.escape(excerpt.strip("…"))
             inputs.append(("html", f'<p>Job.</p><div style="display:none">{hidden}</div>'))
@@ -113,6 +133,11 @@ def case_inputs(findings: dict[str, Any], cleaned_text: str) -> list[tuple[str, 
         inputs.append(("text", f"Job.\n{_tag_spelled(decoded)}\n"))
     if findings.get("homoglyph_runs") and not inputs:
         inputs.append(("text", "Job.\n" + " ".join(findings["homoglyph_runs"]) + "\n"))
+    if findings.get("invisible_flagged") and posting_html and not inputs:
+        # Tags removed first: "<b>Data</b>(BOM)<b>Entry" reads as one word once rendered.
+        text = html.unescape(re.sub(r"<[^>]+>", "", posting_html))
+        snippets = dict.fromkeys(m.group(0) for m in _FLAGGED_INVISIBLE.finditer(text))
+        inputs.extend(("text", f"Job.\n{snippet}\n") for snippet in list(snippets)[:3])
     return inputs
 
 
@@ -126,12 +151,14 @@ def export_cases(conn: psycopg.Connection, path: Path = LABELED_CASES_FILE) -> i
     for posting_id, label, note, by, at, gate_version, _tier, company, title in latest_labels(conn):
         if label == "unsure":
             continue
-        findings, cleaned_text = conn.execute(
-            "select findings, cleaned_text from gate.results"
-            " where posting_version_id = %s and gate_version = %s",
+        findings, cleaned_text, source, payload = conn.execute(
+            "select r.findings, r.cleaned_text, p.source, p.payload"
+            " from gate.results r join raw.job_postings p using (posting_version_id)"
+            " where r.posting_version_id = %s and r.gate_version = %s",
             (posting_id, gate_version),
         ).fetchone()
-        for mode, text in case_inputs(findings, cleaned_text):
+        page = get_source(source).posting_html(payload)
+        for mode, text in case_inputs(findings, cleaned_text, page):
             case = cases.setdefault(
                 (mode, text),
                 {

@@ -71,6 +71,9 @@ class TriageRules:
     version: int
     weak_rules: frozenset[str]
     steering_terms: tuple[re.Pattern[str], ...]
+    # When true, zero-width characters inside words with nothing else suspicious (no instruction
+    # line, no invisible text, no tag or bidi characters) are an editing artifact, not a block.
+    zero_width_artifacts_not_blocked: bool = False
 
 
 @dataclass(frozen=True)
@@ -89,6 +92,7 @@ def load_rules(path: Path = RULES_FILE) -> TriageRules:
         version=int(raw["version"]),
         weak_rules=frozenset(raw["weak_rules"]),
         steering_terms=tuple(re.compile(term, re.I) for term in raw["steering_terms"]),
+        zero_width_artifacts_not_blocked=bool(raw.get("zero_width_artifacts_not_blocked", False)),
     )
 
 
@@ -115,6 +119,22 @@ def visible_line(excerpt: str, cleaned_text: str) -> str | None:
     return None
 
 
+def is_editing_artifact(findings: dict[str, Any], rules: TriageRules) -> bool:
+    """Zero-width characters inside words and nothing else: what copy-paste from a word processor
+    leaves behind. The gate already removed them before scanning, and the scan found nothing.
+    Any bidi character, tag character, invisible text or instruction-like line rules this out."""
+    chars = findings.get("invisible_chars") or {}
+    return bool(
+        rules.zero_width_artifacts_not_blocked
+        and findings.get("invisible_flagged")
+        and not chars.get("bidi")
+        and not chars.get("tag")
+        and not findings.get("invisible_text")
+        and not findings.get("instruction_like")
+        and not any(rules_matching(block) for block in findings.get("hidden_blocks") or [])
+    )
+
+
 def triage(
     findings: dict[str, Any], cleaned_text: str, alarmed: bool, rules: TriageRules | None = None
 ) -> Triage:
@@ -124,11 +144,12 @@ def triage(
 
     # block: anything hidden
     blocks = []
+    artifact = is_editing_artifact(findings, rules)
     if (findings.get("invisible_chars") or {}).get("tag"):
         blocks.append("tag characters (text hidden from the reader)")
     if findings.get("invisible_text"):
         blocks.append("text spelled in invisible characters")
-    if findings.get("invisible_flagged"):
+    if findings.get("invisible_flagged") and not artifact:
         blocks.append("invisible characters inside words or bidi overrides")
     for block in findings.get("hidden_blocks") or []:
         if rules_matching(block):
@@ -164,6 +185,11 @@ def triage(
             )
     if reviews:
         return Triage("review", tuple(reviews))
+    if artifact:
+        benign_reasons.append(
+            f"{findings['invisible_flagged']} zero-width character(s) inside words and nothing"
+            " else suspicious: an editing artifact, removed before scanning"
+        )
     if not benign_reasons:  # alarmed with nothing explaining it: let a person look
         return Triage("review", ("alarm with no visible flagged line",))
     return Triage("benign", (*benign_reasons, f"rules v{rules.version}"))

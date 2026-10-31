@@ -158,6 +158,22 @@
 - **撤回：** `git revert` 这个提交；数据库里的视图用 `drop schema dedupe cascade` 删除；freehire 的数据可以用 `delete from gate.results where posting_version_id in (select posting_version_id from raw.job_postings where source='freehire')`，再加上对 `raw.job_sightings`、`raw.job_postings` 做同样条件的删除。
 - **备注：** 运行慢查询之前应该先设 `statement_timeout`，这次是靠后台任务超时才发现的。
 
+### 1.8 · 2026-10-31 · 规则循环第一次真正跑一圈（规则 v2），以及 HTTP 身份调整
+- **做了什么：**
+  - **打标签：** 你确认 freehire 带来的 9 个报警都是误报（3 个 Axon 防诈骗提示、1 个 Schneider 的 SSH、5 个零宽空格残留），全部标成 `false_positive`。导出后共有 13 条标准答案。
+  - **导出改进：** 超过 300 字符的行（比如整篇描述都没有换行的 Schneider）只导出触发词附近的片段，整篇描述不会进入公开仓库；含零宽字符的单词从职位原文里复现，先去掉 HTML 标签，这样 BOM 那条也能找到。
+  - **规则 v2：** 新增一个开关：单词里只有零宽字符、没有任何其他可疑信号时，按"编辑残留"放行，不再拦截。先写成 `config/proposals/triage_rules.v2.toml` 提议，评估通过后你批准，才复制成正式规则。新增手写标准答案：零宽残留 → 放行；双向控制符 → 拦截。
+  - **HTTP 身份（#25）：** User-Agent 改用爬虫标准格式（和 Googlebot 一样），加上 Accept 和 Accept-Language、退避时的随机抖动，LinkedIn 详情页 404 时只跳过该职位。**没有采用** `X-Requested-With`，因为它会让请求冒充成 LinkedIn 自己的网页。
+- **为什么：** DECISIONS #25、#26。
+- **文件：** `config/triage_rules.toml`（v2）、`config/proposals/triage_rules.v2.toml`、`pipeline/alarm_triage.py`（开关和 `is_editing_artifact`）、`pipeline/labels.py`、`ingestion/http.py`、`ingestion/linkedin.py`、`tests/fixtures/gate_cases.jsonl`、`tests/fixtures/gate_cases_labeled.jsonl`、`tests/test_alarm_triage.py`、`tests/test_labels.py`、`tests/test_evaluate_rules.py`、`tests/test_http.py`、`tests/test_linkedin.py`、`tests/test_safety_gate.py`
+- **提交：** 见本条所在的提交（`git log -- config/proposals/triage_rules.v2.toml`）
+- **验证：**
+  1. 打完标签后，v1 下有 6 条标准答案测试失败（v1 拦截了你确认过的误报）。这是**有意为之的信号**：现行规则和已确认的事实矛盾了
+  2. 评估 v2：硬性检查全部通过；被放行的误报从 6/13 升到 12/13；只有那 5 个被标注的职位从拦截变为放行，其他不变
+  3. 采用 v2 后，233 个测试全部通过；从原始数据重算 7118 个职位（`d1-t2`）：clean 7089、benign 25、review 4、block 0；再跑一次新增 0；v1 的结果仍然保留
+- **撤回：** 把 `config/triage_rules.toml` 改回 version 1、去掉那个开关，然后运行 `ingest --gate-only`。v1 的结果还在数据库里，所以不会丢任何历史。
+- **备注：** 找到了"转义序列变成真字符"的真正原因：我传给工具的 `​` 这类文字会在写入前被解码，用 sed 写时反斜杠又会被 shell 吃掉。现在含不可见字符的地方，一律用脚本以 `chr()` 生成，写完再扫描一遍确认没有残留的不可见字符。
+
 
 - **撤回：** `git revert` 这个提交；要清空数据库里的数据，执行 `drop schema raw cascade; drop schema gate cascade; drop table public.schema_migrations;`（会删掉所有已抓到的职位）。
 - **备注：** 这一步的坑：默认地址 `localhost` 每次连接要慢好几秒（Windows 先尝试 IPv6），已改为 `127.0.0.1`，见 `NOTES.md` 第 5 节。起步清单里大多是中大型公司，只用来跑通管道；小公司为主的目标清单在 M5。跨来源去重和每日运行脚本还没做。

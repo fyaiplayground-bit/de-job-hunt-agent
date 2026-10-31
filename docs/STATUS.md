@@ -61,7 +61,7 @@ Update this file at the end of every work session: what got done, what's next, w
 
 ## Next action
 
-FL: confirm labels for the 9 new alarms (4 review, 5 block, all look like false positives) and decide on the proposed triage rules v2 (zero-width editing artifacts no longer block). Then Claude: daily run script, then the fake sample profile.
+Claude: propose the daily run script (one command for every source, then gate; schedule on Windows; how failures surface), then the fake sample profile. Open item for FL: the 4 review postings are labeled false positives and stay in review on purpose (#26).
 
 ## Session log
 
@@ -77,3 +77,4 @@ FL: confirm labels for the 9 new alarms (4 review, 5 block, all look like false 
 - 2026-10-30 — Deterministic alarm triage (clean/benign/review/block) with rules in `config/triage_rules.toml` and a 39-case golden set; gate version now `d1-t1`, all 2300 postings recomputed from raw (clean 2286, benign 14, review 0, block 0), old results kept. Principle "code decides, AI proposes, rules change only through the loop" added to CLAUDE.md. Decision #22.
 - 2026-10-30 — Rules loop step B: `gate.labels`, `pipeline.labels` (add/list/export), `pipeline.evaluate_rules`, `config/proposals/`. Walked the loop on real data: 14 false positives labeled → 5 golden cases; two weakening proposals rejected (one showed 0 changed postings and was caught only by the golden set), comment-only proposal passed. Rules stay v1. 191 tests pass. Decision #23.
 - 2026-10-31 — freehire ingestion (7-day backfill, capped at 5000), LinkedIn built but off, exact cross-source dedupe views (7118 → 7073 jobs), `discover_boards`. Fixed a dedupe view that stalled at 7k rows (migration 007, 0.59 s). 211 tests pass. 9 new alarms await FL. Decision #24.
+- 2026-10-31 — First real turn of the rules loop: 9 freehire alarms labeled false positive (13 golden cases), triage rules v2 adopted (zero-width editing artifacts no longer block; evaluation PASS, only the 5 labeled postings moved), recomputed 7,118 postings → block 0. HTTP identity per #25 (conventional crawler UA, Accept headers, jitter, LinkedIn 404 skip; no site-imitating header). 233 tests pass. Decisions #25, #26.

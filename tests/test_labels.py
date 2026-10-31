@@ -102,3 +102,15 @@ def test_case_inputs_rehide_hidden_lines_and_respell_invisible_text():
 
     assert [mode for mode, _ in inputs] == ["html", "text"]
     assert all(run_gate(text, mode).triage == "block" for mode, text in inputs)
+
+
+def test_case_inputs_copy_words_with_zero_width_characters_from_the_posting():
+    findings = {"invisible_flagged": 1, "invisible_chars": {"zero_width": 2}}
+    page = "<p>Our &#8203;h&#8203;eadquarters and our growth stor\u200by.</p>"
+
+    inputs = case_inputs(findings, cleaned_text="Our headquarters", posting_html=page)
+
+    assert [text for _, text in inputs] == [
+        "Job.\nh\u200beadquarters\n",
+        "Job.\nstor\u200by\n",
+    ]

@@ -1,5 +1,7 @@
 """The evaluation step of the rules loop: proposals that let an attack through must fail."""
 
+import re
+
 import pytest
 
 from pipeline.alarm_triage import RULE_SIGNATURES, RULES_FILE
@@ -43,7 +45,7 @@ def test_making_every_rule_weak_is_rejected(tmp_path):
 def weaken(tmp_path, rule: str):
     return write_rules(
         tmp_path,
-        CURRENT.replace("version = 1", "version = 2").replace(
+        re.sub(r"^version = [0-9]+", "version = 99", CURRENT, count=1, flags=re.M).replace(
             "weak_rules = [", f'weak_rules = [\n    "{rule}",', 1
         ),
     )

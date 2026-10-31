@@ -1,11 +1,13 @@
 # Alarm triage rules: how an alarmed posting is sorted into benign / review / block.
 # Read by pipeline/alarm_triage.py. Decision #22.
+# Version 2 adopted 2026-10-31 (decision #26): zero-width editing artifacts no longer block.
+# Proposal and its motivation: config/proposals/triage_rules.v2.toml.
 #
 # Changing this file changes how postings are judged, so it goes through the rules loop:
 # propose -> run the evaluation against every labeled case -> FL approves -> bump `version`
 # -> recompute from raw -> record it in docs/DECISIONS.md. Never edit it to wave one posting through.
 
-version = 1
+version = 2
 
 # Instruction rules (named in pipeline/alarm_triage.py RULE_SIGNATURES) that are known to fire on
 # honest job-posting text. A line flagged ONLY by these can be benign. Every other rule is strong:
@@ -46,3 +48,7 @@ steering_terms = [
     '\bdon.?t\b',          # don't / don’t / dont
     '\bnever\b',
 ]
+
+# Zero-width characters inside words, with no instruction-like line, no invisible text and no tag
+# or bidi characters, are an editing artifact: benign instead of block (proposal v2).
+zero_width_artifacts_not_blocked = true

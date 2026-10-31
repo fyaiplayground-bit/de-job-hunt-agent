@@ -132,3 +132,20 @@ def test_linkedin_is_off_unless_explicitly_enabled(monkeypatch):
     assert not is_source_enabled("linkedin")
     monkeypatch.setenv("LINKEDIN_PUBLIC_ENABLED", "true")
     assert is_source_enabled("linkedin")
+
+
+def test_a_job_removed_before_its_detail_is_fetched_is_skipped(search_html, detail_html):
+    def handler(request: httpx.Request) -> httpx.Response:
+        if "seeMoreJobPostings" in request.url.path:
+            return httpx.Response(200, text=search_html)
+        if request.url.path.endswith("4001001002"):
+            return httpx.Response(404)
+        return httpx.Response(200, text=detail_html)
+
+    ctx = FetchContext(
+        make_client(transport=httpx.MockTransport(handler)), options=SEARCH, sleep=lambda _: None
+    )
+
+    jobs = linkedin.fetch_jobs(ctx, "us-data-engineer")
+
+    assert [j["job_id"] for j in jobs] == ["4001001001", "4001001003"]

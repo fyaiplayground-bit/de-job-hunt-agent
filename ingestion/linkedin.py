@@ -4,9 +4,12 @@
 # Copyright (c) 2026 Mads Lorentzen. MIT License; full text in LICENSES/ai-job-search-MIT.txt
 #
 # Changes from the original: ported from TypeScript to Python; the card and detail parsing follow
-# the original regexes. Not ported: the browser-like User-Agent and request headers (we identify
-# ourselves honestly, see ingestion/http.py) and the text cleanup of descriptions (we keep the
-# description HTML so the safety gate sees hidden markup). Added: a hard per-day request budget.
+# the original regexes. Also taken from the original (decision #25): the conventional crawler
+# User-Agent format (with our own name and URL), Accept / Accept-Language, jitter on backoff, and
+# skipping a job whose detail page is gone (404); see ingestion/http.py. Not taken: the
+# X-Requested-With header, which imitates LinkedIn's own pages, and the text cleanup of
+# descriptions (we keep the description HTML so the safety gate sees hidden markup).
+# Added: a hard per-day request budget.
 """LinkedIn public (logged-out) job listings. OFF by default (decision #6, #24).
 
 Automated access is against LinkedIn's terms, so: personal use, low volume, only the public
@@ -25,6 +28,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from ingestion.context import BudgetExhausted, FetchContext
+from ingestion.http import FetchError
 
 NAME = "linkedin"
 SEARCH_URL = "https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search"
@@ -185,7 +189,12 @@ def fetch_jobs(ctx: FetchContext, target: str) -> list[dict[str, Any]]:
                     ctx.seen_only.append((_company_slug(card.company), card.job_id))
                     continue
                 ctx.sleep(PAUSE_SECONDS)
-                detail_html = ctx.get_text(DETAIL_URL.format(job_id=card.job_id))
+                try:
+                    detail_html = ctx.get_text(DETAIL_URL.format(job_id=card.job_id))
+                except FetchError as exc:
+                    if exc.status_code == 404:  # taken down between search and detail: skip it
+                        continue
+                    raise
                 jobs.append(
                     {"job_id": card.job_id, "card_html": card.card_html, "detail_html": detail_html}
                 )

@@ -28,10 +28,22 @@ How to work with her:
 
 ## Memory across sessions (important)
 
-Context gets lost between sessions. The files in `docs/` are the memory.
+Context gets lost between sessions, and long sessions get compacted. The files in `docs/` are the memory. Each fact lives in one file:
 
-- **Start of session:** read `CLAUDE.md`, then `docs/STATUS.md`.
+| File | Holds | Organized by |
+| --- | --- | --- |
+| `docs/STATUS.md` | Where we are, what's next, what's blocked, one-line session log | Milestone checklist |
+| `docs/DECISIONS.md` | Every decision and why | Number, append-only |
+| `docs/JOURNAL.md` | Each completed step: what, files, commit, how verified, how to undo | Milestone → step |
+| `docs/NOTES.md` | FL's study notes: concepts in plain language, machine setup, how-tos, problems → fixes, interview material | Topic (edit in place) |
+| `docs/INTERVIEW_NOTES.md` | Polished "how to explain this" per milestone (English) | Milestone |
+
+- **Start of session:** read `CLAUDE.md`, then `docs/STATUS.md`. Read `JOURNAL.md` / `NOTES.md` when the task touches earlier work.
+- **Write as you go, not at the end:** when a step is done, add its `JOURNAL.md` entry (and any new concept or problem → fix to `NOTES.md`) in the same commit as the step's work. Don't wait for the end of the session; compaction can drop details first, with no warning.
+- **Decisions are written when FL says OK**, as a `DECISIONS.md` entry in the same commit as the step that uses them. Don't record options still under discussion.
+- **"记下来" / "write it down" means now:** when FL says it, write the current state or idea to the right file immediately, even mid-discussion.
 - **End of every work session (or before context runs low):** update `docs/STATUS.md` (what was done, what's next, what's blocked) and append any new decision to `docs/DECISIONS.md` with the date and the reason.
+- These docs are public: no real name, employer, or local paths that contain a username.
 - Never delete history from `DECISIONS.md`; mark old decisions as superseded instead.
 - If something in the code disagrees with the docs, ask FL which is right and fix the other.
 

@@ -1,0 +1,24 @@
+# Search sources: each entry is one saved search, fetched on every run (decision #24).
+# Board sources (one company per board) are in config/companies.toml.
+#
+# Defaults for Milestone 1: US, data / analytics engineering titles. FL's real location, remote
+# preferences and target roles are open questions for Milestone 5; change them here.
+
+# freehire.me aggregates ~50 ATSs. Query syntax: up to 5 alternatives joined by uppercase OR;
+# "title:" restricts an alternative to the job title.
+[[freehire]]
+name = "us-data-engineering"
+query = "title:data engineer OR title:analytics engineer"
+countries = ["us"]
+posted_within_days = 2   # daily run with 1 day of overlap; use `--days 7` once to backfill
+page_size = 100
+max_pages = 50           # at most 5000 jobs per run
+
+# LinkedIn public listings: only used when LINKEDIN_PUBLIC_ENABLED=true in .env (off by default),
+# and never more than LINKEDIN_MAX_REQUESTS_PER_DAY requests per day across all runs.
+[[linkedin]]
+name = "us-data-engineer"
+keywords = "data engineer"
+location = "United States"
+posted_within_days = 1
+max_pages = 3            # 10 jobs per page; each new job costs one more request for its details

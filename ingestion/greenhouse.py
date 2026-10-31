@@ -6,22 +6,25 @@ Docs: https://developers.greenhouse.io/job-board.html
 import html
 from typing import Any
 
-import httpx
-
-from ingestion.http import get_json
+from ingestion.context import FetchContext
 
 NAME = "greenhouse"
 JOBS_URL = "https://boards-api.greenhouse.io/v1/boards/{token}/jobs"
 
 
-def fetch_jobs(client: httpx.Client, token: str) -> list[dict[str, Any]]:
+def fetch_jobs(ctx: FetchContext, token: str) -> list[dict[str, Any]]:
     """All open jobs on the board, with descriptions (content=true)."""
-    data = get_json(client, JOBS_URL.format(token=token), {"content": "true"})
+    data = ctx.get_json(JOBS_URL.format(token=token), {"content": "true"})
     return data["jobs"]
 
 
 def job_id(job: dict[str, Any]) -> str:
     return str(job["id"])
+
+
+def company(job: dict[str, Any], target: str) -> str:
+    """Board sources: the board token is the company."""
+    return target
 
 
 def posting_html(job: dict[str, Any]) -> str:

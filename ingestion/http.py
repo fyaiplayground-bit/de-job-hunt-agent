@@ -45,15 +45,40 @@ def _wait_seconds(response: httpx.Response | None, attempt: int) -> float:
     return min(2.0**attempt, MAX_WAIT_SECONDS)
 
 
+Params = dict[str, str] | list[tuple[str, str]] | None  # a list allows repeated keys
+
+
 def get_json(
     client: httpx.Client,
     url: str,
-    params: dict[str, str] | None = None,
+    params: Params = None,
     *,
     retries: int = MAX_RETRIES,
     sleep: Callable[[float], None] = time.sleep,
 ) -> Any:
     """GET a URL and return the parsed JSON body, retrying only rate limits and server errors."""
+    return _get(client, url, params, retries, sleep).json()
+
+
+def get_text(
+    client: httpx.Client,
+    url: str,
+    params: Params = None,
+    *,
+    retries: int = MAX_RETRIES,
+    sleep: Callable[[float], None] = time.sleep,
+) -> str:
+    """GET a URL and return the body as text (for sources that answer with HTML)."""
+    return _get(client, url, params, retries, sleep).text
+
+
+def _get(
+    client: httpx.Client,
+    url: str,
+    params: Params,
+    retries: int,
+    sleep: Callable[[float], None],
+) -> httpx.Response:
     for attempt in range(retries + 1):
         last_try = attempt == retries
         try:
@@ -71,6 +96,6 @@ def get_json(
             raise FetchError(
                 f"GET {url} returned HTTP {response.status_code}", response.status_code
             )
-        return response.json()
+        return response
 
     raise AssertionError("unreachable")  # the loop always returns or raises

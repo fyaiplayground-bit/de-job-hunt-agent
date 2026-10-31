@@ -20,7 +20,7 @@ def load_and_gate(db, jobs) -> dict[str, int]:
     """Load jobs, run the gate, return {source_job_id: posting_version_id}."""
     run_id = uuid4()
     db.execute(
-        "insert into raw.ingest_runs (run_id, source, company, started_at, status)"
+        "insert into raw.ingest_runs (run_id, source, target, started_at, status)"
         " values (%s, 'greenhouse', 'example', now(), 'running')",
         (run_id,),
     )

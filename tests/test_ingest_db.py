@@ -10,7 +10,7 @@ import pytest
 from ingestion.http import make_client
 from pipeline.db import migrate
 from pipeline.gate_step import gate_pending
-from pipeline.ingest import ingest_all, ingest_board
+from pipeline.ingest import Target, ingest_all, ingest_target
 from pipeline.load import load_jobs
 
 pytestmark = pytest.mark.db
@@ -25,7 +25,7 @@ def count(conn, table: str) -> int:
 def start_run(conn) -> object:
     run_id = uuid4()
     conn.execute(
-        "insert into raw.ingest_runs (run_id, source, company, started_at, status)"
+        "insert into raw.ingest_runs (run_id, source, target, started_at, status)"
         " values (%s, 'greenhouse', 'example', now(), 'running')",
         (run_id,),
     )
@@ -93,13 +93,14 @@ def test_ingest_board_records_a_successful_run(db, greenhouse_jobs):
         {"/v1/boards/example/jobs": httpx.Response(200, json={"jobs": greenhouse_jobs})}
     )
 
-    result = ingest_board(db, client, "greenhouse", "example")
+    result = ingest_target(db, client, Target("greenhouse", "example"))
 
     assert (result.status, result.jobs_seen, result.versions_new) == ("ok", 2, 2)
     row = db.execute(
-        "select status, jobs_seen, versions_new, finished_at is not null from raw.ingest_runs"
+        "select status, jobs_seen, versions_new, requests_made, finished_at is not null"
+        " from raw.ingest_runs"
     ).fetchone()
-    assert row == ("ok", 2, 2, True)
+    assert row == ("ok", 2, 2, 1, True)
 
 
 def test_one_failing_board_does_not_stop_the_others(db, greenhouse_jobs, lever_postings):
@@ -109,14 +110,18 @@ def test_one_failing_board_does_not_stop_the_others(db, greenhouse_jobs, lever_p
             "/v0/postings/example": httpx.Response(200, json=lever_postings),
         }
     )
-    boards = [("greenhouse", "gone-company"), ("greenhouse", "example"), ("lever", "example")]
+    boards = [
+        Target("greenhouse", "gone-company"),
+        Target("greenhouse", "example"),
+        Target("lever", "example"),
+    ]
 
     results = ingest_all(db, client, boards, sleep=lambda _: None)
 
     assert [r.status for r in results] == ["error", "ok", "ok"]
     assert "HTTP 404" in results[0].error
-    errors = db.execute("select company, error from raw.ingest_runs where status = 'error'")
-    assert [(company, "HTTP 404" in error) for company, error in errors] == [("gone-company", True)]
+    errors = db.execute("select target, error from raw.ingest_runs where status = 'error'")
+    assert [(t, "HTTP 404" in error) for t, error in errors] == [("gone-company", True)]
     assert count(db, "raw.job_postings") == 3
 
 

@@ -6,21 +6,24 @@ Docs: https://github.com/lever/postings-api
 import html
 from typing import Any
 
-import httpx
-
-from ingestion.http import get_json
+from ingestion.context import FetchContext
 
 NAME = "lever"
 POSTINGS_URL = "https://api.lever.co/v0/postings/{token}"
 
 
-def fetch_jobs(client: httpx.Client, token: str) -> list[dict[str, Any]]:
+def fetch_jobs(ctx: FetchContext, token: str) -> list[dict[str, Any]]:
     """All published postings for the company."""
-    return get_json(client, POSTINGS_URL.format(token=token), {"mode": "json"})
+    return ctx.get_json(POSTINGS_URL.format(token=token), {"mode": "json"})
 
 
 def job_id(job: dict[str, Any]) -> str:
     return str(job["id"])
+
+
+def company(job: dict[str, Any], target: str) -> str:
+    """Board sources: the board token is the company."""
+    return target
 
 
 def posting_html(job: dict[str, Any]) -> str:

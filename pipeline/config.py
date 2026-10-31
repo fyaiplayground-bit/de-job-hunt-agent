@@ -37,11 +37,19 @@ def _required(name: str) -> str:
     return value
 
 
+# Sources that stay off unless explicitly turned on, and the variable that turns them on.
+OFF_BY_DEFAULT = {"linkedin": "LINKEDIN_PUBLIC_ENABLED"}
+
+
 def is_source_enabled(source: str) -> bool:
-    """`<SOURCE>_ENABLED` from the environment (e.g. GREENHOUSE_ENABLED); on unless set to false.
+    """`<SOURCE>_ENABLED` from the environment (e.g. GREENHOUSE_ENABLED): on unless set to false.
+    LinkedIn is the exception: off unless LINKEDIN_PUBLIC_ENABLED is set to true (decision #6).
 
     Call after load_settings() so values from .env are already in the environment.
     """
+    if source in OFF_BY_DEFAULT:
+        value = os.environ.get(OFF_BY_DEFAULT[source], "false").strip().lower()
+        return value in {"true", "1", "yes", "on"}
     value = os.environ.get(f"{source.upper()}_ENABLED", "true").strip().lower()
     return value not in {"false", "0", "no", "off"}
 

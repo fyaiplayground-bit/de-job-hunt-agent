@@ -28,8 +28,8 @@ Update this file at the end of every work session: what got done, what's next, w
 - [x] Python project setup (dependencies, ruff, pytest)
 - [x] JD safety gate (adapted from ai-job-search)
 - [x] Ingestion: Greenhouse + Lever for a starter list of companies → raw tables (19 boards; the small-company target list comes in M5)
-- [ ] Ingestion: freehire.me; LinkedIn public listings behind a flag (default off)
-- [ ] Idempotent load + dedupe (including the same job arriving from freehire and Greenhouse/Lever); daily run script — idempotent load done (#21); cross-source dedupe and daily script still to do
+- [x] Ingestion: freehire.me; LinkedIn public listings behind a flag (default off) — LinkedIn built and tested, no live request yet (#24)
+- [ ] Idempotent load + dedupe (including the same job arriving from freehire and Greenhouse/Lever); daily run script — idempotent load (#21) and exact cross-source dedupe (#24) done; daily script still to do
 - [x] Alarm triage + rules loop step A: deterministic tiers, `config/triage_rules.toml`, golden set, `pipeline.alarm_report` (#22)
 - [x] Rules loop step B: labels table, labeling command, `evaluate_rules` comparing proposed vs current rules; walked once end to end (#23)
 - [ ] Fake sample profile in `data/sample/`: a made-up DE-transition candidate (resume, Evidence Bank, Applicant Profile) in exactly the formats the real ones will use
@@ -61,7 +61,7 @@ Update this file at the end of every work session: what got done, what's next, w
 
 ## Next action
 
-Claude: propose the freehire.me + LinkedIn public ingestion design (ports per DESIGN "Borrowed from ai-job-search"; LinkedIn behind its flag, off by default; new alarms go through the rules loop) and wait for FL's OK.
+FL: confirm labels for the 9 new alarms (4 review, 5 block, all look like false positives) and decide on the proposed triage rules v2 (zero-width editing artifacts no longer block). Then Claude: daily run script, then the fake sample profile.
 
 ## Session log
 
@@ -76,3 +76,4 @@ Claude: propose the freehire.me + LinkedIn public ingestion design (ports per DE
 - 2026-10-30 — Greenhouse + Lever ingestion: 4 raw/gate tables via migrations, 19 boards, 2300 postings loaded; second same-day run added 0 (idempotent). Gate: 14 alarms, all false positives (10 "You are an AI pragmatist", 3 SSH in skill lists, 1 "as an AI/Tech evangelist"), 0 among 58 DE-type titles. DB host default → 127.0.0.1 (tests 69s → 2s). Decision #21.
 - 2026-10-30 — Deterministic alarm triage (clean/benign/review/block) with rules in `config/triage_rules.toml` and a 39-case golden set; gate version now `d1-t1`, all 2300 postings recomputed from raw (clean 2286, benign 14, review 0, block 0), old results kept. Principle "code decides, AI proposes, rules change only through the loop" added to CLAUDE.md. Decision #22.
 - 2026-10-30 — Rules loop step B: `gate.labels`, `pipeline.labels` (add/list/export), `pipeline.evaluate_rules`, `config/proposals/`. Walked the loop on real data: 14 false positives labeled → 5 golden cases; two weakening proposals rejected (one showed 0 changed postings and was caught only by the golden set), comment-only proposal passed. Rules stay v1. 191 tests pass. Decision #23.
+- 2026-10-31 — freehire ingestion (7-day backfill, capped at 5000), LinkedIn built but off, exact cross-source dedupe views (7118 → 7073 jobs), `discover_boards`. Fixed a dedupe view that stalled at 7k rows (migration 007, 0.59 s). 211 tests pass. 9 new alarms await FL. Decision #24.

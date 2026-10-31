@@ -136,6 +136,28 @@
 - **撤回：** `git revert` 这个提交；标签表里的数据可以用 `drop table gate.labels` 删除，同时从 `public.schema_migrations` 里删掉 `004_gate_labels.sql` 这一行。
 - **备注：** 标签时间按 UTC 记录，所以在美国晚上标的会显示成第二天的日期。
 
+### 1.7 · 2026-10-31 · freehire、LinkedIn（默认关闭）、跨来源去重、发现新招聘页
+- **做了什么：**
+  - **抓取改为支持"按搜索抓"：** 除了按招聘页抓（`config/companies.toml`），现在也能按保存好的搜索条件抓（`config/searches.toml`）。新增 `FetchContext`，所有请求都经过它，便于计数和设置上限。运行记录里的 `company` 列改名为 `target`，新增 `requests_made` 和 `note` 两列（迁移 005）。每个职位的公司名改为从职位数据本身读取。
+  - **freehire：** 照他们的客户端改写成 Python，开头带 MIT 声明。按"美国 + data/analytics engineer 标题"搜索，一页一页地翻；页数有上限；遵守 API 的 offset 窗口限制；内容指纹不包括浏览数、`reality` 等经常变的字段。
+  - **LinkedIn：** 照他们的解析代码改写，开头带 MIT 声明，但**没有搬**伪装成浏览器的身份和请求头。默认关闭（需要设置 `LINKEDIN_PUBLIC_ENABLED=true` 才会运行）；每天的请求数有硬上限，同一天跑几次加起来也不会超；已经存过的职位不再请求详情页，只记一条"今天看到了"；原始数据存 LinkedIn 返回的 HTML。**这次没有发出任何真实的 LinkedIn 请求。**
+  - **跨来源去重：** 用 SQL 视图实现（迁移 006、007），按"招聘系统/招聘页/职位 id"确定身份，优先采用直接从招聘系统抓到的那一份。
+  - **发现新招聘页：** 新增 `pipeline.discover_boards`，只读，列出 freehire 里出现过、但我们还没有的 Greenhouse/Lever 招聘页。
+- **为什么：** DECISIONS #24。
+- **文件：** `ingestion/context.py`、`ingestion/freehire.py`、`ingestion/linkedin.py`、`ingestion/http.py`（新增 `get_text`）、`ingestion/greenhouse.py`、`ingestion/lever.py`、`ingestion/sources.py`、`config/searches.toml`、`pipeline/ingest.py`、`pipeline/load.py`、`pipeline/config.py`、`pipeline/discover_boards.py`、`db/migrations/005_search_sources.sql`、`006_dedupe_views.sql`、`007_dedupe_jobs_group_once.sql`；测试 `tests/test_freehire.py`、`tests/test_linkedin.py`、`tests/test_search_sources_db.py`，以及 `tests/fixtures/` 里的 3 个样例文件（都是我手写的，不含真实职位文字）
+- **提交：** 见本条所在的提交（`git log -- ingestion/freehire.py`）
+- **验证：**
+  1. 211 个测试通过，ruff 通过。新增的测试覆盖：freehire 翻页、参数、页数上限、API 窗口；LinkedIn 解析、隐藏内容会被闸门拦下、关闭横幅、请求预算是硬上限、已存过的职位不重复请求、**默认关闭**；数据库测试覆盖每日上限跨运行生效，以及同一个职位从 Greenhouse 和 freehire 进来只算一个
+  2. 真实运行：freehire 回填 7 天，抓到 5000 个职位（达到页数上限，**回填不完整**），其中 4592 个是不重复的，用时 256 秒；再跑一遍全部来源，freehire 新增 224 个，**全是第一次被漏掉的新职位**，没有一个是旧职位改版
+  3. 去重：7118 条原始记录 → 7073 个职位，有 45 个同时来自 Greenhouse 和 freehire
+- **真实数据观察：**
+  - freehire 按相关度排序，翻页的几分钟里排序一直在变，所以同一个职位可能出现在两页上（408 个重复，已被幂等加载吸收），也可能被漏掉。每天只抓 2 天（约 1300 个、14 页）不会碰到上限
+  - freehire 自己判定 **22% 的职位是陈旧职位**（1065 个）；职位来源主要是 Greenhouse 1117、Manatal 874、Workday 755、Oracle 339
+  - 闸门：review 4、block 5，**全部像是误报**。4 个 review 中，3 个是 Axon 的防诈骗提示（"please ignore the message"），1 个是没有换行的长段落里提到 SSH；5 个 block 都是复制粘贴留下的零宽空格，比如 `stor|y`、`|h|eadquarters`。这些标签和可能的规则调整，要先等你确认（规则循环）
+- **一个性能问题（已修复）：** 去重视图第一版用了"每行一次子查询"，到 7000 行时 20 秒都跑不完。改成先分组、再连接（迁移 007），同样的数据只用 0.59 秒。没有修改已经执行过的迁移 006，而是新加一个迁移，保证改动有记录。
+- **撤回：** `git revert` 这个提交；数据库里的视图用 `drop schema dedupe cascade` 删除；freehire 的数据可以用 `delete from gate.results where posting_version_id in (select posting_version_id from raw.job_postings where source='freehire')`，再加上对 `raw.job_sightings`、`raw.job_postings` 做同样条件的删除。
+- **备注：** 运行慢查询之前应该先设 `statement_timeout`，这次是靠后台任务超时才发现的。
+
 
 - **撤回：** `git revert` 这个提交；要清空数据库里的数据，执行 `drop schema raw cascade; drop schema gate cascade; drop table public.schema_migrations;`（会删掉所有已抓到的职位）。
 - **备注：** 这一步的坑：默认地址 `localhost` 每次连接要慢好几秒（Windows 先尝试 IPv6），已改为 `127.0.0.1`，见 `NOTES.md` 第 5 节。起步清单里大多是中大型公司，只用来跑通管道；小公司为主的目标清单在 M5。跨来源去重和每日运行脚本还没做。

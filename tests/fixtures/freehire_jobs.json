@@ -1,0 +1,51 @@
+[
+  {
+    "public_slug": "data-engineer-example-data-co-aaaa1111",
+    "source": "greenhouse",
+    "external_id": "example:1001",
+    "url": "https://boards.greenhouse.io/example/jobs/1001?gh_jid=1001&utm_source=freehire.me",
+    "title": "Data Engineer",
+    "company": "Example Data Co",
+    "company_slug": "example-data-co",
+    "location": "Remote - US",
+    "work_mode": "remote",
+    "description": "<p>Build pipelines with <strong>Python</strong>, SQL, Airflow and dbt.</p>",
+    "countries": ["us"],
+    "skills": ["python", "sql", "airflow", "dbt"],
+    "posted_at": "2026-10-28T13:00:00Z",
+    "updated_at": "2026-10-30T21:28:21Z",
+    "last_seen_at": "2026-10-30T23:18:40Z",
+    "view_count": 16,
+    "applied_count": 0,
+    "reality": {"class": "fresh", "age_days": 2, "repost_count": 0, "fake_freshness": false},
+    "enrichment": {"seniority": "middle", "category": "data"}
+  },
+  {
+    "public_slug": "analytics-engineer-small-co-bbbb2222",
+    "source": "greenhouse",
+    "external_id": "smallco:555",
+    "url": "https://job-boards.greenhouse.io/smallco/jobs/555?utm_source=freehire.me",
+    "title": "Analytics Engineer",
+    "company": "Small Co",
+    "company_slug": "small-co",
+    "location": "Austin, TX",
+    "description": "<p>Own our dbt models.</p>",
+    "posted_at": "2026-10-29T10:00:00Z",
+    "view_count": 3,
+    "reality": {"class": "fresh"}
+  },
+  {
+    "public_slug": "senior-data-engineer-big-retail-cccc3333",
+    "source": "workday",
+    "external_id": "bigretail:R12345",
+    "url": "https://bigretail.wd5.myworkdayjobs.com/en-US/careers/job/R12345",
+    "title": "Senior Data Engineer",
+    "company": "Big Retail",
+    "company_slug": "big-retail",
+    "location": "Chicago, IL",
+    "description": "<p>Spark and Snowflake at scale.</p>",
+    "posted_at": "2026-10-27T10:00:00Z",
+    "view_count": 40,
+    "reality": {"class": "stale", "fake_freshness": true}
+  }
+]

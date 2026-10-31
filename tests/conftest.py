@@ -29,6 +29,11 @@ def lever_postings() -> list[dict]:
 
 
 @pytest.fixture
+def freehire_jobs() -> list[dict]:
+    return json.loads((FIXTURES / "freehire_jobs.json").read_text(encoding="utf-8"))
+
+
+@pytest.fixture
 def db():
     """A connection to the separate jobhunt_test database, freshly migrated for each test.
 

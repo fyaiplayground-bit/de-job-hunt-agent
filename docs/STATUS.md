@@ -16,7 +16,7 @@ Update this file at the end of every work session: what got done, what's next, w
 - [x] Put the starter kit in a folder named `de-job-hunt-agent` and open it in Claude Code
 - [x] GitHub account + empty **public** repo named `de-job-hunt-agent` (no README, no .gitignore — we have our own)
 - [x] Install Docker Desktop
-- [ ] Anthropic API key from the Claude Console, with a monthly spending limit → put it in `.env` (never in chat, never committed) — **needed now** for step 2.2 (check with `agents.llm ping`)
+- [x] Anthropic API key from the Claude Console (own workspace + monthly spending limit) in `.env`; first live `agents.llm ping` ok 2026-11-01. Rotate before it expires (date: ask FL)
 - [ ] Personal AWS account + S3 bucket for backups (not the work account) — needed by Milestone 4
 - [ ] Open questions (can wait until Milestone 5): target archetype(s); location / remote, comp floor, work-authorization answers; companies to exclude; daily application target
 
@@ -62,7 +62,7 @@ Update this file at the end of every work session: what got done, what's next, w
 
 ## Next action
 
-Claude: step 2.2, jd-analysis (JSON schema for the brief, run on DE postings that passed the gate, store briefs, golden set of ~10 real postings labeled with FL). Design first. FL: create the Anthropic API key with a monthly limit and put it in `.env`, then Claude runs `agents.llm ping`. The daily run happens by itself at 9:30 LA (#29); check it at session start.
+Claude: step 2.2, jd-analysis (JSON schema for the brief, run on DE postings that passed the gate, store briefs, golden set of ~10 real postings labeled with FL). Design first. The daily run happens by itself at 9:30 LA (#29); check it at session start.
 
 ## Session log
 

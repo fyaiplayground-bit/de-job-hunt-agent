@@ -1,6 +1,7 @@
 ---
 name: resume-tailoring
 description: Rewrite FL's resume for one job as a one-page, ATS-safe PDF using the JD's exact keywords, F-pattern layout and recruiter psychology, then run a drafter-reviewer loop. Use for every job scored Apply or Apply + referral.
+version: 1
 ---
 
 # Resume Tailoring (Agent 4)

@@ -53,7 +53,7 @@ def db():
             admin.execute(sql.SQL("create database {}").format(sql.Identifier(TEST_DB)))
 
     conn = connect(replace(settings, postgres_db=TEST_DB))
-    for schema in ("ops", "dedupe", "gate", "raw"):
+    for schema in ("agents", "ops", "dedupe", "gate", "raw"):
         conn.execute(sql.SQL("drop schema if exists {} cascade").format(sql.Identifier(schema)))
     conn.execute("drop table if exists public.schema_migrations")
     migrate(conn)

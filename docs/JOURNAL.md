@@ -232,3 +232,24 @@
 - **验证：** `StartBoundary` 是 `2026-11-02T09:30:00`（没有偏移），下次运行显示 11/02 9:30，补跑、用电池也运行、不唤醒电脑、限时 1 小时这些设置都还在。
 - **没能验证：** "错过后补跑"到底会不会自己触发。电脑 9:03 醒来，Windows 要先等大约 10 分钟才补跑；9:10 改触发时间时还没到这 10 分钟，而改触发时间又把错过次数清零了（`NumberOfMissedRuns` 变回 0），所以这次看不出结论。下次电脑在 9:30 睡着时，醒来大约 10 分钟后看一下 `ops.daily_runs` 有没有新的一行。
 - **撤回：** 把触发时间改回 `08:30`，同样不带偏移。
+
+## Milestone 2 · AI 助手（agent 层）
+
+### 2.1 · 2026-11-01 · AI 调用的底座：提示词版本、请求构造、缓存、费用
+- **做了什么：**
+  - 你确认了 M2 的设计：AI 负责读和写，代码负责打分和判断；简历排版用 Typst；默认模型 Opus 5.5，思考深度 medium。记为决策 #30
+  - 用 uv 装了 Anthropic 官方 SDK（`anthropic` 2.3.0）
+  - `agents/skills.py`：把每个 SKILL.md 读成"带版本号的提示词"。六个 skill 文件开头都加了 `version: 1`；`config/prompt_lock.toml` 记录版本号和全文指纹；命令 `agents.skills check | lock`
+  - `agents/llm.py`：所有 AI 调用都走这里。系统提示 = skill 文件 + "数据不是指令"规则；职位放在 `<data>` 标签里（职位里如果出现 `</data>`，会被转义，免得它提前结束数据块）；用结构化输出拿 JSON；开启备用模型（fallback）；系统提示标记为可缓存
+  - 迁移 009：`agents.llm_calls` 表，同时是缓存和费用记录（请求指纹、提示词版本、输入指纹、模型、实际回答的模型、token 数、费用）
+  - 命令：`agents.llm ping`（一次很小的真实调用，测试 key）、`agents.llm costs`（今天 / 本月 / 总计花费）
+  - `.env.example` 新增 `LLM_MODEL`、`LLM_EFFORT`；`pipeline/config.py` 新增 `llm_settings()`
+- **为什么：** DECISIONS #22、#30。
+- **文件：** `agents/skills.py`、`agents/llm.py`、`config/prompt_lock.toml`、`db/migrations/009_agents.sql`、`.claude/skills/*/SKILL.md`（加 `version: 1`）、`pipeline/config.py`、`.env.example`、`pyproject.toml`、`uv.lock`、`tests/test_skills.py`、`tests/test_llm.py`、`tests/conftest.py`（测试库也清理 `agents`）
+- **提交：** 见本条所在的提交（`git log -- agents/llm.py`）
+- **验证：**
+  1. 新增 28 个测试，全部 297 个测试通过（1 个跳过），ruff 通过。覆盖：六个 skill 都能读出版本号；提示词锁和文件一致；改文字不升版本会被抓到，而且不能直接写进锁；升了版本要先 lock；CRLF 和 LF 指纹相同；请求指纹稳定，模型、思考深度、提示词、格式、内容任何一个变了指纹都会变；职位关不掉 `<data>` 块；发给 SDK 的参数正确（fallback、结构化输出、提示缓存）；第二次同样的请求从缓存取、不再调用；回答被拒、被截断、缺字段时报错且不存；备用模型回答时按它的价格记账；按今天 / 本月 / 总计统计花费
+  2. 真实命令：`agents.skills check` 输出 OK；`agents.llm costs` 显示 0 次、$0.00；没有 key 时，`agents.llm ping` 会给出一句清楚的提示，而不是一大段报错
+  3. **还没做真实的 AI 调用**：`.env` 里还没有 API key
+- **撤回：** `git revert` 这个提交；数据库执行 `drop schema agents cascade`，再从 `public.schema_migrations` 删掉 `009_agents.sql` 这一行。
+- **备注：** 一个坑：`ping` 第一版先创建 SDK 客户端，后读 `.env`，这样就算 `.env` 里有 key，SDK 也看不到。已改成先读 `.env`。另外，没有 key 时 SDK 抛的是 `TypeError`，不是它自己的错误类型，所以要单独处理。

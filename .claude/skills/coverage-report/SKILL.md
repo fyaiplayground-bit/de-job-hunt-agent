@@ -1,6 +1,7 @@
 ---
 name: coverage-report
 description: Daily report answering one question — do FL's current and in-progress skills cover most of the jobs she's targeting? Use for the scheduled morning run. Reports where she stands; does not recommend what to study.
+version: 1
 ---
 
 # Skill Coverage Report (Agent 9)

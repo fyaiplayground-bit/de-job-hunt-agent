@@ -16,7 +16,7 @@ Update this file at the end of every work session: what got done, what's next, w
 - [x] Put the starter kit in a folder named `de-job-hunt-agent` and open it in Claude Code
 - [x] GitHub account + empty **public** repo named `de-job-hunt-agent` (no README, no .gitignore — we have our own)
 - [x] Install Docker Desktop
-- [ ] Anthropic API key from the Claude Console, with a monthly spending limit → put it in `.env` (never in chat, never committed) — needed by Milestone 2
+- [ ] Anthropic API key from the Claude Console, with a monthly spending limit → put it in `.env` (never in chat, never committed) — **needed now** for step 2.2 (check with `agents.llm ping`)
 - [ ] Personal AWS account + S3 bucket for backups (not the work account) — needed by Milestone 4
 - [ ] Open questions (can wait until Milestone 5): target archetype(s); location / remote, comp floor, work-authorization answers; companies to exclude; daily application target
 
@@ -36,7 +36,7 @@ Update this file at the end of every work session: what got done, what's next, w
 - [x] M1 interview note in `docs/INTERVIEW_NOTES.md`
 
 ### Milestone 2 · Week 2 · Agents
-- [ ] Agent modules loading rules from `.claude/skills/`
+- [x] Agent modules loading rules from `.claude/skills/` — 2.1: skill loader + prompt lock, LLM client with cache (#30)
 - [ ] Choose resume template engine (LaTeX vs Typst); one-page template
 - [ ] Tailor → reviewer → revise loop; PDF compile-and-inspect; ATS text-layer check
 - [ ] Approval queue output for the claude.ai Project to submit from
@@ -62,7 +62,7 @@ Update this file at the end of every work session: what got done, what's next, w
 
 ## Next action
 
-Claude: start Milestone 2 with a design proposal for the first agent modules (load rules from `.claude/skills/`, read the profile through `agents/profile.py`, cache LLM outputs by input hash + prompt version + model per #22) and the resume template engine choice (LaTeX vs Typst). Needs FL's Anthropic API key in `.env` before any live LLM call. The daily run happens by itself at 9:30 LA (#29); check it at session start.
+Claude: step 2.2, jd-analysis (JSON schema for the brief, run on DE postings that passed the gate, store briefs, golden set of ~10 real postings labeled with FL). Design first. FL: create the Anthropic API key with a monthly limit and put it in `.env`, then Claude runs `agents.llm ping`. The daily run happens by itself at 9:30 LA (#29); check it at session start.
 
 ## Session log
 
@@ -83,3 +83,4 @@ Claude: start Milestone 2 with a design proposal for the first agent modules (lo
 - 2026-10-31 — Created the Windows scheduled task (8:30 LA, catch-up, on battery, headless) and the desktop shortcut "每日职位报告" with FL's OK; a manual trigger succeeded (result 0). Fixed a trigger saved with a fixed DST offset (would have run at 7:30 after Nov 1).
 - 2026-10-31 — Fictional sample profile (Alex Sample, BI engineer → DE) in `data/sample/`: `evidence_bank.toml`, `applicant_profile.toml`, `resume.md`; `agents/profile.py` loads and checks them (resume traces to the Evidence Bank); `PROFILE_DIR` setting; private/README and skill files point at the profile folder; M1 interview note written. **Milestone 1 complete.** 269 tests pass. Decision #28.
 - 2026-11-01 — First scheduled run (8:30) missed: laptop asleep 9:21 p.m.–9:03 a.m. Ran it manually (run 4: ok, 163 new, 30 DE, no alarms). Schedule moved to 9:30 with FL's OK (#29). Whether the catch-up fires stays unverified (see JOURNAL 1.12).
+- 2026-11-01 — M2 design approved (#30: LLM reads and drafts, code scores and decides; Typst; Opus 5.5 at medium effort). Step 2.1: Anthropic SDK, `agents/skills.py` + `config/prompt_lock.toml` (prompt text can't change without a version bump), `agents/llm.py` (request builder, posting as data, structured output, fallback, `agents.llm_calls` cache with cost), `ping` and `costs` commands, migration 009. 297 tests pass. No live call yet: API key not set.

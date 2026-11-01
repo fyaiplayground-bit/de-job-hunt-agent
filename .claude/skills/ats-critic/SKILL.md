@@ -1,6 +1,7 @@
 ---
 name: ats-critic
 description: Independently check a tailored resume PDF the way an ATS parser and a tired recruiter would, and pass or fail it back to the tailor. Use after resume-tailoring, before anything goes into the approval queue.
+version: 1
 ---
 
 # ATS + Recruiter Critic (Agent 5)

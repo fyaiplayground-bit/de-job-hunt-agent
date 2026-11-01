@@ -1,0 +1,27 @@
+# Version and text fingerprint of every agent prompt (.claude/skills/*/SKILL.md), decision #30.
+# A test fails when a skill's text changes without a version bump. Written by:
+#   uv run python -m agents.skills lock
+
+[skills.ats-critic]
+version = 1
+sha256 = "824041715a76c6a363939de01a7795e96e5b12c72f1086bc8441b5235369e9c1"
+
+[skills.coverage-report]
+version = 1
+sha256 = "0b1166d9b269cdcd6bdd4e7ae071c7706579b36f110d8b714134182622088c86"
+
+[skills.fit-scoring]
+version = 1
+sha256 = "4ef6f4e0291651823c9d8a9e5a35d876bdd527db691b64e2fc14018c58623fb3"
+
+[skills.jd-analysis]
+version = 1
+sha256 = "403d6f822ec6033af9b8d1ac857ff4c28870ccf7839c65814be496fe6481aad0"
+
+[skills.outreach-drafting]
+version = 1
+sha256 = "dd1a996b77c1cf461cc646de9511ec567b740bd2e926879646c34d15b5809998"
+
+[skills.resume-tailoring]
+version = 1
+sha256 = "4e9dcdc4076b87ef4b477252653e6047a8af79eae427fd5390c6c32d2a4137c3"

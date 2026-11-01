@@ -1,6 +1,7 @@
 ---
 name: fit-scoring
 description: Score how well FL fits a job (0–100) against her Evidence Bank and decide Apply + referral / Apply / Skip / Big-tech later. Use after jd-analysis, before any tailoring work.
+version: 1
 ---
 
 # Fit Scoring (Agent 2)

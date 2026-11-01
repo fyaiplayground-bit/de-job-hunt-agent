@@ -1,6 +1,7 @@
 ---
 name: jd-analysis
 description: Turn a raw job posting into a structured brief — must-haves vs nice-to-haves, exact keywords, role archetype, hidden signals and seniority. Use before scoring or tailoring any job.
+version: 1
 ---
 
 # JD Analysis (Agent 1)

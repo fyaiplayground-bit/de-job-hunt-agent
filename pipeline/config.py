@@ -71,6 +71,32 @@ def profile_dir(env_file: str | None = ".env") -> Path:
     return folder if folder.is_absolute() else REPO_ROOT / folder
 
 
+LLM_EFFORTS = ("low", "medium", "high", "xhigh", "max")
+
+
+@dataclass(frozen=True)
+class LlmSettings:
+    """Which Claude model the agents call, and how hard it thinks (decision #30)."""
+
+    model: str
+    effort: str
+
+
+def llm_settings(env_file: str | None = ".env") -> LlmSettings:
+    """LLM_MODEL (default claude-opus-5-5) and LLM_EFFORT (default medium) from the environment.
+    The API key itself is read by the Anthropic SDK from ANTHROPIC_API_KEY, never by our code.
+
+    Reads `.env` itself (no database settings needed). Pass env_file=None in tests.
+    """
+    if env_file is not None:
+        load_dotenv(env_file, override=False)
+    model = os.environ.get("LLM_MODEL", "").strip() or "claude-opus-5-5"
+    effort = os.environ.get("LLM_EFFORT", "").strip().lower() or "medium"
+    if effort not in LLM_EFFORTS:
+        raise ConfigError(f"LLM_EFFORT must be one of {', '.join(LLM_EFFORTS)}, got {effort!r}.")
+    return LlmSettings(model=model, effort=effort)
+
+
 def load_settings(env_file: str | None = ".env") -> Settings:
     """Read settings. Values already in the environment win over the file.
 

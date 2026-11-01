@@ -1,6 +1,7 @@
 ---
 name: outreach-drafting
 description: Research a company and its people from public information, pick 2–3 people worth contacting, and draft short outreach notes and recruiter replies for FL to send herself. Use for jobs scored Apply + referral and for inbound recruiter messages.
+version: 1
 ---
 
 # Outreach Drafting (Agents 3 + 7)

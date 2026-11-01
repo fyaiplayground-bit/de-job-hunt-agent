@@ -88,12 +88,13 @@ def test_skill_name_must_match_its_folder(skills_copy):
 def test_text_change_without_bump_is_caught_and_cant_be_locked(skills_copy, tmp_path):
     lock = tmp_path / "prompt_lock.toml"
     write_lock(load_all_skills(skills_copy), lock)
+    version = load_skill("jd-analysis", skills_copy).version
     _edit(skills_copy, "jd-analysis", "Decode what", "Figure out what")
 
     skills = load_all_skills(skills_copy)
     assert lock_problems(skills, read_lock(lock)) == [
-        "jd-analysis: text changed but version is still 1 (bump it, and record the change "
-        "through the rules loop)"
+        f"jd-analysis: text changed but version is still {version} (bump it, and record the "
+        "change through the rules loop)"
     ]
     with pytest.raises(SkillError, match="text changed"):
         write_lock(skills, lock)
@@ -102,16 +103,17 @@ def test_text_change_without_bump_is_caught_and_cant_be_locked(skills_copy, tmp_
 def test_bumped_version_is_flagged_until_locked(skills_copy, tmp_path):
     lock = tmp_path / "prompt_lock.toml"
     write_lock(load_all_skills(skills_copy), lock)
+    version = load_skill("jd-analysis", skills_copy).version
     _edit(skills_copy, "jd-analysis", "Decode what", "Figure out what")
-    _edit(skills_copy, "jd-analysis", "version: 1", "version: 2")
+    _edit(skills_copy, "jd-analysis", f"version: {version}", f"version: {version + 1}")
 
     skills = load_all_skills(skills_copy)
     assert lock_problems(skills, read_lock(lock)) == [
-        "jd-analysis: version bumped to 2, lock not updated yet"
+        f"jd-analysis: version bumped to {version + 1}, lock not updated yet"
     ]
     write_lock(skills, lock)
     assert lock_problems(skills, read_lock(lock)) == []
-    assert read_lock(lock)["jd-analysis"]["version"] == 2
+    assert read_lock(lock)["jd-analysis"]["version"] == version + 1
 
 
 def test_missing_and_removed_skills_are_flagged(skills_copy, tmp_path):

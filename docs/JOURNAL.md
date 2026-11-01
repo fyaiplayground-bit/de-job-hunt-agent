@@ -253,3 +253,24 @@
   3. **还没做真实的 AI 调用**：`.env` 里还没有 API key
 - **撤回：** `git revert` 这个提交；数据库执行 `drop schema agents cascade`，再从 `public.schema_migrations` 删掉 `009_agents.sql` 这一行。
 - **备注：** 一个坑：`ping` 第一版先创建 SDK 客户端，后读 `.env`，这样就算 `.env` 里有 key，SDK 也看不到。已改成先读 `.env`。另外，没有 key 时 SDK 抛的是 `TypeError`，不是它自己的错误类型，所以要单独处理。
+
+### 2.2a · 2026-11-01 · 拆解 JD：范围规则、简报格式、试点 20 个
+- **做了什么：**
+  - `config/analysis_scope.toml`（版本 1）：代码先筛。标题像 DE（和每日报告是同一条规则，有测试保证两者一致）；排除 Staff/Principal/Lead/Manager/Director/Head/VP/Intern；最近 3 天还在招；闸门档位 clean 或 benign；跳过 freehire 标为 stale 的职位
+  - `agents/jd_analysis.py`：简报格式 `BRIEF_SCHEMA`（每个字段必填、不许多字段）；选职位的 SQL；给 AI 的数据是"公司、职位、招聘页上的地点 + 闸门清理后的正文"；公司名、职位名、链接由代码从原始数据填进简报；命令 `run [--limit N] [--dry-run]` 和 `show <编号>`；某个职位失败（被拒、被截断）就记下来，继续跑其他的
+  - `jd-analysis/SKILL.md` 升到 **版本 2**：输出格式和 schema 一致，加了技能命名、原文照抄、工作方式、薪资、签证担保的规则，删掉"公司分段"（交给代码）。提示词锁已更新
+  - 迁移 010：`agents.jd_briefs`（职位版本 × 提示词版本 × 模型，一行一份简报，记录范围规则版本和对应的 AI 调用）
+- **为什么：** DECISIONS #31。
+- **文件：** `agents/jd_analysis.py`、`config/analysis_scope.toml`、`.claude/skills/jd-analysis/SKILL.md`、`config/prompt_lock.toml`、`db/migrations/010_jd_briefs.sql`、`tests/test_jd_analysis.py`、`tests/test_skills.py`（改成读取当前版本号，以后升版本不会误报）
+- **提交：** 见本条所在的提交（`git log -- agents/jd_analysis.py`）
+- **验证：**
+  1. 新增 11 个测试，全部 308 个通过，ruff 通过。覆盖：范围规则和每日报告一致；schema 处处严格；三个来源的公司、地点、链接取法；只选还在招、通过闸门的 DE 职位；**测试数据里那个藏了"忽略之前的指令"的攻击职位被闸门拦下，永远到不了 AI**；陈旧职位被跳过；拆过的不再拆；dry-run 不调用 AI；`--limit` 生效；被拒的职位记为失败、不存
+  2. dry-run：879 个 DE 标题 → 442 个在范围内，预估全部 $26
+  3. **真实试点 20 个：** 20 个全部成功，没有被拒，共 **$0.76**（每篇约 $0.038，比预估便宜：平均输入 1,225、输出 1,589 个 token，提示缓存命中了 51,889 个输入 token），约 4 分钟。岗位类型：pipeline_de 11、analytics_engineer 6、infra_de 3；级别：senior 17；工作方式：hybrid 9、unclear 5、onsite 4、remote 2；写了薪资的 5 个；平均必备技能 11 个
+- **试点中发现的问题（留给 2.2b、2.3）：**
+  1. 经验年限规则写的是"取最小的数字"，结果一个标题写着 "Minimum 07+ Yrs" 的职位被记成 3 年。应该改成"整体经验要求"，走规则循环升到 v3
+  2. AI 给的技能名有 "ETL pipelines"、"Data pipelines" 这类写法，2.3 对接事实库时要做名称映射
+  3. 20 个里 17 个是 senior。要不要把级别也作为硬性条件，到 2.3 时由你决定
+  4. 一个 Java 后端岗位因为标题里有 "Data Platforms" 混了进来，打分时会被筛掉
+  5. 有一个职位末尾多了一串奇怪的字符 `xhmxlyz`，AI 把它记进了 `safety_flags` 并忽略了，这正是我们希望的处理方式
+- **撤回：** `git revert` 这个提交；数据库执行 `drop table agents.jd_briefs`，再从 `public.schema_migrations` 删掉 `010_jd_briefs.sql`。AI 的回答留在 `agents.llm_calls` 里也没关系。

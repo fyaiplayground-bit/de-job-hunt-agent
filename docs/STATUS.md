@@ -62,7 +62,7 @@ Update this file at the end of every work session: what got done, what's next, w
 
 ## Next action
 
-Claude: step 2.2, jd-analysis (JSON schema for the brief, run on DE postings that passed the gate, store briefs, golden set of ~10 real postings labeled with FL). Design first. The daily run happens by itself at 9:30 LA (#29); check it at session start.
+Claude: step 2.2b, golden set: pick ~10 varied real postings, draft expected must-haves / archetype / work mode, FL reviews; labels file holds posting ids + expected values only (no posting text in the public repo); `agents.evaluate_prompt jd-analysis` (recall, precision, archetype, work mode); compare effort low vs medium; fix the years_required rule (overall requirement, not the smallest number) as prompt v3 through the loop. Then 2.2c: daily run with a cap, and FL decides on backfilling the remaining ~422 (~$16). The daily run happens by itself at 9:30 LA (#29); check it at session start.
 
 ## Session log
 
@@ -84,3 +84,4 @@ Claude: step 2.2, jd-analysis (JSON schema for the brief, run on DE postings tha
 - 2026-10-31 — Fictional sample profile (Alex Sample, BI engineer → DE) in `data/sample/`: `evidence_bank.toml`, `applicant_profile.toml`, `resume.md`; `agents/profile.py` loads and checks them (resume traces to the Evidence Bank); `PROFILE_DIR` setting; private/README and skill files point at the profile folder; M1 interview note written. **Milestone 1 complete.** 269 tests pass. Decision #28.
 - 2026-11-01 — First scheduled run (8:30) missed: laptop asleep 9:21 p.m.–9:03 a.m. Ran it manually (run 4: ok, 163 new, 30 DE, no alarms). Schedule moved to 9:30 with FL's OK (#29). Whether the catch-up fires stays unverified (see JOURNAL 1.12).
 - 2026-11-01 — M2 design approved (#30: LLM reads and drafts, code scores and decides; Typst; Opus 5.5 at medium effort). Step 2.1: Anthropic SDK, `agents/skills.py` + `config/prompt_lock.toml` (prompt text can't change without a version bump), `agents/llm.py` (request builder, posting as data, structured output, fallback, `agents.llm_calls` cache with cost), `ping` and `costs` commands, migration 009. 297 tests pass. No live call yet: API key not set.
+- 2026-11-01 — Step 2.2a: `config/analysis_scope.toml` (code pre-filter: 879 DE-titled → 442 in scope), strict brief schema, `jd-analysis` prompt v2, `agents.jd_briefs` (migration 010), `agents.jd_analysis run/show`. Live pilot: 20 briefs, $0.76, no declines. 308 tests pass. Decision #31.

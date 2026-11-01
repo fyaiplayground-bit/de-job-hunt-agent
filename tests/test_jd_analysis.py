@@ -10,6 +10,7 @@ import pytest
 
 from agents.jd_analysis import (
     BRIEF_SCHEMA,
+    SCOPE_FILE,
     Candidate,
     _display_fields,
     load_scope,
@@ -23,6 +24,7 @@ from pipeline.gate_step import gate_pending
 from pipeline.load import load_jobs
 
 SETTINGS = LlmSettings(model="claude-opus-5-5", effort="medium")
+REPO_SCOPE = SCOPE_FILE
 BRIEF = {
     "archetype": "pipeline_de",
     "seniority": "mid",
@@ -83,12 +85,21 @@ def test_display_fields_per_source():
     }) == ("Acme Inc", "New York (onsite)", "https://example.com/3")
 
 
-def test_candidate_data_puts_board_facts_before_the_text():
-    candidate = Candidate(1, "greenhouse", "Acme", "Data Engineer", "", "", "Build pipelines.")
-    assert candidate.data() == (
-        "Company: Acme\nTitle: Data Engineer\nLocation on the job board: not given\n\n"
-        "Build pipelines."
-    )
+def test_candidate_data_is_company_title_and_text_without_board_location():
+    """Copies of one job in several cities must make the same request (answered from cache)."""
+    denver = Candidate(1, "greenhouse", "Acme", "Data Engineer", "Denver", "", "Build pipelines.")
+    austin = replace(denver, posting_version_id=2, location="Austin")
+    assert denver.data() == "Company: Acme\nTitle: Data Engineer\n\nBuild pipelines."
+    assert austin.data() == denver.data()
+
+
+def test_min_text_chars_defaults_to_off(tmp_path):
+    path = tmp_path / "scope.toml"
+    text = (REPO_SCOPE.read_text(encoding="utf-8"))
+    path.write_text(text, encoding="utf-8")
+    assert load_scope(path).min_text_chars == 0
+    path.write_text(text + "\nmin_text_chars = 1000\n", encoding="utf-8")
+    assert load_scope(path).min_text_chars == 1000
 
 
 # ---------------------------------------------------------------- with the test database
@@ -173,6 +184,19 @@ def test_stale_freehire_postings_are_skipped(db, freehire_jobs):
 
 
 @pytest.mark.db
+def test_short_snippets_are_skipped_when_min_text_chars_is_set(loaded):
+    lengths = dict(loaded.execute(
+        "select p.payload->>'title', length(g.cleaned_text) from gate.results g"
+        " join raw.job_postings p using (posting_version_id)"
+    ).fetchall())
+    in_scope = (lengths["Data Engineer"], lengths["Analytics Engineer"])
+    assert _titles(loaded, replace(load_scope(), min_text_chars=max(in_scope) + 1)) == set()
+    assert _titles(loaded, replace(load_scope(), min_text_chars=min(in_scope))) == {
+        "Data Engineer", "Analytics Engineer",
+    }
+
+
+@pytest.mark.db
 def test_run_stores_briefs_with_board_facts_and_skips_them_next_time(loaded):
     client = FakeClient(BRIEF)
     summary = run(loaded, client, SETTINGS)
@@ -189,6 +213,7 @@ def test_run_stores_briefs_with_board_facts_and_skips_them_next_time(loaded):
         "Data Engineer", "Example Data Co", "greenhouse",
     )
     assert brief["url"].startswith("https://example.com/careers/")
+    assert brief["board_location"] == "Remote - US"
     assert brief["must_haves"] == BRIEF["must_haves"]
     # what the model was given: the cleaned text as data, never the raw HTML
     assert client.requests[0].user.startswith("<data>\nCompany: ")

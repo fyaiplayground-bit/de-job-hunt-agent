@@ -1,0 +1,156 @@
+# Golden set for jd-analysis (decision #32): what a correct brief must contain for 10 real
+# postings. Drafted by Claude from each posting's requirements, reviewed by FL.
+#
+# Only identifiers and expected values live here. The postings are other companies' text and
+# the repo is public, so the text stays in the local database; agents.evaluate_prompt reads it
+# from there by (source, source_job_id, content_hash).
+#
+# must_haves: the skills a correct brief lists as must-haves. "A|B" accepts either name; a
+#   match is checked against the brief's skill name and its exact phrases, ignoring case.
+# archetype: accepted archetypes; [] means not scored (the posting doesn't say enough).
+# work_mode: the expected work mode.
+# years_required: accepted values for the overall years asked for; [] means null.
+
+[[case]]
+name = "anthropic-data-engineer"
+source = "freehire"
+source_job_id = "data-engineer-anthropic-mauchik4"
+content_hash = "14e3923a250390de1e32d7fc1a078101d5281a58812c56cd2b23832821a9510e"
+why = "GTM data platform; years only under preferred; salary and visa sponsorship stated"
+must_haves = [
+    "SQL", "Python", "Data modeling|data models", "ETL|data pipelines|production pipelines",
+    "Orchestration|workflow orchestration|orchestration tooling",
+    "Cloud data warehouse|data warehouse", "Entity resolution|record matching|deduplication",
+    "CRM|CRM systems|Salesforce",
+]
+archetype = ["analytics_engineer", "pipeline_de"]
+work_mode = "hybrid"
+years_required = [5]
+
+[[case]]
+name = "bold-penguin-senior-analytics-engineer"
+source = "freehire"
+source_job_id = "senior-analytics-engineer-bold-penguin-sbva6ini"
+content_hash = "3b8c03442be0147d9c9dfd67f0e074b83f89da8553d238bf45afc90ff558f2ef"
+why = "classic analytics engineer: dbt, Snowflake, semantic layer, BI migration; fully remote"
+must_haves = [
+    "SQL", "dbt|dbt core", "Snowflake", "Sigma|Hex|Sigma Computing",
+    "Semantic layer|metrics layer|metrics catalog", "Python", "Git|version control", "CI/CD",
+    "LLM|AI/LLMs|Generative AI|GenAI|AI",
+]
+archetype = ["analytics_engineer"]
+work_mode = "remote"
+years_required = [5]
+
+[[case]]
+name = "assyst-senior-healthcare-data-engineer"
+source = "freehire"
+source_job_id = "senior-healthcare-data-engineer-assyst-q534nz26"
+content_hash = "06e687228e1bda8f65b58a6c9d02dc370d59dcbcd4d95983720840150908f0e6"
+why = "staffing agency; every requirement says 8+ years; SAS/R next to Python/SQL"
+must_haves = [
+    "SQL", "Python", "SAS", "R", "ETL|data pipelines|ETL pipelines",
+    "Data quality|data validation|data validation and quality assurance", "Dashboards|dashboard",
+]
+archetype = ["pipeline_de", "analytics_engineer"]
+work_mode = "hybrid"
+years_required = [8]
+
+[[case]]
+name = "voto-java-backend-gcp"
+source = "freehire"
+source_job_id = "only-local-to-phoenix-az-minimum-07-yrs-experience-after-graduation-bachelors-gcp-cloud-data-platforms-java-backend-developer-voto-consulting-llc-yi37urer"
+content_hash = "72a7dbfb0ac56ffdd6f9521346cc035f3f540919aa1046a88f4677f3c20fed87"
+why = "not really a DE role; contradictory years (title 7+, body 6 and 3-5); the pilot said 3"
+must_haves = [
+    "Java", "Spring Boot", "Google Cloud Platform|GCP", "Microservices",
+    "REST APIs|RESTful APIs|REST", "Kubernetes|GKE", "Google Cloud Pub/Sub|Pub/Sub", "Terraform",
+    "Docker", "CI/CD",
+]
+archetype = ["infra_de"]
+work_mode = "onsite"
+years_required = [6, 7]
+
+[[case]]
+name = "smbc-truncated-snippet"
+source = "freehire"
+source_job_id = "data-engineer-vice-president-smbc-4t3gglsm"
+content_hash = "279ac9545f2767adca0c6cd7c09782c944a8e6d38132b55af042db02253c4813"
+why = "freehire gave only a cut-off company blurb: a correct brief invents nothing"
+must_haves = []
+archetype = []
+work_mode = "unclear"
+years_required = []
+
+[[case]]
+name = "rosens-senior-cloud-data-engineer"
+source = "freehire"
+source_job_id = "senior-cloud-data-engineer-rosen-s-diversified-inc-american-foods-group-llc-6xedijj4"
+content_hash = "54cba1305a651605a41b2b940b993cda80312457616be09759d207e38d6e0093"
+why = "Azure Databricks lakehouse; range 3-5 years; work mode never stated in the text"
+must_haves = [
+    "Azure Databricks|Databricks", "Apache Spark|Spark", "PySpark", "Python", "SQL",
+    "Delta Lake", "Lakehouse|lakehouse architecture", "Data modeling", "Data warehousing",
+    "Azure Data Factory", "Azure Data Lake Storage|Azure Data Lake Storage Gen2|ADLS Gen2",
+    "Azure DevOps", "Git", "CI/CD", "ETL|ELT|ETL/ELT|ETL/ELT pipelines",
+]
+archetype = ["pipeline_de"]
+work_mode = "unclear"
+years_required = [3]
+
+[[case]]
+name = "metabase-analytics-engineer"
+source = "lever"
+source_job_id = "5eca795c-48dd-496a-be23-2181068a5450"
+content_hash = "21d5ed3dc990dcbe278164fca39e05db4588a9845566cc165f99b5283b87358c"
+why = "short list of must-haves, long list of 'a plus' tools (dbt, Redshift...) that must stay nice-to-have"
+must_haves = ["SQL", "Python", "Data modeling|data integration"]
+archetype = ["analytics_engineer"]
+work_mode = "remote"
+years_required = [5]
+
+[[case]]
+name = "samsara-senior-data-engineer-ii"
+source = "greenhouse"
+source_job_id = "8039914"
+content_hash = "a49d16bcabfc0185cbe9db6a63a3653c9a448f7bd124232e42bfbafb8c3ca226"
+why = "long, senior, software-heavy: 10+ years, Spark, APIs; several years per skill"
+must_haves = [
+    "Python", "SQL", "Apache Spark|Spark", "PySpark", "Data modeling",
+    "ETL|data pipelines|end-to-end data pipelines",
+    "APIs|API development|FastAPI|Python API frameworks",
+    "Databricks|Snowflake|Google BigQuery|Apache Iceberg|cloud data warehouse|lakehouse",
+    "PostgreSQL|MySQL|RDBMS|relational databases|AWS RDS",
+    "AWS|Azure|GCP|cloud", "dbt|Fivetran|ETL tools",
+]
+archetype = ["infra_de", "pipeline_de"]
+work_mode = "remote"
+years_required = [10]
+
+[[case]]
+name = "reddit-analytics-engineer"
+source = "greenhouse"
+source_job_id = "8282760"
+content_hash = "be72946b906cf9be96f6009df2c9e5bb4f4c0dc9222b8b82232da6225420d1e9"
+why = "analytics engineer title with pipeline-DE requirements (Spark, Scala, Airflow); remote only via #LI-Remote"
+must_haves = [
+    "Python", "SQL", "Apache Spark|Spark", "Scala", "ETL|ELT|ETL pipelines|data pipelines",
+    "Data modeling", "Apache Airflow|Airflow|data workflows", "Dashboards|dashboard design|data analysis",
+]
+archetype = ["analytics_engineer", "pipeline_de"]
+work_mode = "remote"
+years_required = [3]
+
+[[case]]
+name = "sigma-data-engineer"
+source = "greenhouse"
+source_job_id = "7809974003"
+content_hash = "62b238a558d60a85c87f77f70500238bafdcc1b77d4e9cda9c741daaed20318a"
+why = "few must-haves, tools mostly under 'Qualifications We Want'; in-office"
+must_haves = [
+    "ETL|data pipelines|ETL pipelines", "APIs|API integration|REST APIs",
+    "Snowflake|Databricks|cloud data platforms|cloud data warehouse", "Data governance",
+]
+archetype = ["pipeline_de", "analytics_engineer"]
+work_mode = "onsite"
+years_required = [3]

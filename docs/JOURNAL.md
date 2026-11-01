@@ -274,3 +274,29 @@
   4. 一个 Java 后端岗位因为标题里有 "Data Platforms" 混了进来，打分时会被筛掉
   5. 有一个职位末尾多了一串奇怪的字符 `xhmxlyz`，AI 把它记进了 `safety_flags` 并忽略了，这正是我们希望的处理方式
 - **撤回：** `git revert` 这个提交；数据库执行 `drop table agents.jd_briefs`，再从 `public.schema_migrations` 删掉 `010_jd_briefs.sql`。AI 的回答留在 `agents.llm_calls` 里也没关系。
+
+### 2.2b · 2026-11-01 · 标准答案集和评估命令（提议待你批准）
+- **做了什么：**
+  - `tests/fixtures/jd_golden.toml`：10 个真实职位的标准答案（我起草，等你核对）。挑选时覆盖了各种情况：Anthropic（年限只出现在"加分项"里）、Bold Penguin（典型 analytics engineer）、ASSYST（每条要求都写 8+ 年）、Voto（年限自相矛盾的假 DE 岗）、SMBC（freehire 只给了一段被截断的公司简介）、Rosen's（Azure Databricks，正文没写工作方式）、Metabase（必备很少，"加分"工具很多）、Samsara（10+ 年、偏软件工程）、Reddit（标题是 AE，要求像 pipeline DE）、Sigma（必备很少，坐班）。**文件里只有职位编号和期望结果，没有职位原文**；评估时从本地数据库按（来源、职位 id、内容指纹）读原文
+  - `agents/evaluate_prompt.py`：用现行提示词和提议的提示词分别拆解这 10 个职位，比较必备技能找到了几个、岗位类型、工作方式、经验年限；新版本找到的必备技能最多只能少 1 个（模型的随机误差），其他几项都不能变差。结果有缓存，重跑免费；不写入 `agents.jd_briefs`
+  - 两份提议：`config/proposals/jd-analysis.v3.md`（只改经验年限规则：取"整体经验要求"，不取某个工具的年限；范围取下限；只写在加分项里也算；标题和正文矛盾时取较大的整体数字）；`config/proposals/analysis_scope.v2.toml`（新增 `min_text_chars = 1000`，跳过被截断的片段：442 个里有 56 个，全是 freehire）
+  - 代码改动：给 AI 的数据里**去掉了招聘页上的地点**，改由代码写进简报的 `board_location`。这样同一个职位在多个城市发布（例如 Samsara 一个职位发了 8 个城市）时，请求完全相同，只付一次钱
+- **为什么：** DECISIONS #22、#30、#31；批准后记为 #32。
+- **文件：** `agents/evaluate_prompt.py`、`agents/jd_analysis.py`（数据格式、`board_location`、`min_text_chars`）、`tests/fixtures/jd_golden.toml`、`config/proposals/jd-analysis.v3.md`、`config/proposals/analysis_scope.v2.toml`、`tests/test_evaluate_prompt.py`、`tests/test_jd_analysis.py`
+- **提交：** 见本条所在的提交（`git log -- agents/evaluate_prompt.py`）
+- **验证：**
+  1. 全部 317 个测试通过，ruff 通过
+  2. **真实评估**（10 个职位，Opus 5.5，共花 $1.14）：
+
+     | | v2 medium | v3 medium | v3 low |
+     | --- | --- | --- | --- |
+     | 必备技能找到 | 72/75 | 73/75 | 73/75 |
+     | 岗位类型对 | 9/9 | 9/9 | 9/9 |
+     | 工作方式对 | 9/10 | 9/10 | 10/10 |
+     | **经验年限对** | **7/10** | **10/10** | **10/10** |
+     | 每篇费用 | $0.043 | $0.038 | $0.033 |
+
+     v3 修好了年限：Voto 3 → 7、Samsara 3 → 10、Anthropic 空 → 5。判定 PASS
+  3. 剩下的差异都很小：v3 在 Anthropic 漏了 "Orchestration"、在 Reddit 漏了 "Dashboards"；v2 在 Bold Penguin 漏了 LLM、在 Rosen's 漏了 Data warehousing、在 Samsara 漏了 PySpark。这些属于模型每次回答的正常波动，10 个样本看不出谁更好
+- **待你决定：** 采用 v3；采用范围规则 v2；思考深度用 low 还是 medium
+- **撤回：** `git revert` 这个提交。提议文件不影响正在运行的系统。

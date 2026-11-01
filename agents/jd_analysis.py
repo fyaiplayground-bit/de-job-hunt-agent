@@ -87,6 +87,7 @@ class Scope:
     open_within_days: int
     triage_allowed: tuple[str, ...]
     skip_freehire_stale: bool
+    min_text_chars: int = 0  # shorter cleaned text is a cut-off snippet, not a posting
 
 
 def load_scope(path: Path = SCOPE_FILE) -> Scope:
@@ -98,6 +99,7 @@ def load_scope(path: Path = SCOPE_FILE) -> Scope:
         open_within_days=int(data["open_within_days"]),
         triage_allowed=tuple(data["triage_allowed"]),
         skip_freehire_stale=bool(data["skip_freehire_stale"]),
+        min_text_chars=int(data.get("min_text_chars", 0)),
     )
 
 
@@ -112,11 +114,10 @@ class Candidate:
     cleaned_text: str
 
     def data(self) -> str:
-        """What the LLM reads: board metadata first, then the gate's cleaned text."""
-        return (
-            f"Company: {self.company}\nTitle: {self.title}\n"
-            f"Location on the job board: {self.location or 'not given'}\n\n{self.cleaned_text}"
-        )
+        """What the LLM reads: company and title, then the gate's cleaned text. The board's
+        location is left out on purpose: it goes into the brief from code, and copies of one
+        job posted in several cities then make the same request, answered once from the cache."""
+        return f"Company: {self.company}\nTitle: {self.title}\n\n{self.cleaned_text}"
 
 
 def _display_fields(source: str, company: str, payload: dict[str, Any]) -> tuple[str, str, str]:
@@ -156,6 +157,7 @@ join gate.results g
 where c.title ~* %(include)s
   and c.title !~* %(exclude)s
   and g.triage = any(%(triage)s)
+  and length(g.cleaned_text) >= %(min_chars)s
   and not (%(skip_stale)s and c.source = 'freehire'
            and coalesce(c.payload->'reality'->>'class', '') = 'stale')
   and exists (
@@ -176,7 +178,7 @@ def select_candidates(
         "prompt_version": prompt_version, "model": model, "gate_version": GATE_VERSION,
         "include": scope.title_include, "exclude": scope.title_exclude,
         "triage": list(scope.triage_allowed), "skip_stale": scope.skip_freehire_stale,
-        "days": scope.open_within_days,
+        "days": scope.open_within_days, "min_chars": scope.min_text_chars,
     }).fetchall()
     todo, done = [], 0
     for posting_version_id, source, company, title, payload, cleaned_text, is_done in rows:
@@ -195,6 +197,7 @@ def make_brief(candidate: Candidate, output: dict[str, Any]) -> dict[str, Any]:
         "title": candidate.title,
         "url": candidate.url,
         "source": candidate.source,
+        "board_location": candidate.location,
         **output,
     }
 

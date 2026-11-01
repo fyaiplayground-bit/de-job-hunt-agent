@@ -184,7 +184,7 @@ PowerShell（Windows 自带）、Git Bash（装 Git 时附带）、Ubuntu/WSL（
 | 看数据库在不在跑 | Docker Desktop → Containers → `jobhunt-postgres` 显示绿色 |
 | Docker 显示 "paused" | 在 Docker Desktop 窗口或任务栏的鲸鱼图标菜单里点 **Resume** |
 | 跑测试 / 检查代码 | 让 Claude 跑 `uv run pytest` 和 `uv run ruff check .` |
-| 每天的运行 | 定时任务每天 8:30（洛杉矶时间）自动运行；也可以让 Claude 手动跑 `uv run python -m pipeline.daily` |
+| 每天的运行 | 定时任务每天 9:30（洛杉矶时间）自动运行。错过了就手动跑：跟 Claude 说"跑一下今天的"，或者双击 `scripts` 文件夹里的 `daily.cmd`，等一两分钟再看报告（跑重复了也不会存重复数据） |
 | 看每日报告 | 双击桌面上的快捷方式（打开 `output/daily/latest.md`），或者直接问 Claude"今天怎么样" |
 | 停掉定时任务 | 让 Claude 删除名为 "de-job-hunt-agent daily" 的计划任务 |
 | 抓一次职位 | 让 Claude 跑 `uv run python -m pipeline.ingest`（大约 2 分钟；可以重复跑，不会重复存） |
@@ -228,6 +228,7 @@ PowerShell（Windows 自带）、Git Bash（装 Git 时附带）、Ubuntu/WSL（
 - **猜公司的招聘页代号命中率很低** → 很多公司用的不是 Greenhouse/Lever，或者代号和公司名不一样 → 用一个脚本批量试，只保留真正能返回结果的。
 - **装完 uv 后找不到 uv 命令** → 安装程序改的命令路径要等终端重开才生效 → Claude 用完整路径 `%USERPROFILE%\.local\bin\uv.exe` 运行。
 - **uv 报 `Missing expected target directory for Python minor version link`** → 在 Git Bash 里运行 uv 时，它建的链接是 Windows 认不出的那种 → 删掉 `%APPDATA%\uv\python\cpython-3.12-windows-x86_64-none`，在 PowerShell 里执行 `uv python install 3.12 --reinstall` 重新创建。之后那行报错可能还会出现，但 `uv python find 3.12` 能找到就不影响使用。
+- **定时任务没在 8:30 跑，醒来后也没马上补跑** → 电脑从前一晚 9:21 一直睡到早上 9:03，而任务设置的是"不唤醒电脑"。"错过后补跑"不是醒来立刻就跑：Windows 会先等大约 10 分钟。另外，**改任务的触发时间会把"错过了几次"清零**，排队中的补跑也就没了 → 想补跑就手动跑一次（重复跑不会存重复数据）；改触发时间之前，先确认当天已经跑过。
 
 ---
 

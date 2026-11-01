@@ -29,7 +29,7 @@ Update this file at the end of every work session: what got done, what's next, w
 - [x] JD safety gate (adapted from ai-job-search)
 - [x] Ingestion: Greenhouse + Lever for a starter list of companies → raw tables (19 boards; the small-company target list comes in M5)
 - [x] Ingestion: freehire.me; LinkedIn public listings behind a flag (default off) — LinkedIn built and tested, no live request yet (#24)
-- [x] Idempotent load + dedupe (including the same job arriving from freehire and Greenhouse/Lever); daily run script — #21, #24, #27; scheduled 8:30 LA daily, desktop shortcut to the report
+- [x] Idempotent load + dedupe (including the same job arriving from freehire and Greenhouse/Lever); daily run script — #21, #24, #27; scheduled daily (9:30 LA since #29), desktop shortcut to the report
 - [x] Alarm triage + rules loop step A: deterministic tiers, `config/triage_rules.toml`, golden set, `pipeline.alarm_report` (#22)
 - [x] Rules loop step B: labels table, labeling command, `evaluate_rules` comparing proposed vs current rules; walked once end to end (#23)
 - [x] Fake sample profile in `data/sample/`: a made-up DE-transition candidate (resume, Evidence Bank, Applicant Profile) in exactly the formats the real ones will use — TOML + resume.md, checked by `agents.profile check` (#28)
@@ -62,7 +62,7 @@ Update this file at the end of every work session: what got done, what's next, w
 
 ## Next action
 
-Claude: start Milestone 2 with a design proposal for the first agent modules (load rules from `.claude/skills/`, read the profile through `agents/profile.py`, cache LLM outputs by input hash + prompt version + model per #22) and the resume template engine choice (LaTeX vs Typst). Needs FL's Anthropic API key in `.env` before any live LLM call. The daily run happens by itself at 8:30 LA (first automatic run 2026-11-01); check it at session start.
+Claude: start Milestone 2 with a design proposal for the first agent modules (load rules from `.claude/skills/`, read the profile through `agents/profile.py`, cache LLM outputs by input hash + prompt version + model per #22) and the resume template engine choice (LaTeX vs Typst). Needs FL's Anthropic API key in `.env` before any live LLM call. The daily run happens by itself at 9:30 LA (#29); check it at session start.
 
 ## Session log
 
@@ -82,3 +82,4 @@ Claude: start Milestone 2 with a design proposal for the first agent modules (lo
 - 2026-10-31 — Daily run `pipeline.daily`: Docker auto-start, advisory lock, adaptive search window (2–7 days), report in `output/daily/` + `ops.daily_runs`; "new" by run ids. Two real runs ok, lock verified. CLAUDE.md: summarize the last daily run at session start. 244 tests pass. Decision #27.
 - 2026-10-31 — Created the Windows scheduled task (8:30 LA, catch-up, on battery, headless) and the desktop shortcut "每日职位报告" with FL's OK; a manual trigger succeeded (result 0). Fixed a trigger saved with a fixed DST offset (would have run at 7:30 after Nov 1).
 - 2026-10-31 — Fictional sample profile (Alex Sample, BI engineer → DE) in `data/sample/`: `evidence_bank.toml`, `applicant_profile.toml`, `resume.md`; `agents/profile.py` loads and checks them (resume traces to the Evidence Bank); `PROFILE_DIR` setting; private/README and skill files point at the profile folder; M1 interview note written. **Milestone 1 complete.** 269 tests pass. Decision #28.
+- 2026-11-01 — First scheduled run (8:30) missed: laptop asleep 9:21 p.m.–9:03 a.m. Ran it manually (run 4: ok, 163 new, 30 DE, no alarms). Schedule moved to 9:30 with FL's OK (#29). Whether the catch-up fires stays unverified (see JOURNAL 1.12).

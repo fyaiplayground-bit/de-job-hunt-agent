@@ -37,7 +37,13 @@ def _search_params(options: dict[str, Any]) -> list[tuple[str, str]]:
 
 
 def fetch_jobs(ctx: FetchContext, target: str) -> list[dict[str, Any]]:
-    """Every job matching the saved search, page by page, up to `max_pages`."""
+    """Every job matching the saved search, page by page, up to `max_pages`.
+
+    The API's `meta.total` decides when the results end. A short page is not the end: freehire
+    sometimes returns 49 of 50 in the middle of the results (seen 2026-11-02 at offset 850 of
+    11,298), and stopping there silently dropped everything after it. Only when there is no
+    total does a short page count as the last one.
+    """
     page_size = int(ctx.options.get("page_size", 100))
     max_pages = int(ctx.options.get("max_pages", 20))
     base = _search_params(ctx.options)
@@ -51,7 +57,13 @@ def fetch_jobs(ctx: FetchContext, target: str) -> list[dict[str, Any]]:
         body = ctx.get_json(SEARCH_URL, [*base, ("limit", str(page_size)), ("offset", str(offset))])
         page_jobs = body.get("data") or []
         jobs.extend(page_jobs)
-        if len(page_jobs) < page_size:
+        total = (body.get("meta") or {}).get("total")
+        if not page_jobs:
+            break
+        if isinstance(total, int):
+            if offset + page_size >= total:
+                break
+        elif len(page_jobs) < page_size:
             break
     return jobs
 

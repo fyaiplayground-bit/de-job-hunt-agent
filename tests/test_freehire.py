@@ -36,6 +36,25 @@ def test_pages_until_a_short_page_and_pauses_between(freehire_jobs):
     assert [r.url.params["offset"] for r in seen] == ["0", "2"]
 
 
+def test_a_short_page_in_the_middle_is_not_the_end(freehire_jobs):
+    """freehire once returned 49 of 50 at offset 850 of 11,298; paging must follow meta.total."""
+    totals = iter([5, 5, 5])
+    pages = [freehire_jobs[:2], freehire_jobs[:1], freehire_jobs[2:4]]  # 2, then a short 1, then 1
+    seen = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(request)
+        return httpx.Response(200, json={"data": pages.pop(0), "meta": {"total": next(totals)}})
+
+    ctx = FetchContext(
+        make_client(transport=httpx.MockTransport(handler)),
+        options={**SEARCH, "page_size": 2}, sleep=lambda _: None,
+    )
+    jobs = freehire.fetch_jobs(ctx, "s")
+    assert [r.url.params["offset"] for r in seen] == ["0", "2", "4"]  # kept going after the 1
+    assert len(jobs) == 4
+
+
 def test_query_repeats_facets_and_asks_for_html(freehire_jobs):
     seen = []
     ctx = FetchContext(paged_client([[]], seen), options=SEARCH, sleep=lambda _: None)

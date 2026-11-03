@@ -335,3 +335,18 @@
 - **文件：** `tests/fixtures/gate_cases_labeled.jsonl`
 - **验证：** 规则相关测试 113 个通过（标签和现行规则不矛盾）。
 - **撤回：** 从 jsonl 删掉这一行；数据库里的标签可以用一条新的 `unsure` 标签覆盖（标签只追加，以最新一条为准）。
+
+### 2.2e · 2026-11-02 · 覆盖率检查：你在 LinkedIn 上看到的职位，我们有没有
+- **做了什么：**
+  - `pipeline/find_job.py`：`uv run python -m pipeline.find_job "公司" "职位名关键词"`。在所有已存的职位里查：公司名忽略大小写、标点和 LLC/Inc 这类后缀，匹配招聘页代号、slug 或公司全名的开头；职位名按"连续的词组"匹配（"data engineer" 不会匹配到 "Data Center Engineer"）。找到了就说明哪个来源、哪天到哪天看到过、闸门档位、有没有拆解；没拆解的话，说明是被分析范围的哪条规则排除的
+  - 没找到时，在线查一次 freehire（公司名 + 职位名，美国，最近 60 天，最多 3 页），判断最可能的原因：标题不在我们的搜索词里 / freehire 有、标题也对得上（多半是在我们的抓取窗口之前发布的）/ 是我们直接抓的招聘页但没存到 / 我们的来源都没有 / 说不准（检查失败，或者结果太多没看完）
+  - 每次检查都记进 `ops.coverage_checks`（迁移 011）；`--stats` 给出覆盖率（找到 / 查过）和各个原因的数量
+  - 两个坑：freehire 的搜索没有按公司筛选的功能；而且一加公司名，它就不再按标题筛选（返回了 Snowflake 的所有职位，包括 "Revenue Manager"）。所以公司和标题都在我们这边再筛一遍；结果没看完时，如实说"说不准"，不硬下结论
+- **为什么：** DECISIONS #34。
+- **文件：** `pipeline/find_job.py`、`db/migrations/011_coverage_checks.sql`、`tests/test_find_job.py`
+- **提交：** 见本条所在的提交（`git log -- pipeline/find_job.py`）
+- **验证：**
+  1. 新增 13 个测试，全部 341 个通过，ruff 通过。覆盖：公司名的各种写法、职位名按词组匹配、找到的职位说明为什么没被拆解（测试数据里的攻击职位显示 "gate triage block"）、五种没找到的原因、freehire 检查失败时问题照样记下、覆盖率统计
+  2. **我自己试了 4 个真实例子（试完已从记录里删掉，不算进你的覆盖率）：** Anthropic Data Engineer：找到，已拆解；Sigma Computing Data Engineer：找到（在分析范围内，但早于每日 AI 拆解，所以没拆）；Netflix Analytics Engineer：**没抓到**，freehire 上有，但发布于 10/20 和 9/09，早于我们第一次回填 freehire 的时间（10/31 往回 7 天）；Snowflake Data Engineer：说不准（freehire 结果太多没看完）
+- **发现：** 我们是从 10/31 开始、往回 7 天抓 freehire 的，所以**更早发布、但现在还在招的职位一个都没有**。如果要补，一次性把 freehire 往回抓 30 天就行，不花 AI 的钱（只是多一些请求），等你决定。
+- **撤回：** `git revert` 这个提交；数据库执行 `drop table ops.coverage_checks`，再从 `public.schema_migrations` 删掉 `011_coverage_checks.sql`。

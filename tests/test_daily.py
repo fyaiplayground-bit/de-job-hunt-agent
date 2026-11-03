@@ -205,6 +205,12 @@ def test_daily_run_briefs_todays_new_in_scope_jobs(db, greenhouse_jobs, freehire
     report = render_report(summary)
     assert "范围内的新职位 2 个，拆解了 2 个（0 个来自缓存），花费 $0.02" in report
     assert "今天最常要求的必备技能：Python（2）、SQL（2）" in report
+    # scored against the sample profile: Alex covers Python and SQL, 3 years asked
+    assert (summary.fit_status, summary.fit_scored) == ("ok", 2)
+    assert summary.fit_profile == "Alex Sample（样本档案）"
+    assert [w["score"] for w in summary.fit_worth] == [90, 90]
+    assert "## 今天值得投的（按 Alex Sample（样本档案） 打分）" in report
+    assert "- 投 + 找内推 · 90 分 · [" in report
 
     later = datetime(2026, 11, 1, 20, 0, tzinfo=UTC)
     second = run_daily(
@@ -271,3 +277,12 @@ def test_daily_analysis_settings(monkeypatch):
     monkeypatch.setenv("JD_ANALYSIS_DAILY_MAX", "lots")
     with pytest.raises(ConfigError, match="JD_ANALYSIS_DAILY_MAX"):
         daily_analysis_settings(env_file=None)
+
+
+@pytest.mark.db
+def test_a_broken_profile_only_stops_the_scoring(db, greenhouse_jobs, freehire_jobs, tmp_path):
+    summary = _daily(db, daily_client(greenhouse_jobs, freehire_jobs), lambda: FakeClient(BRIEF),
+                     profile_folder=tmp_path)  # an empty folder: no profile files
+    assert (summary.status, summary.jd_status, summary.fit_status) == ("ok", "ok", "error")
+    assert "not found" in summary.fit_error
+    assert "打分出错了，其他结果不受影响" in render_report(summary)

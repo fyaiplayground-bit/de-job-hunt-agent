@@ -30,8 +30,9 @@ import httpx
 import psycopg
 from psycopg.types.json import Jsonb
 
-from agents import jd_analysis
+from agents import fit_scoring, jd_analysis
 from agents.llm import AnthropicClient, LlmClient
+from agents.profile import load_profile
 from ingestion.http import make_client
 from pipeline.config import (
     LlmSettings,
@@ -39,6 +40,7 @@ from pipeline.config import (
     daily_analysis_settings,
     llm_settings,
     load_settings,
+    profile_dir,
 )
 from pipeline.db import connect, migrate
 from pipeline.gate_step import gate_pending
@@ -83,6 +85,13 @@ class DailySummary:
     jd_failed: list[str] = field(default_factory=list)
     jd_top_skills: list[tuple[str, int]] = field(default_factory=list)
     jd_error: str | None = None
+    # Fit scoring of today's briefs against the profile in PROFILE_DIR (decision #35)
+    fit_status: str = "off"  # off / ok / error
+    fit_profile: str = ""  # whose profile scored them
+    fit_scored: int = 0
+    fit_worth: list[dict[str, Any]] = field(default_factory=list)  # apply / apply_referral
+    fit_skipped: dict[str, int] = field(default_factory=dict)  # reason -> count
+    fit_error: str | None = None
 
 
 def search_window_days(conn: psycopg.Connection, today: date) -> int:
@@ -182,6 +191,45 @@ def _analyze_new(
     summary.jd_top_skills = ranked[:5]
 
 
+def _score_new(
+    conn: psycopg.Connection,
+    summary: DailySummary,
+    new_versions: list[int],
+    settings: LlmSettings,
+    profile_folder: Path | None,
+    today: date,
+) -> None:
+    """Score today's briefs (code only, free). A failure is reported, never raised."""
+    try:
+        profile = load_profile(profile_folder or profile_dir())
+        rules = fit_scoring.load_rules()
+        result = fit_scoring.run(
+            conn, profile=profile, rules=rules, only=new_versions, today=today,
+            brief_model=settings.model,
+        )
+    except Exception as exc:  # e.g. a broken profile file: keep the rest of the day's work
+        summary.fit_status = "error"
+        summary.fit_error = f"{type(exc).__name__}: {exc}"
+        return
+    name = profile.applicant["contact"]["name"]
+    summary.fit_profile = f"{name}（样本档案）" if profile.bank.sample else name
+    summary.fit_status = "ok"
+    summary.fit_scored = result.scored
+    worth, skipped = [], Counter()
+    for _, brief, r in result.results:
+        if r["decision"] == "skip":
+            skipped[fit_scoring.skip_reason(r, rules)] += 1
+            continue
+        worth.append({
+            "company": brief["company"], "title": brief["title"], "url": brief["url"],
+            "score": r["score"], "decision": r["decision"],
+            "must": round(100 * (r["must_have_coverage"] or 0)),
+            "work_mode": r["work_mode"], "location": r["location"],
+        })
+    summary.fit_worth = sorted(worth, key=lambda w: (-w["score"], w["company"], w["title"]))
+    summary.fit_skipped = dict(sorted(skipped.items(), key=lambda item: (-item[1], item[0])))
+
+
 def run_daily(
     conn: psycopg.Connection,
     client: httpx.Client,
@@ -192,9 +240,10 @@ def run_daily(
     llm_config: LlmSettings | None = None,
     daily_max: int = 50,
     scope: jd_analysis.Scope | None = None,
+    profile_folder: Path | None = None,
 ) -> DailySummary:
-    """Fetch, gate, brief today's new jobs (when `llm` is given) and summarize. The caller holds
-    the lock and records the run."""
+    """Fetch, gate, brief and score today's new jobs (when `llm` is given) and summarize. The
+    caller holds the lock and records the run."""
     started = now()
     today = started.astimezone(report_timezone()).date()
     window = search_window_days(conn, today)
@@ -204,9 +253,10 @@ def run_daily(
     gate_pending(conn)
     new_versions = _summarize(conn, summary, results)
     if llm is not None:
-        _analyze_new(
-            conn, summary, new_versions, llm, llm_config or llm_settings(), daily_max, scope
-        )
+        settings = llm_config or llm_settings()
+        _analyze_new(conn, summary, new_versions, llm, settings, daily_max, scope)
+        if summary.jd_status in ("ok", "partial"):
+            _score_new(conn, summary, new_versions, settings, profile_folder, today)
     failed = sum(r.status == "error" for r in results)
     summary.status = "ok" if not failed and summary.jd_status != "error" else "partial"
     return summary
@@ -229,6 +279,30 @@ def _analysis_lines(s: DailySummary) -> list[str]:
     if s.jd_top_skills:
         top = "、".join(f"{skill}（{n}）" for skill, n in s.jd_top_skills)
         lines.append(f"- 今天最常要求的必备技能：{top}")
+    return lines
+
+
+FIT_LABEL = {"apply_referral": "投 + 找内推", "apply": "投"}
+FIT_SHOWN = 15
+
+
+def _fit_lines(s: DailySummary) -> list[str]:
+    if s.fit_status == "error":
+        return [f"❌ 打分出错了，其他结果不受影响：`{s.fit_error}`"]
+    if not s.fit_scored:
+        return ["今天没有新的简报可以打分。"]
+    lines = [
+        f"- {FIT_LABEL[w['decision']]} · {w['score']} 分 · [{w['company']} — {w['title']}]"
+        f"({w['url']}) · 必备 {w['must']}% · {w['work_mode']} · {w['location']}"
+        for w in s.fit_worth[:FIT_SHOWN]
+    ]
+    if len(s.fit_worth) > FIT_SHOWN:
+        lines.append(f"- …另外 {len(s.fit_worth) - FIT_SHOWN} 个值得投")
+    if not s.fit_worth:
+        lines.append(f"- 今天打分的 {s.fit_scored} 个职位都不建议投")
+    if s.fit_skipped:
+        reasons = "、".join(f"{reason} {n}" for reason, n in s.fit_skipped.items())
+        lines.append(f"- 跳过 {sum(s.fit_skipped.values())} 个：{reasons}")
     return lines
 
 
@@ -257,6 +331,9 @@ def render_report(s: DailySummary) -> str:
         if s.new_de_jobs > len(s.new_de_titles):
             lines.append(f"- …另外 {s.new_de_jobs - len(s.new_de_titles)} 个")
     lines += ["", "## AI 拆解（今天的新职位）", ""] + _analysis_lines(s)
+    if s.fit_status != "off":
+        lines += ["", f"## 今天值得投的（按 {s.fit_profile or '档案'} 打分）", ""]
+        lines += _fit_lines(s)
     if s.triage_new:
         lines += ["", "## 安全闸门（今天新进来的）", ""]
         lines += [f"- {tier}: {n}" for tier, n in sorted(s.triage_new.items())]

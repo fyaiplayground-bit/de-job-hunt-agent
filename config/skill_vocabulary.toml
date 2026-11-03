@@ -1,0 +1,59 @@
+# Shared skill vocabulary for fit-scoring (decision #35): how the names job briefs use map to
+# the canonical skill names an Evidence Bank uses. Generic, not about any one candidate: the
+# candidate's own spellings are the aliases in their Evidence Bank. Matching ignores case.
+# Grow it through the loop: names that match nothing are listed by `agents.fit_scoring
+# unmatched`; add a synonym or family member, evaluate, FL approves, bump version.
+
+version = 1
+
+# Another wording of one skill -> its canonical name.
+[synonyms]
+"ETL/ELT" = "ETL"
+"ELT" = "ETL"
+"ETL pipelines" = "ETL"
+"ELT pipelines" = "ETL"
+"ETL/ELT pipelines" = "ETL"
+"Data pipelines" = "ETL"
+"Data pipeline development" = "ETL"
+"Data ingestion" = "ETL"
+"Data integration" = "ETL"
+"Batch processing" = "ETL"
+"Dimensional modeling" = "Data modeling"
+"Data modelling" = "Data modeling"
+"Data models" = "Data modeling"
+"Star schema" = "Data modeling"
+"Data validation" = "Data quality"
+"Data testing" = "Data quality"
+"Postgres" = "PostgreSQL"
+"MS SQL Server" = "Microsoft SQL Server"
+"T-SQL" = "Microsoft SQL Server"
+"Amazon Web Services" = "AWS"
+"Google Cloud Platform" = "GCP"
+"Google Cloud" = "GCP"
+"Microsoft Azure" = "Azure"
+"Version control" = "Git"
+"GitHub" = "Git"
+"Spark SQL" = "Apache Spark"
+
+# An umbrella term a posting may ask for -> skills that count for it. The profile covers the
+# umbrella when it covers any member; its level is the strongest member's.
+[families]
+"AWS" = [
+    "Amazon Redshift", "AWS Glue", "Amazon Athena", "Amazon S3", "Amazon QuickSight",
+    "AWS Lambda", "Amazon EMR", "Amazon Kinesis", "Amazon RDS",
+]
+"Azure" = ["Azure Data Factory", "Azure Synapse Analytics", "Azure Databricks", "Azure Data Lake Storage"]
+"GCP" = ["Google BigQuery", "Google Cloud Storage", "Google Cloud Dataflow", "Google Cloud Composer"]
+"Cloud platforms" = ["AWS", "Azure", "GCP"]
+"Cloud" = ["AWS", "Azure", "GCP"]
+"Cloud data warehouse" = ["Amazon Redshift", "Snowflake", "Google BigQuery", "Azure Synapse Analytics", "Databricks"]
+"Data warehouse" = ["Amazon Redshift", "Snowflake", "Google BigQuery", "Azure Synapse Analytics", "Databricks"]
+"Data warehousing" = ["Amazon Redshift", "Snowflake", "Google BigQuery", "Azure Synapse Analytics", "Databricks"]
+"Relational databases" = ["PostgreSQL", "MySQL", "Microsoft SQL Server", "Oracle", "Amazon Redshift"]
+"RDBMS" = ["PostgreSQL", "MySQL", "Microsoft SQL Server", "Oracle"]
+"Orchestration" = ["Apache Airflow", "Dagster", "Prefect", "AWS Step Functions"]
+"Workflow orchestration" = ["Apache Airflow", "Dagster", "Prefect", "AWS Step Functions"]
+"BI tools" = ["Tableau", "Amazon QuickSight", "Power BI", "Looker"]
+"Data visualization" = ["Tableau", "Amazon QuickSight", "Power BI", "Looker"]
+"Dashboards" = ["Tableau", "Amazon QuickSight", "Power BI", "Looker"]
+"Containers" = ["Docker", "Kubernetes"]

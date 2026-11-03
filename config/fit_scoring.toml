@@ -1,0 +1,30 @@
+# How a job brief is scored against the candidate profile (decision #35). Code applies these;
+# no LLM is involved, so the same brief, profile and rules always give the same score. Rules as
+# data: change them through the loop (propose, show what moves, FL approves, bump version,
+# record in DECISIONS.md), then `uv run python -m agents.fit_scoring run` rescores everything.
+
+version = 1
+
+# score = must_weight x must-have coverage + nice_weight x nice-to-have coverage + archetype
+# adjustment, kept within 0..100. Coverage is the share of skills the profile covers.
+must_weight = 70
+nice_weight = 20
+core_weight = 2          # a core must-have counts this many times in must-have coverage
+
+[archetype_adjustment]
+analytics_engineer = 5   # the strongest bridge from BI engineering
+pipeline_de = 0
+infra_de = -5
+
+[decision]
+apply_bar = 0.5          # apply when must-have coverage reaches this (decision #8)
+referral_score = 65      # and look for a referral at or above this score
+
+[dealbreakers]
+# A posting may ask for this many more years than the profile has and still be worth applying.
+years_tolerance = 1
+# "off" during the small-company practice phase: location is shown, never a reason to skip.
+# The big-tech phase will limit it to California, Washington and Texas (FL, 2026-11-02).
+location_check = "off"
+salary_floor_check = true   # skip when the posting's top of range is below the profile's floor
+sponsorship_check = true    # skip when the profile needs sponsorship and the posting won't give it

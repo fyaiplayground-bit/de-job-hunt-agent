@@ -8,6 +8,8 @@
 # must_haves: the skills a correct brief lists as must-haves. "A|B" accepts either name; a
 #   match is checked against the brief's skill name and its exact phrases, ignoring case.
 # archetype: accepted archetypes; [] means not scored (the posting doesn't say enough).
+# nice_to_haves: skills named as preferred / a plus, or only in the duties. A correct brief
+#   keeps each one (as a nice-to-have); listing it as a must-have counts as promoted.
 # work_mode: the expected work mode.
 # years_required: accepted values for the overall years asked for; [] means null.
 
@@ -21,11 +23,16 @@ must_haves = [
     "SQL", "Python", "Data modeling|data models", "ETL|data pipelines|production pipelines",
     "Orchestration|workflow orchestration|orchestration tooling",
     "Cloud data warehouse|data warehouse", "Entity resolution|record matching|deduplication",
-    "CRM|CRM systems|Salesforce",
+    "CRM|CRM systems|go-to-market data|GTM data",
 ]
 archetype = ["analytics_engineer", "pipeline_de"]
 work_mode = "hybrid"
 years_required = [5]
+nice_to_haves = [
+    "Salesforce",
+    "LLM|LLMs|LLMs in data pipelines|LLM evaluation",
+    "Master data management|MDM|firmographics|company data",
+]
 
 [[case]]
 name = "bold-penguin-senior-analytics-engineer"
@@ -36,11 +43,15 @@ why = "classic analytics engineer: dbt, Snowflake, semantic layer, BI migration;
 must_haves = [
     "SQL", "dbt|dbt core", "Snowflake", "Sigma|Hex|Sigma Computing",
     "Semantic layer|metrics layer|metrics catalog", "Python", "Git|version control", "CI/CD",
-    "LLM|AI/LLMs|Generative AI|GenAI|AI",
+    "LLM|AI/LLMs|Generative AI|GenAI|AI", "JIRA|Jira",
 ]
 archetype = ["analytics_engineer"]
 work_mode = "remote"
 years_required = [5]
+nice_to_haves = [
+    "Apache Iceberg|Iceberg",
+    "AWS Glue|Glue",
+]
 
 [[case]]
 name = "assyst-senior-healthcare-data-engineer"
@@ -55,6 +66,13 @@ must_haves = [
 archetype = ["pipeline_de", "analytics_engineer"]
 work_mode = "hybrid"
 years_required = [8]
+nice_to_haves = [
+    "HL7|HL7 FHIR|FHIR|HL7 v2/v3",
+    "Electronic Health Records|EHR",
+    "Health Information Exchange|HIE",
+    "Clinical terminology|SNOMED CT|LOINC|ICD-10",
+    "Electronic case reporting|eCR|eICR|eCR/eICR",
+]
 
 [[case]]
 name = "voto-java-backend-gcp"
@@ -70,6 +88,7 @@ must_haves = [
 archetype = ["infra_de"]
 work_mode = "onsite"
 years_required = [6, 7]
+nice_to_haves = []
 
 [[case]]
 name = "smbc-truncated-snippet"
@@ -81,6 +100,7 @@ must_haves = []
 archetype = []
 work_mode = "unclear"
 years_required = []
+nice_to_haves = []
 
 [[case]]
 name = "rosens-senior-cloud-data-engineer"
@@ -97,6 +117,13 @@ must_haves = [
 archetype = ["pipeline_de"]
 work_mode = "unclear"
 years_required = [3]
+nice_to_haves = [
+    "Unity Catalog",
+    "Microsoft Fabric|Fabric",
+    "Power BI",
+    "Terraform|Infrastructure as Code|IaC",
+    "Streaming data|real-time and streaming data|streaming",
+]
 
 [[case]]
 name = "metabase-analytics-engineer"
@@ -108,6 +135,12 @@ must_haves = ["SQL", "Python", "Data modeling|data integration"]
 archetype = ["analytics_engineer"]
 work_mode = "remote"
 years_required = [5]
+nice_to_haves = [
+    "dbt",
+    "PostgreSQL|Postgres|Redshift|Postgres/Redshift",
+    "Fivetran",
+    "Dimensional modeling",
+]
 
 [[case]]
 name = "samsara-senior-data-engineer-ii"
@@ -126,6 +159,12 @@ must_haves = [
 archetype = ["infra_de", "pipeline_de"]
 work_mode = "remote"
 years_required = [10]
+nice_to_haves = [
+    "MCP|MCP servers|Model Context Protocol|MCP servers / AI agents",
+    "Semantic layer|centralized semantic layer",
+    "Splunk|Datadog|DataDog|AWS CloudWatch|Logging and monitoring",
+    "AWS Lambda|Lambda|AWS Serverless|serverless",
+]
 
 [[case]]
 name = "reddit-analytics-engineer"
@@ -140,6 +179,7 @@ must_haves = [
 archetype = ["analytics_engineer", "pipeline_de"]
 work_mode = "remote"
 years_required = [3]
+nice_to_haves = []
 
 [[case]]
 name = "sigma-data-engineer"
@@ -154,3 +194,10 @@ must_haves = [
 archetype = ["pipeline_de", "analytics_engineer"]
 work_mode = "onsite"
 years_required = [3]
+nice_to_haves = [
+    "dbt",
+    "Python",
+    "Apache Airflow|Airflow|Dagster|Astronomer|orchestrators|orchestration",
+    "AWS|GCP|public clouds|public cloud",
+    "Fivetran",
+]

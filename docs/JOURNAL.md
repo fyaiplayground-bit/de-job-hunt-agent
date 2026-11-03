@@ -289,7 +289,7 @@
   - 两份提议：`config/proposals/jd-analysis.v3.md`（只改经验年限规则：取"整体经验要求"，不取某个工具的年限；范围取下限；只写在加分项里也算；标题和正文矛盾时取较大的整体数字）；`config/proposals/analysis_scope.v2.toml`（新增 `min_text_chars = 1000`，跳过被截断的片段：442 个里有 56 个，全是 freehire）
   - 代码改动：给 AI 的数据里**去掉了招聘页上的地点**，改由代码写进简报的 `board_location`。这样同一个职位在多个城市发布（例如 Samsara 一个职位发了 8 个城市）时，请求完全相同，只付一次钱
 - **为什么：** DECISIONS #22、#30、#31；批准后记为 #32。
-- **文件：** `agents/evaluate_prompt.py`、`agents/jd_analysis.py`（数据格式、`board_location`、`min_text_chars`）、`tests/fixtures/jd_golden.toml`、`config/proposals/jd-analysis.v3.md`、`config/proposals/analysis_scope.v2.toml`、`tests/test_evaluate_prompt.py`、`tests/test_jd_analysis.py`
+- **文件：** `agents/evaluate_prompt.py`（含 `--review` 核对页面）、`agents/jd_analysis.py`（数据格式、`board_location`、`min_text_chars`）、`tests/fixtures/jd_golden.toml`、`config/proposals/jd-analysis.v3.md`、`config/proposals/analysis_scope.v2.toml`、`tests/test_evaluate_prompt.py`、`tests/test_jd_analysis.py`
 - **提交：** 见本条所在的提交（`git log -- agents/evaluate_prompt.py`）
 - **验证：**
   1. 全部 317 个测试通过，ruff 通过
@@ -305,5 +305,11 @@
 
      v3 修好了年限：Voto 3 → 7、Samsara 3 → 10、Anthropic 空 → 5。判定 PASS
   3. 剩下的差异都很小：v3 在 Anthropic 漏了 "Orchestration"、在 Reddit 漏了 "Dashboards"；v2 在 Bold Penguin 漏了 LLM、在 Rosen's 漏了 Data warehousing、在 Samsara 漏了 PySpark。这些属于模型每次回答的正常波动，10 个样本看不出谁更好
+- **你核对后的补充（11/02）：** 你在核对页面上指出，ASSYST 的 HL7/FHIR/SNOMED、Rosen's 的 Unity Catalog、Samsara 的 MCP 都没有标。它们写在 Preferred、Additional 或职责里，所以不算必备；AI 其实都把它们放进了加分项，只是标准答案没检查加分项。于是：
+  - 标准答案加了 `nice_to_haves`（7 个职位共 28 个），评估多了两项检查："加分技能有没有被保留"（不能少于现行版本减 1）、"有没有被错放进必备"（不能多于现行版本加 1）
+  - 核对时发现 Bold Penguin 的 JIRA 其实写在要求列表里（没写 "a plus"），AI 把它放进必备是对的，错的是我的标签，已改为必备
+  - 核对页面做成了正式功能：`agents.evaluate_prompt <提议> --review` 生成 `output/golden_review.html`（不提交），原文里必备标黄、加分标蓝
+  - "root cause / troubleshooting" 这类所有工程岗位都有的通用说法不标：ATS 不搜它，简历上也不能当关键词
+  - 重新打分（全部来自缓存，$0）：v3 必备 74/76（v2 73/76），加分保留 28/28，错放进必备 0，年限 10/10（v2 7/10），PASS
 - **待你决定：** 采用 v3；采用范围规则 v2；思考深度用 low 还是 medium
 - **撤回：** `git revert` 这个提交。提议文件不影响正在运行的系统。

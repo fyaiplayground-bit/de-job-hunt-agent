@@ -329,3 +329,9 @@
   2. **真实运行两次：** run 6 是 partial，因为 freehire 读取超时（他们那边偶尔会这样），AI 步骤正常执行，拆了 0 个；run 7 ok，新增 4 个职位，但都不是 DE，所以拆了 0 个。离上一次运行只隔了几个小时，没有新的 DE 职位，属于正常情况
   3. **还没有在真实的新 DE 职位上跑过 AI 步骤**：第一次是下一次定时运行（11/03 9:30）。AI 调用本身在试点和评估里已经真实跑过很多次
 - **撤回：** `git revert` 这个提交；或者只在 `.env` 里设 `JD_ANALYSIS_ENABLED=false`。
+
+### 2.2d · 2026-11-02 · 给 CDW 的报警打标签
+- **做了什么：** 你确认 CDW "Sales Goals Analytics Lead" 的报警（"As an AI forward company, we see AI not just as a tool…"）是误报：这句话在描述公司，没有任何隐藏内容，而且不是 DE 岗位。标为 `false_positive`（标签 24），导出后标准答案共 14 条。规则不变，它继续留在"人工看"这一档，不会送给 AI。
+- **文件：** `tests/fixtures/gate_cases_labeled.jsonl`
+- **验证：** 规则相关测试 113 个通过（标签和现行规则不矛盾）。
+- **撤回：** 从 jsonl 删掉这一行；数据库里的标签可以用一条新的 `unsure` 标签覆盖（标签只追加，以最新一条为准）。

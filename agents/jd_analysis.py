@@ -13,6 +13,8 @@ import argparse
 import json
 import sys
 import tomllib
+from collections import Counter
+from collections.abc import Collection
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -170,18 +172,26 @@ order by c.posting_version_id desc
 
 
 def select_candidates(
-    conn: psycopg.Connection, scope: Scope, prompt_version: str, model: str
+    conn: psycopg.Connection,
+    scope: Scope,
+    prompt_version: str,
+    model: str,
+    only: Collection[int] | None = None,
 ) -> tuple[list[Candidate], int]:
     """In-scope postings not yet briefed by this prompt version and model, newest first, and
-    how many in-scope postings already have a brief."""
+    how many in-scope postings already have a brief. `only` limits both to those posting
+    versions (the daily run passes the jobs it found new)."""
     rows = conn.execute(CANDIDATES_SQL, {
         "prompt_version": prompt_version, "model": model, "gate_version": GATE_VERSION,
         "include": scope.title_include, "exclude": scope.title_exclude,
         "triage": list(scope.triage_allowed), "skip_stale": scope.skip_freehire_stale,
         "days": scope.open_within_days, "min_chars": scope.min_text_chars,
     }).fetchall()
+    wanted = None if only is None else set(only)
     todo, done = [], 0
     for posting_version_id, source, company, title, payload, cleaned_text, is_done in rows:
+        if wanted is not None and posting_version_id not in wanted:
+            continue
         if is_done:
             done += 1
             continue
@@ -217,7 +227,9 @@ class RunSummary:
     from_cache: int = 0
     cost_usd: float = 0.0
     estimated_usd: float = 0.0
+    skipped_by_limit: int = 0
     failed: list[tuple[int, str]] = field(default_factory=list)
+    must_have_counts: Counter[str] = field(default_factory=Counter)  # skill -> postings asking
 
 
 def run(
@@ -228,14 +240,19 @@ def run(
     dry_run: bool = False,
     scope: Scope | None = None,
     skill: Skill | None = None,
+    only: Collection[int] | None = None,
 ) -> RunSummary:
-    """Brief up to `limit` in-scope postings that don't have one yet. A posting the model can't
-    brief (declined, cut off) is reported and skipped; the run goes on."""
+    """Brief up to `limit` in-scope postings that don't have one yet (only those in `only`, when
+    given). A posting the model can't brief (declined, cut off) is reported and skipped; the run
+    goes on."""
     scope = scope or load_scope()
     skill = skill or load_skill("jd-analysis")
-    todo, done = select_candidates(conn, scope, skill.prompt_version, settings.model)
+    todo, done = select_candidates(conn, scope, skill.prompt_version, settings.model, only)
     chosen = todo if limit is None else todo[:limit]
-    summary = RunSummary(in_scope=len(todo) + done, already_done=done, selected=len(chosen))
+    summary = RunSummary(
+        in_scope=len(todo) + done, already_done=done, selected=len(chosen),
+        skipped_by_limit=len(todo) - len(chosen),
+    )
     for candidate in chosen:
         request = build_request(skill, BRIEF_SCHEMA, candidate.data(), settings)
         if dry_run:
@@ -258,6 +275,7 @@ def run(
             ),
         )
         summary.analyzed += 1
+        summary.must_have_counts.update({m["skill"] for m in result.output["must_haves"]})
         if result.cached:
             summary.from_cache += 1
         else:

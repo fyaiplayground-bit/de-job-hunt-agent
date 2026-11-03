@@ -8,6 +8,8 @@ an Airflow task (or a cloud scheduler) can call the same function later (decisio
 - Search window: searches look back (days since the last successful daily run + 1), between 2
   and 7 days, so a laptop that was off for a few days catches up instead of missing jobs.
 - One run at a time: a Postgres advisory lock; a second run started meanwhile just exits.
+- AI step (decision #33): that day's new jobs in the analysis scope get a jd-analysis brief, up
+  to JD_ANALYSIS_DAILY_MAX. If the AI step fails, the fetched and gated data still count.
 - Report: output/daily/<date>.md plus output/daily/latest.md (gitignored, stays on this machine).
 """
 
@@ -28,8 +30,16 @@ import httpx
 import psycopg
 from psycopg.types.json import Jsonb
 
+from agents import jd_analysis
+from agents.llm import AnthropicClient, LlmClient
 from ingestion.http import make_client
-from pipeline.config import Settings, load_settings
+from pipeline.config import (
+    LlmSettings,
+    Settings,
+    daily_analysis_settings,
+    llm_settings,
+    load_settings,
+)
 from pipeline.db import connect, migrate
 from pipeline.gate_step import gate_pending
 from pipeline.ingest import TargetResult, ingest_all, read_targets, select_targets
@@ -63,6 +73,16 @@ class DailySummary:
     triage_new: dict[str, int] = field(default_factory=dict)
     flagged_unlabeled: int = 0  # review/block under the current rules with no label yet
     error: str | None = None
+    # AI step: jd-analysis on today's new jobs
+    jd_status: str = "off"  # off / ok / partial (some postings failed) / error (step failed)
+    jd_in_scope: int = 0  # today's new jobs inside config/analysis_scope.toml
+    jd_analyzed: int = 0
+    jd_from_cache: int = 0
+    jd_cost_usd: float = 0.0
+    jd_skipped_by_limit: int = 0
+    jd_failed: list[str] = field(default_factory=list)
+    jd_top_skills: list[tuple[str, int]] = field(default_factory=list)
+    jd_error: str | None = None
 
 
 def search_window_days(conn: psycopg.Connection, today: date) -> int:
@@ -77,9 +97,10 @@ def search_window_days(conn: psycopg.Connection, today: date) -> int:
 
 def _summarize(
     conn: psycopg.Connection, summary: DailySummary, results: list[TargetResult]
-) -> None:
+) -> list[int]:
     """New = everything this run's ingest runs added: a job is new when every copy of it (across
-    sources) was first stored by one of these runs. Run ids, not clocks, so it can't drift."""
+    sources) was first stored by one of these runs. Run ids, not clocks, so it can't drift.
+    Returns the chosen posting version of each new job."""
     run_ids = [r.run_id for r in results]
     summary.targets = [
         {
@@ -100,13 +121,14 @@ def _summarize(
         "  select i.identity_key from dedupe.job_identity i"
         "  join raw.job_postings p using (posting_version_id)"
         "  group by i.identity_key having bool_and(p.run_id = any(%s)))"
-        " select p.company, coalesce(p.payload->>'title', p.payload->>'text', '')"
+        " select p.company, coalesce(p.payload->>'title', p.payload->>'text', ''),"
+        " p.posting_version_id"
         " from dedupe.jobs j join first_seen using (identity_key)"
         " join raw.job_postings p on p.posting_version_id = j.chosen_posting_version_id"
         " order by p.company, 2",
         (run_ids,),
     ).fetchall()
-    de_jobs = [(company, title) for company, title in new_jobs if DE_TITLE.search(title)]
+    de_jobs = [(company, title) for company, title, _ in new_jobs if DE_TITLE.search(title)]
     summary.new_jobs = len(new_jobs)
     summary.new_de_jobs = len(de_jobs)
     summary.top_de_companies = Counter(c for c, _ in de_jobs).most_common(10)
@@ -126,6 +148,38 @@ def _summarize(
         "                 where l.posting_version_id = r.posting_version_id)",
         (GATE_VERSION,),
     ).fetchone()[0]
+    return [posting_version_id for _, _, posting_version_id in new_jobs]
+
+
+def _analyze_new(
+    conn: psycopg.Connection,
+    summary: DailySummary,
+    new_versions: list[int],
+    llm: Callable[[], LlmClient],
+    settings: LlmSettings,
+    daily_max: int,
+    scope: jd_analysis.Scope | None,
+) -> None:
+    """Brief today's new in-scope jobs. Any failure of the whole step is recorded, not raised:
+    the AI step must never cost the day's fetched and gated data."""
+    try:
+        result = jd_analysis.run(
+            conn, llm(), settings, limit=daily_max, scope=scope, only=new_versions
+        )
+    except Exception as exc:  # e.g. no API key, API down: report it and keep the day's ingest
+        summary.jd_status = "error"
+        summary.jd_error = f"{type(exc).__name__}: {exc}"
+        return
+    summary.jd_status = "partial" if result.failed else "ok"
+    summary.jd_in_scope = result.in_scope
+    summary.jd_analyzed = result.analyzed
+    summary.jd_from_cache = result.from_cache
+    summary.jd_cost_usd = round(result.cost_usd, 4)
+    summary.jd_skipped_by_limit = result.skipped_by_limit
+    summary.jd_failed = [f"{pvid}: {error}" for pvid, error in result.failed]
+    # most asked first, ties by name, so the same briefs always give the same report
+    ranked = sorted(result.must_have_counts.items(), key=lambda item: (-item[1], item[0]))
+    summary.jd_top_skills = ranked[:5]
 
 
 def run_daily(
@@ -134,8 +188,13 @@ def run_daily(
     now: Callable[[], datetime] = lambda: datetime.now(UTC),
     sleep: Callable[[float], None] = time.sleep,
     targets: list | None = None,
+    llm: Callable[[], LlmClient] | None = None,
+    llm_config: LlmSettings | None = None,
+    daily_max: int = 50,
+    scope: jd_analysis.Scope | None = None,
 ) -> DailySummary:
-    """Fetch, gate and summarize. The caller holds the lock and records the run."""
+    """Fetch, gate, brief today's new jobs (when `llm` is given) and summarize. The caller holds
+    the lock and records the run."""
     started = now()
     today = started.astimezone(report_timezone()).date()
     window = search_window_days(conn, today)
@@ -143,10 +202,34 @@ def run_daily(
     chosen = select_targets(targets if targets is not None else read_targets(), days=window)
     results = ingest_all(conn, client, chosen, sleep=sleep)
     gate_pending(conn)
-    _summarize(conn, summary, results)
+    new_versions = _summarize(conn, summary, results)
+    if llm is not None:
+        _analyze_new(
+            conn, summary, new_versions, llm, llm_config or llm_settings(), daily_max, scope
+        )
     failed = sum(r.status == "error" for r in results)
-    summary.status = "ok" if not failed else "partial"
+    summary.status = "ok" if not failed and summary.jd_status != "error" else "partial"
     return summary
+
+
+def _analysis_lines(s: DailySummary) -> list[str]:
+    if s.jd_status == "off":
+        return ["已关闭（`.env` 里 JD_ANALYSIS_ENABLED=false）。"]
+    if s.jd_status == "error":
+        return [f"❌ 这一步出错了，抓取和闸门的结果不受影响：`{s.jd_error}`"]
+    lines = [
+        f"- 范围内的新职位 {s.jd_in_scope} 个，拆解了 {s.jd_analyzed} 个"
+        f"（{s.jd_from_cache} 个来自缓存），花费 ${s.jd_cost_usd:.2f}"
+    ]
+    if s.jd_skipped_by_limit:
+        lines.append(f"- 因为每日上限没拆：{s.jd_skipped_by_limit} 个")
+    if s.jd_failed:
+        lines.append(f"- ⚠️ 失败 {len(s.jd_failed)} 个：")
+        lines += [f"  - {failure[:160]}" for failure in s.jd_failed]
+    if s.jd_top_skills:
+        top = "、".join(f"{skill}（{n}）" for skill, n in s.jd_top_skills)
+        lines.append(f"- 今天最常要求的必备技能：{top}")
+    return lines
 
 
 def render_report(s: DailySummary) -> str:
@@ -173,6 +256,7 @@ def render_report(s: DailySummary) -> str:
         lines += [f"- {company} — {title}" for company, title in s.new_de_titles]
         if s.new_de_jobs > len(s.new_de_titles):
             lines.append(f"- …另外 {s.new_de_jobs - len(s.new_de_titles)} 个")
+    lines += ["", "## AI 拆解（今天的新职位）", ""] + _analysis_lines(s)
     if s.triage_new:
         lines += ["", "## 安全闸门（今天新进来的）", ""]
         lines += [f"- {tier}: {n}" for tier, n in sorted(s.triage_new.items())]
@@ -265,9 +349,14 @@ def main() -> int:
             " values (%s, %s, 'running') returning daily_run_id",
             (now, local_date),
         ).fetchone()[0]
+        analysis = daily_analysis_settings()
         try:
             with make_client() as client:
-                summary = run_daily(conn, client, now=lambda: datetime.now(UTC))
+                summary = run_daily(
+                    conn, client, now=lambda: datetime.now(UTC),
+                    llm=AnthropicClient if analysis.enabled else None,
+                    daily_max=analysis.daily_max,
+                )
         except Exception as exc:  # record any crash, write the report, exit non-zero
             summary = DailySummary(local_date=local_date, window_days=0, status="error")
             summary.error = f"{type(exc).__name__}: {exc}"

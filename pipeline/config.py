@@ -97,6 +97,31 @@ def llm_settings(env_file: str | None = ".env") -> LlmSettings:
     return LlmSettings(model=model, effort=effort)
 
 
+@dataclass(frozen=True)
+class DailyAnalysisSettings:
+    """jd-analysis inside the daily run (decision #33): on/off and how many new postings a day."""
+
+    enabled: bool
+    daily_max: int
+
+
+def daily_analysis_settings(env_file: str | None = ".env") -> DailyAnalysisSettings:
+    """JD_ANALYSIS_ENABLED (default true) and JD_ANALYSIS_DAILY_MAX (default 50)."""
+    if env_file is not None:
+        load_dotenv(env_file, override=False)
+    enabled = os.environ.get("JD_ANALYSIS_ENABLED", "true").strip().lower()
+    text = os.environ.get("JD_ANALYSIS_DAILY_MAX", "").strip() or "50"
+    try:
+        daily_max = int(text)
+    except ValueError as exc:
+        raise ConfigError(f"JD_ANALYSIS_DAILY_MAX must be a number, got {text!r}.") from exc
+    if daily_max < 0:
+        raise ConfigError("JD_ANALYSIS_DAILY_MAX can't be negative.")
+    return DailyAnalysisSettings(
+        enabled=enabled not in {"false", "0", "no", "off"}, daily_max=daily_max
+    )
+
+
 def load_settings(env_file: str | None = ".env") -> Settings:
     """Read settings. Values already in the environment win over the file.
 

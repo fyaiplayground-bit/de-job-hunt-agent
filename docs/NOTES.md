@@ -168,6 +168,8 @@ dbt：清洗 → 提取技能 → 汇总（打分、技能频率、覆盖率、�
 | 备用模型 fallback | 如果 AI 的安全机制误拒了某个请求，服务器会自动换一个推荐的模型重试。数据库里的 `served_model` 记录实际是谁回答的 |
 | token | AI 计费的单位，大约 4 个英文字母算一个。Opus 5.5 每百万个输入 token $4、输出 token $20；思考也按输出计费 |
 | 提示缓存 prompt caching | 每次都一样的系统提示，Anthropic 那边会缓存起来，再次读取便宜 90%。这和我们自己的数据库缓存是两回事 |
+| 每天只拆新职位 | 每日运行只拆"今天第一次出现、并且在分析范围内"的职位，每天最多 50 个。老职位改了文字不算新的，免得变相补跑。AI 这一步出错不会影响当天的抓取结果 |
+| 简报和简历无关 | 简报只描述职位本身。等真简历就绪，打分由代码重新算，不用重新拆，也不再花钱；只有提示词升版本或换模型才需要重拆 |
 | 分析范围 `config/analysis_scope.toml` | 代码先筛、AI 再读：标题像 DE、不是 Staff/Lead/Manager 等、最近 3 天还在招、闸门档位 clean 或 benign、不是 freehire 标的陈旧职位。879 个 DE 标题筛到 442 个，一分钱不花 |
 | 简报 brief | AI 把一篇 JD 拆成的固定格式 JSON：必备 / 加分技能（带原文写法）、岗位类型、级别、经验年限、工作方式、地点、薪资、签证担保。公司名、职位名、链接由代码从原始数据填，不让 AI 抄 |
 | 严格的格式 strict schema | 每个字段都必须有（没说就填 null 或空列表），不许多出字段。打分代码不用猜"是没写还是漏了" |
@@ -226,6 +228,7 @@ PowerShell（Windows 自带）、Git Bash（装 Git 时附带）、Ubuntu/WSL（
 | 拆解职位 | 让 Claude 跑 `uv run python -m agents.jd_analysis run --limit 20`（已拆过的不会重复花钱） |
 | 看某个职位的简报 | 让 Claude 跑 `uv run python -m agents.jd_analysis show <编号>` |
 | 评估提示词（标准答案集） | 让 Claude 跑 `uv run python -m agents.evaluate_prompt config/proposals/<提议>.md`；加 `--effort low` 可以试不同的思考深度。结果有缓存，重跑免费 |
+| 暂停每天的 AI 拆解 | 在 `.env` 里设 `JD_ANALYSIS_ENABLED=false`（抓取照常）；每天最多拆几个用 `JD_ANALYSIS_DAILY_MAX` 调 |
 | 测试 API key 能不能用 | 让 Claude 跑 `uv run python -m agents.llm ping`（一次很小的真实调用，不到 1 美分） |
 | 看 AI 花了多少钱 | 让 Claude 跑 `uv run python -m agents.llm costs`（今天、本月、总计） |
 | 检查提示词版本 | 让 Claude 跑 `uv run python -m agents.skills check`；升了版本号之后用 `... lock` 记录 |

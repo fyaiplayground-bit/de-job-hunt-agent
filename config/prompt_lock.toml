@@ -15,8 +15,8 @@ version = 1
 sha256 = "4ef6f4e0291651823c9d8a9e5a35d876bdd527db691b64e2fc14018c58623fb3"
 
 [skills.jd-analysis]
-version = 2
-sha256 = "794a5fb335c02edde009b9efaf9b6a0c1e3678bc312167131afe14d19bb3adc4"
+version = 3
+sha256 = "a1e97c0da63d6c98eb1bb7ec419d39344058468659ad4daa4177dc951ec0c7e7"
 
 [skills.outreach-drafting]
 version = 1

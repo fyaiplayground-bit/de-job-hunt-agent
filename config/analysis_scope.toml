@@ -4,7 +4,7 @@
 # DECISIONS.md). Location and pay are not filtered here; fit-scoring checks them against the
 # Applicant Profile.
 
-version = 1
+version = 2
 
 # Title looks like data engineering. Same pattern as DE_TITLE in pipeline/daily.py (a test keeps
 # them equal), case-insensitive, Postgres regex syntax.
@@ -21,3 +21,8 @@ triage_allowed = ["clean", "benign"]
 
 # freehire marks reposted or old postings as stale (payload reality.class); skip them.
 skip_freehire_stale = true
+
+# v2 (decision #32): freehire sometimes gives only a cut-off snippet (a company blurb
+# ending in "…"), which yields an empty brief. 56 of 442 in-scope postings had under 1,000
+# characters of cleaned text, all from freehire.
+min_text_chars = 1000

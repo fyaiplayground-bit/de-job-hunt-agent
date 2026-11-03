@@ -18,6 +18,7 @@ from agents.jd_analysis import (
     select_candidates,
 )
 from agents.llm import FakeClient
+from agents.skills import load_skill
 from pipeline.config import LlmSettings
 from pipeline.daily import DE_TITLE
 from pipeline.gate_step import gate_pending
@@ -25,6 +26,8 @@ from pipeline.load import load_jobs
 
 SETTINGS = LlmSettings(model="claude-opus-5-5", effort="medium")
 REPO_SCOPE = SCOPE_FILE
+# The fixture postings are short, so these tests switch the snippet minimum off.
+SCOPE = replace(load_scope(), min_text_chars=0)
 BRIEF = {
     "archetype": "pipeline_de",
     "seniority": "mid",
@@ -95,7 +98,10 @@ def test_candidate_data_is_company_title_and_text_without_board_location():
 
 def test_min_text_chars_defaults_to_off(tmp_path):
     path = tmp_path / "scope.toml"
-    text = (REPO_SCOPE.read_text(encoding="utf-8"))
+    text = "\n".join(
+        line for line in REPO_SCOPE.read_text(encoding="utf-8").splitlines()
+        if not line.startswith("min_text_chars")
+    )
     path.write_text(text, encoding="utf-8")
     assert load_scope(path).min_text_chars == 0
     path.write_text(text + "\nmin_text_chars = 1000\n", encoding="utf-8")
@@ -139,7 +145,7 @@ def loaded(db, greenhouse_jobs):
 
 
 def _titles(conn, scope=None) -> set[str]:
-    todo, _ = select_candidates(conn, scope or load_scope(), "jd-analysis@2", SETTINGS.model)
+    todo, _ = select_candidates(conn, scope or SCOPE, "jd-analysis@2", SETTINGS.model)
     return {c.title for c in todo}
 
 
@@ -170,7 +176,7 @@ def test_postings_not_seen_lately_are_skipped(db, greenhouse_jobs):
     load_jobs(db, "greenhouse", "example", greenhouse_jobs, _start_run(db), old)
     gate_pending(db)
     assert _titles(db) == set()
-    assert _titles(db, replace(load_scope(), open_within_days=30)) == {"Data Engineer"}
+    assert _titles(db, replace(SCOPE, open_within_days=30)) == {"Data Engineer"}
 
 
 @pytest.mark.db
@@ -178,7 +184,7 @@ def test_stale_freehire_postings_are_skipped(db, freehire_jobs):
     load_jobs(db, "freehire", "us-data-engineering", freehire_jobs, _start_run(db),
               datetime.now(UTC))
     gate_pending(db)
-    with_stale = _titles(db, replace(load_scope(), skip_freehire_stale=False))
+    with_stale = _titles(db, replace(SCOPE, skip_freehire_stale=False))
     without_stale = _titles(db)
     assert len(with_stale) == len(without_stale) + 1
 
@@ -190,8 +196,8 @@ def test_short_snippets_are_skipped_when_min_text_chars_is_set(loaded):
         " join raw.job_postings p using (posting_version_id)"
     ).fetchall())
     in_scope = (lengths["Data Engineer"], lengths["Analytics Engineer"])
-    assert _titles(loaded, replace(load_scope(), min_text_chars=max(in_scope) + 1)) == set()
-    assert _titles(loaded, replace(load_scope(), min_text_chars=min(in_scope))) == {
+    assert _titles(loaded, replace(SCOPE, min_text_chars=max(in_scope) + 1)) == set()
+    assert _titles(loaded, replace(SCOPE, min_text_chars=min(in_scope))) == {
         "Data Engineer", "Analytics Engineer",
     }
 
@@ -199,7 +205,7 @@ def test_short_snippets_are_skipped_when_min_text_chars_is_set(loaded):
 @pytest.mark.db
 def test_run_stores_briefs_with_board_facts_and_skips_them_next_time(loaded):
     client = FakeClient(BRIEF)
-    summary = run(loaded, client, SETTINGS)
+    summary = run(loaded, client, SETTINGS, scope=SCOPE)
     assert (summary.in_scope, summary.selected, summary.analyzed) == (2, 2, 2)
     assert summary.cost_usd == pytest.approx(0.016)  # 2 fake calls at 1000 in / 200 out
 
@@ -207,7 +213,8 @@ def test_run_stores_briefs_with_board_facts_and_skips_them_next_time(loaded):
         "select prompt_version, model, scope_version, brief from agents.jd_briefs"
         " order by brief->>'title'"
     ).fetchall()
-    assert [r[:3] for r in rows] == [("jd-analysis@2", "claude-opus-5-5", 1)] * 2
+    current = (load_skill("jd-analysis").prompt_version, "claude-opus-5-5", SCOPE.version)
+    assert [r[:3] for r in rows] == [current] * 2
     brief = next(r[3] for r in rows if r[3]["title"] == "Data Engineer")
     assert (brief["title"], brief["company"], brief["source"]) == (
         "Data Engineer", "Example Data Co", "greenhouse",
@@ -219,7 +226,7 @@ def test_run_stores_briefs_with_board_facts_and_skips_them_next_time(loaded):
     assert client.requests[0].user.startswith("<data>\nCompany: ")
     assert "&lt;p&gt;" not in client.requests[0].user
 
-    again = run(loaded, client, SETTINGS)
+    again = run(loaded, client, SETTINGS, scope=SCOPE)
     assert (again.in_scope, again.already_done, again.selected) == (2, 2, 0)
     assert len(client.requests) == 2
 
@@ -227,7 +234,7 @@ def test_run_stores_briefs_with_board_facts_and_skips_them_next_time(loaded):
 @pytest.mark.db
 def test_dry_run_estimates_without_calling(loaded):
     client = FakeClient(BRIEF)
-    summary = run(loaded, client, SETTINGS, dry_run=True)
+    summary = run(loaded, client, SETTINGS, dry_run=True, scope=SCOPE)
     assert summary.selected == 2 and summary.estimated_usd > 0
     assert client.requests == []
     assert loaded.execute("select count(*) from agents.jd_briefs").fetchone()[0] == 0
@@ -235,7 +242,7 @@ def test_dry_run_estimates_without_calling(loaded):
 
 @pytest.mark.db
 def test_limit_and_failures(loaded):
-    summary = run(loaded, FakeClient(BRIEF, stop_reason="refusal"), SETTINGS, limit=1)
+    summary = run(loaded, FakeClient(BRIEF, stop_reason="refusal"), SETTINGS, limit=1, scope=SCOPE)
     assert summary.selected == 1 and summary.analyzed == 0
     assert len(summary.failed) == 1 and "declined" in summary.failed[0][1]
     assert loaded.execute("select count(*) from agents.jd_briefs").fetchone()[0] == 0

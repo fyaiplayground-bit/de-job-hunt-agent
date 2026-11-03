@@ -311,5 +311,5 @@
   - 核对页面做成了正式功能：`agents.evaluate_prompt <提议> --review` 生成 `output/golden_review.html`（不提交），原文里必备标黄、加分标蓝
   - "root cause / troubleshooting" 这类所有工程岗位都有的通用说法不标：ATS 不搜它，简历上也不能当关键词
   - 重新打分（全部来自缓存，$0）：v3 必备 74/76（v2 73/76），加分保留 28/28，错放进必备 0，年限 10/10（v2 7/10），PASS
-- **待你决定：** 采用 v3；采用范围规则 v2；思考深度用 low 还是 medium
+- **11/02 你批准了：** 采用 v3、采用范围规则 v2、思考深度保持 medium（DECISIONS #32）。提议文件复制到 `.claude/skills/jd-analysis/SKILL.md` 和 `config/analysis_scope.toml`，提示词锁更新到 `jd-analysis@3`；提议文件留在 `config/proposals/` 作为历史。测试库里的样例职位都很短，所以相关测试关掉了 1,000 字符下限，另有一个测试专门检查这个下限。dry-run：范围内 425 个职位，v3 还一个都没拆，粗估 $25（按试点的实际费用约 $16）。320 个测试通过
 - **撤回：** `git revert` 这个提交。提议文件不影响正在运行的系统。

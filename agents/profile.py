@@ -14,6 +14,7 @@ import argparse
 import re
 import sys
 import tomllib
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -359,7 +360,15 @@ def check_applicant_profile(applicant: dict[str, Any]) -> list[str]:
     return problems
 
 
-def check_resume(resume: str, bank: EvidenceBank, applicant: dict[str, Any]) -> list[str]:
+def check_resume(
+    resume: str,
+    bank: EvidenceBank,
+    applicant: dict[str, Any],
+    known_skill: Callable[[str], bool] | None = None,
+) -> list[str]:
+    """Everything on the resume that doesn't trace to the profile. `known_skill` says whether a
+    Skills item counts; by default it must be an Evidence Bank name or alias."""
+    is_known = known_skill or (lambda item: bank.find_skill(item) is not None)
     problems = []
     lines = resume.splitlines()
     name = applicant["contact"]["name"]
@@ -383,7 +392,7 @@ def check_resume(resume: str, bank: EvidenceBank, applicant: dict[str, Any]) -> 
                 problems.append(f"resume: education needs {expected!r}")
 
     for item in sections.get("Skills", "").replace("\n", " ").split(","):
-        if item.strip() and bank.find_skill(item) is None:
+        if item.strip() and not is_known(item):
             problems.append(f"resume: skill {item.strip()!r} has no Evidence Bank entry")
 
     allowed = set().union(*(_numbers(m) for entry in bank.evidence for m in entry.metrics))

@@ -1,32 +1,21 @@
 ---
 name: ats-critic
-description: Independently check a tailored resume PDF the way an ATS parser and a tired recruiter would, and pass or fail it back to the tailor. Use after resume-tailoring, before anything goes into the approval queue.
-version: 1
+description: How a tailored resume PDF is checked the way an ATS parser and a tired recruiter would. Not an LLM prompt: the measurable checks run as code (agents/resume_checks.py, agents/pdf_checks.py) and the judgment goes to resume-reviewer.
+version: 2
 ---
 
 # ATS + Recruiter Critic (Agent 5)
 
-You did not write this resume and have not seen the tailor's reasoning. Judge only the final PDF, the JD brief and the Evidence Bank.
+**This agent is no longer a separate LLM step** (decision #38). What can be measured runs as code, so the same resume always gets the same answer; what needs judgment went to `resume-reviewer`, which has fresh context. This file records which check lives where.
 
-## Checks
-
-| Check | How | Pass bar |
+| Check | Where | Pass bar |
 | --- | --- | --- |
-| Parses cleanly | Extract the PDF's text layer; confirm name, email, phone, titles, companies, dates and section headings come out in reading order | All fields present, no garbled characters |
-| Keyword coverage | Compare JD must-haves (exact and alternate forms) against the extracted text | ≥ 80% of the must-haves FL covers appear, in context |
-| Evidence check | Every listed skill and every number has an Evidence Bank entry | No never-touched tools, no inflated years |
-| 7-second test | Read only the top third + first 3 words of each bullet; answer "what role is this person for, and why?" | Answer names the target role |
-| F-pattern layout | Headline names the role; first bullet of the current job is the most relevant; numbers in ≥ half the bullets | All three true |
-| Hygiene | Spelling, tense, consistent dates, exactly one page, filename `FirstLast_DataEngineer_<Company>.pdf` | No errors |
+| Parses cleanly | `agents/pdf_checks.py`: every line comes out of the text layer, in reading order, with no garbled characters | All lines present |
+| One page, fonts embedded, ASCII dates | `agents/pdf_checks.py` | All true |
+| Keyword coverage | `agents/resume_checks.py`: covered must-haves in the JD's wording | At least 80% |
+| Evidence check | `agents/resume_checks.py`: every bullet cites evidence of its own role, every number is in the cited metrics, no skill without an entry | No exceptions |
+| Layout habits | `agents/resume_checks.py`: headline names a role, numbers in at least half the bullets, no "Responsible for", short bullets | All true |
+| 7-second test | `resume-reviewer` | Answer names the target role |
+| Most relevant bullet first, framing, spelling, tense | `resume-reviewer` | Reviewer's verdict |
 
-## Loop
-
-- Any failure → return to `resume-tailoring` with specific fixes.
-- Maximum two loops; then escalate to FL with the remaining issues.
-
-## Output
-
-```
-{"pass": true, "checks": {"parse": "", "keywords": "", "evidence": "", "seven_second": "", "layout": "", "hygiene": ""},
- "missing_keywords": [], "fixes": []}
-```
+A resume that still fails after two review rounds is marked `needs_review` and goes to FL with the remaining problems.

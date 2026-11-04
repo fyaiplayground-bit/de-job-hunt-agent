@@ -1,6 +1,6 @@
 # Status
 
-**Last updated:** 2026-11-03 · **Phase:** Milestone 2 (agents) in progress; 2.4 done, 2.5 (tailoring) next
+**Last updated:** 2026-11-03 · **Phase:** Milestone 2 (agents) in progress; 2.5 done, approval queue next
 
 Update this file at the end of every work session: what got done, what's next, what's blocked.
 
@@ -41,9 +41,9 @@ Update this file at the end of every work session: what got done, what's next, w
 - [x] jd-analysis (2.2: brief schema, golden set + evaluation, prompt v3, daily briefs of new jobs; #31–#33)
 - [x] fit-scoring as code (2.3: vocabulary matching, 70/20 score, dealbreakers, daily "worth applying"; #35) and coverage checks (#34)
 - [x] PDF compile-and-inspect; ATS text-layer check (2.4, `agents/pdf_checks.py`, `agents.render_resume`; #36)
-- [ ] Tailor → reviewer → revise loop
+- [x] Tailor → reviewer → revise loop (2.5, #38)
 - [ ] Approval queue output for the claude.ai Project to submit from
-- [ ] End-to-end test: real JDs from the pipeline + the sample profile → tailored PDFs
+- [x] End-to-end test: real JDs from the pipeline + the sample profile → tailored PDFs (5-job trial 2026-11-03; FL still to read them)
 
 ### Milestone 3 · Week 3 · Modeling + reporting
 - [ ] dbt models: staging → skills → marts
@@ -72,7 +72,9 @@ Update this file at the end of every work session: what got done, what's next, w
 
 **Claude, after a few more days of briefs:** run `agents.fit_scoring unmatched` and grow `config/skill_vocabulary.toml` through the loop.
 
-**Next build step: 2.5,** the tailor → reviewer → revise loop (design first, wait for FL's OK). The drafter writes the `resume.md` format, so `check_resume` and `agents.render_resume` already cover its output (#36); `check_pdf(required=...)` takes the JD keywords. The fictional sample fills 67% of the page, which gives a thin-page warning; that is content, not a template fault.
+**FL, next:** read the 5 tailored resumes on `output/tailored/index.html` (posting, page and changes side by side). Worth judging: is the framing right, and is Cheil's "advanced Python and SQL" / "Builds data platforms" too strong? Code can't catch tone (#38).
+
+**Claude, when FL is happy with the quality:** next build step is the approval queue (design first, wait for FL's OK). Also propose vocabulary additions through the loop: Citigroup's "SQL performance tuning" came out not covered although the sample tuned queries, which also made the reviewer's "query optimization" edit get refused.
 
 Standing facts: the daily AI cap stays at 50 (FL, 2026-11-03). On a busy day the jobs over the cap are not briefed or retried: run 8 had 70 in scope and left 20, chosen by newest posting id rather than quality; the report shows the count, so revisit it once there are more days of volume. The clearance rule is on (fit-scoring rules v2, #37); FL fills in `has_security_clearance` and `can_obtain_security_clearance` at Milestone 5 (the sample has both false). Fit scoring's location check is OFF during the small-company practice phase (final targets California, Washington, Texas for the big-tech phase). The daily run happens by itself at 9:30 LA (#29) and catches up about 6 minutes after the laptop wakes; check it at session start.
 
@@ -109,3 +111,4 @@ Standing facts: the daily AI cap stays at 50 (FL, 2026-11-03). On a busy day the
 - 2026-11-03 — Clearance dealbreaker written as proposal `fit_scoring.v2` with `agents.evaluate_fit_rules` and 44 golden cases; two new Applicant Profile fields. Not adopted yet: waiting for FL's OK on the review page. 452 tests pass.
 - 2026-11-03 — FL approved; clearance rule adopted as fit-scoring rules v2 (#37), skill v3, rescored: apply 20, skip 30, both Maxar TS/SCI jobs now skip. 452 tests pass.
 - 2026-11-03 — FL kept the daily AI cap at 50 for now.
+- 2026-11-03 — Step 2.5: tailoring loop (`agents/tailor.py`, `agents/resume_checks.py`, `resume-reviewer` v1, `resume-tailoring` v3, `ats-critic` v2, migration 013, review pages). Run by hand. Trial on 5 real jobs for the sample profile: all ready, one page, $1.02 total, about $0.18 each. Decision #38. 514 tests pass. FL still to read the results.

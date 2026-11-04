@@ -436,3 +436,23 @@
 - **提交：** 见本条所在的提交
 - **验证：** 452 个测试通过，ruff 通过。重新打分 50 个：投 20、跳过 30（之前投 21、投 + 找内推 1、跳过 28）。Maxar 那个职位显示跳过，原因写明 TS/SCI。旧分数（规则版本 1）还在表里，没有删。11/03 的报告是旧规则生成的，不重写；下一次每日运行开始用新规则
 - **撤回：** 把 `config/fit_scoring.toml` 改回版本 1（`git revert` 这个提交），再跑 `agents.fit_scoring run`
+
+### 2.5 · 2026-11-03 · AI 改写简历：起草 → 代码查事实 → 审稿 → 一页 PDF
+- **做了什么：**
+  - `agents/tailor.py`：一个职位进去，一份检查过的一页简历出来。AI 只写定位、总结、每条经历（注明来自哪几条证据）、技能排序；姓名、头衔、公司、日期、学历由代码从事实库填入
+  - `agents/resume_checks.py`：事实检查（每条经历的证据属于这段工作、数字必须在它注明的证据里、JD 要求但没证据的技能不能出现、事实库和词表里都没有的专有名词不能出现）和质量检查（关键词 80%、定位写明岗位、一半经历有数字、不用第一人称、不写 "Responsible for"、经历不能太长、至少一个项目）
+  - `resume-tailoring` v3、新的 `resume-reviewer` v1、`ats-critic` v2（不再单独调用 AI，只记录每项检查放在哪）
+  - 审稿 AI 读职位原文和草稿，提出具体修改；代码逐条应用，破坏事实检查的直接拒绝。最多两轮，第二轮只在还有问题或有修改被拒时才跑
+  - 超过一页时，代码删最长那段经历的最后一条（经历按相关度排，最后一条最不相关），并记录下来
+  - 迁移 013：`agents.tailored_resumes`。每个职位的文件在 `output/tailored/<编号_公司_职位>/`：PDF、`resume.md`、`changes.md`、`not_covered.md`、对照页 `review.html`；`output/tailored/index.html` 是总览
+  - 命令：`agents.tailor run --top 5`、`agents.tailor run <编号>`、`--dry-run`。分数判定跳过的职位不会被改写。不放进每日运行，到 Milestone 5 再接上
+- **为什么：** DECISIONS #38（改掉了 #36 里"AI 直接写 resume.md"那一部分）
+- **文件：** `agents/tailor.py`、`agents/tailor_review.py`、`agents/resume_checks.py`、`agents/profile.py`、`db/migrations/013_tailored_resumes.sql`、`.claude/skills/resume-tailoring/SKILL.md`、`.claude/skills/resume-reviewer/SKILL.md`、`.claude/skills/ats-critic/SKILL.md`、`config/prompt_lock.toml`、`tests/test_tailor.py`、`tests/test_skills.py`
+- **提交：** 见本条所在的提交
+- **验证：**
+  1. 新增 62 个测试（全部 514 个通过，ruff 通过）。重点是"编造的东西到不了页面"：别的工作的真实数字、Kafka、Terraform、编造的工作经历、把 4 改成 40 的修改，都被拦住。假 AI 代替真 API，不花钱
+  2. 写测试时发现一个真漏洞：职位要 "Apache Kafka" 时，简历写 "Kafka" 查不出来。已修。第一次真实运行发现一个误报：新句子开头的大写词被当成产品名。已修
+  3. **试跑（FL 同意的 5 个职位）：** 5 份都是 ready，都正好一页，文字排到页面 80-89%。共花 $1.02（修误报后重跑了一个职位），修完后平均每份 $0.18，低于估计的 $0.3-0.5
+  4. 我逐条读了 5 份简历：AI 没有编造工具或数字；Airflow 写成 "first DAG"、"the load still runs from a cron script"，Spark 写成课程练习，都如实。可以讨论的：Cheil 那份总结写了 "advanced Python and SQL"（JD 的原话）和 "Builds data platforms"，证据里没有 "advanced"。代码查不出这种语气上的抬高，审稿 AI 这次也没有提，要 FL 判断
+  5. 没有验证：FL 还没读结果；真实档案还没跑（Milestone 5）
+- **撤回：** `git revert` 这个提交；数据库执行 `drop table agents.tailored_resumes`，再从 `public.schema_migrations` 删掉 `013_tailored_resumes.sql`

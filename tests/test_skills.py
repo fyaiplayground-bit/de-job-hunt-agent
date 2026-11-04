@@ -19,7 +19,7 @@ from agents.skills import (
 
 AGENT_SKILLS = {
     "ats-critic", "coverage-report", "fit-scoring", "jd-analysis", "outreach-drafting",
-    "resume-tailoring",
+    "resume-reviewer", "resume-tailoring",
 }
 SKILL_TEXT = "---\nname: demo\ndescription: A demo skill.\nversion: 2\n---\n\n# Demo\n\nDo it.\n"
 

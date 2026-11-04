@@ -3,8 +3,8 @@
 #   uv run python -m agents.skills lock
 
 [skills.ats-critic]
-version = 1
-sha256 = "824041715a76c6a363939de01a7795e96e5b12c72f1086bc8441b5235369e9c1"
+version = 2
+sha256 = "92fe3f8019eb8ab2aefa742f677ef19922a415f2d9cee26f3c782b85d137cad0"
 
 [skills.coverage-report]
 version = 1
@@ -22,6 +22,10 @@ sha256 = "a1e97c0da63d6c98eb1bb7ec419d39344058468659ad4daa4177dc951ec0c7e7"
 version = 1
 sha256 = "dd1a996b77c1cf461cc646de9511ec567b740bd2e926879646c34d15b5809998"
 
+[skills.resume-reviewer]
+version = 1
+sha256 = "d2a410b24ac6b26b467a1f55a9467fbd753ae5008e983a4af693ef330e606ca6"
+
 [skills.resume-tailoring]
-version = 2
-sha256 = "1c6f3a104c1c11cc5117d13fa174160e18250ed41f592fc9fec44af9f6b7b6eb"
+version = 3
+sha256 = "b2a6abcf268c6197babde88ad35ebd63e7218d0d895533807f9c4141d6115c14"

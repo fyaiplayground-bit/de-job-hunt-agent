@@ -66,8 +66,7 @@ Update this file at the end of every work session: what got done, what's next, w
 ## Next action
 
 **Waiting on FL (from the first full run, 11/03):**
-1. **Daily cap:** 70 new jobs were in scope, the cap of 50 left 20 unbriefed, and those are not retried (the run only reads that day's new postings). The cap picks by newest posting id, not by quality. FL decides whether to raise `JD_ANALYSIS_DAILY_MAX` (about $0.04 a job; at 50 a day about $60 a month) or keep it.
-2. **Alarms:** 7 unlabeled review alarms (the earlier "11" counted labeled ones too): `pipeline.alarm_report`, `pipeline.labels add`. None reach the LLM.
+1. **Alarms:** 7 unlabeled review alarms (the earlier "11" counted labeled ones too): `pipeline.alarm_report`, `pipeline.labels add`. None reach the LLM.
 
 **FL any time:** send jobs found on LinkedIn (company + title); Claude runs `pipeline.find_job` and reports; `--stats` gives coverage.
 
@@ -75,7 +74,7 @@ Update this file at the end of every work session: what got done, what's next, w
 
 **Next build step: 2.5,** the tailor → reviewer → revise loop (design first, wait for FL's OK). The drafter writes the `resume.md` format, so `check_resume` and `agents.render_resume` already cover its output (#36); `check_pdf(required=...)` takes the JD keywords. The fictional sample fills 67% of the page, which gives a thin-page warning; that is content, not a template fault.
 
-Standing facts: the clearance rule is on (fit-scoring rules v2, #37); FL fills in `has_security_clearance` and `can_obtain_security_clearance` at Milestone 5 (the sample has both false). Fit scoring's location check is OFF during the small-company practice phase (final targets California, Washington, Texas for the big-tech phase). The daily run happens by itself at 9:30 LA (#29) and catches up about 6 minutes after the laptop wakes; check it at session start.
+Standing facts: the daily AI cap stays at 50 (FL, 2026-11-03). On a busy day the jobs over the cap are not briefed or retried: run 8 had 70 in scope and left 20, chosen by newest posting id rather than quality; the report shows the count, so revisit it once there are more days of volume. The clearance rule is on (fit-scoring rules v2, #37); FL fills in `has_security_clearance` and `can_obtain_security_clearance` at Milestone 5 (the sample has both false). Fit scoring's location check is OFF during the small-company practice phase (final targets California, Washington, Texas for the big-tech phase). The daily run happens by itself at 9:30 LA (#29) and catches up about 6 minutes after the laptop wakes; check it at session start.
 
 ## Session log
 
@@ -109,3 +108,4 @@ Standing facts: the clearance rule is on (fit-scoring rules v2, #37); FL fills i
 - 2026-11-03 — Step 2.4: Typst one-page template with bundled Liberation Sans, `agents/resume_doc.py`, `agents/pdf_checks.py` (part copied from ai-job-search under MIT), `agents.render_resume` with a review page. Dates now use an ASCII hyphen; `resume-tailoring` v2. Sample renders to 1 page, all checks pass, byte-identical on re-render. Decision #36. 392 tests pass.
 - 2026-11-03 — Clearance dealbreaker written as proposal `fit_scoring.v2` with `agents.evaluate_fit_rules` and 44 golden cases; two new Applicant Profile fields. Not adopted yet: waiting for FL's OK on the review page. 452 tests pass.
 - 2026-11-03 — FL approved; clearance rule adopted as fit-scoring rules v2 (#37), skill v3, rescored: apply 20, skip 30, both Maxar TS/SCI jobs now skip. 452 tests pass.
+- 2026-11-03 — FL kept the daily AI cap at 50 for now.

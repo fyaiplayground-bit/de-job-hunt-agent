@@ -145,9 +145,9 @@ def test_resume_numbers_glued_to_letters_are_not_claims(profile):
 
 
 def test_resume_dates_must_match_the_work_history(profile):
-    resume = profile.resume.replace("Mar 2021 – Present", "Jan 2020 – Present")
+    resume = profile.resume.replace("Mar 2021 - Present", "Jan 2020 - Present")
     problems = check_resume(resume, profile.bank, profile.applicant)
-    assert problems == ["resume: role quillfeather-bie needs 'Mar 2021 – Present'"]
+    assert problems == ["resume: role quillfeather-bie needs 'Mar 2021 - Present'"]
 
 
 def test_resume_headings_must_be_standard(profile):

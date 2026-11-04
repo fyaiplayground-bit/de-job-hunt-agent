@@ -23,5 +23,5 @@ version = 1
 sha256 = "dd1a996b77c1cf461cc646de9511ec567b740bd2e926879646c34d15b5809998"
 
 [skills.resume-tailoring]
-version = 1
-sha256 = "4e9dcdc4076b87ef4b477252653e6047a8af79eae427fd5390c6c32d2a4137c3"
+version = 2
+sha256 = "1c6f3a104c1c11cc5117d13fa174160e18250ed41f592fc9fec44af9f6b7b6eb"

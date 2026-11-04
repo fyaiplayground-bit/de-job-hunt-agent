@@ -371,7 +371,7 @@ def check_resume(resume: str, bank: EvidenceBank, applicant: dict[str, Any]) -> 
 
     for role in bank.roles:
         end = resume_month(role.end) if role.end else "Present"
-        for expected in (role.title, role.employer, f"{resume_month(role.start)} – {end}"):
+        for expected in (role.title, role.employer, f"{resume_month(role.start)} - {end}"):
             if expected not in resume:
                 problems.append(f"resume: role {role.id} needs {expected!r}")
     for school in bank.education:

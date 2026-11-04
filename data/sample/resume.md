@@ -1,5 +1,6 @@
 # Alex Sample
 
+Data Engineer · SQL / Python / AWS
 Denver, CO · alex.sample@example.com · (303) 555-0142 · example.com/alex-sample
 
 ## Summary
@@ -9,7 +10,7 @@ Business Intelligence Engineer who builds the SQL models and AWS Glue loads behi
 ## Experience
 
 **Business Intelligence Engineer** · Quillfeather Outdoor · Denver, CO
-Mar 2021 – Present
+Mar 2021 - Present
 
 - Built daily AWS Glue jobs loading 6 source systems into Amazon Redshift, cutting the daily refresh from about 5 hours to 40 minutes
 - Designed a star schema (4 fact tables, 12 dimension tables) that feeds 30+ dashboards
@@ -20,7 +21,7 @@ Mar 2021 – Present
 - Moved the team's SQL and Glue scripts into Git with code review
 
 **Data Analyst** · Brightmoor Logistics · Denver, CO
-Jun 2017 – Feb 2021
+Jun 2017 - Feb 2021
 
 - Wrote nightly ETL jobs in Python and SQL Server reports covering 14 warehouses, feeding Tableau
 - Replaced a weekly Excel carrier-cost report with a Python script, saving about 6 hours a week

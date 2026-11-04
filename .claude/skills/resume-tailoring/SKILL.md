@@ -1,7 +1,7 @@
 ---
 name: resume-tailoring
 description: Rewrite FL's resume for one job as a one-page, ATS-safe PDF using the JD's exact keywords, F-pattern layout and recruiter psychology, then run a drafter-reviewer loop. Use for every job scored Apply or Apply + referral.
-version: 1
+version: 2
 ---
 
 # Resume Tailoring (Agent 4)
@@ -29,7 +29,7 @@ Never invent years of experience, titles, employers or metrics. Numbers come onl
 
 - Single column. Standard headings: Summary, Experience, Projects, Skills, Education.
 - No tables, text boxes, icons, images, or important text in headers/footers.
-- One date format (e.g., "Mar 2022 – Present").
+- One date format with a plain ASCII hyphen (e.g., "Mar 2022 - Present"): an ATS that splits ranges on "-" can drop a date joined by a long dash.
 - Place each core keyword twice: once in Skills, once inside a bullet with context.
 - Include both forms where natural ("Apache Airflow", "ETL").
 - Never hide keywords (white or tiny text) — the parsed text shows them to the recruiter.

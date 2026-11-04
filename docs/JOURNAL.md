@@ -386,3 +386,11 @@
   2. **用试点的 20 份 v2 简报试算**（用完已删掉）：跳过 11、投 8、投 + 找内推 1。第一版发现一个问题：Bold Penguin 的 "Snowflake" 被算成覆盖了，原因是 AI 在 JD 原文写法里放了 "cloud data warehouse"，走家族对上了 Redshift。已改成原文写法不能走家族。那个"投 + 找内推"是一个只有 519 字符的猎头职位，只有一个必备技能（范围规则 v2 现在已经排除这种片段）
   3. v3 版还没有简报，所以真实打分从明天 9:30 的运行开始
 - **撤回：** `git revert` 这个提交；数据库执行 `drop table agents.fit_scores`，再从 `public.schema_migrations` 删掉 `012_fit_scores.sql`。
+
+### 2.4a · 2026-11-03 · 简历日期改用普通连字符，样本简历加一行定位
+- **做了什么：** 简历里的日期从长破折号改成普通连字符（"Mar 2021 - Present"），样本简历、`check_resume` 的规则、`resume-tailoring` 说明（升到 v2，提示词锁已更新）三处一起改。样本简历在联系方式上面加了一行定位 "Data Engineer · SQL / Python / AWS"。字体 Liberation Sans 2.1.5（官方发布包，1.6 MB，连 LICENSE 和 AUTHORS）放进 `templates/fonts/`
+- **为什么：** DECISIONS #36。ai-job-search 记录过 Workday 导入时把长破折号连着的日期丢掉；定位那行是 `resume-tailoring` 要求的"最上面三分之一"
+- **文件：** `data/sample/resume.md`、`agents/profile.py`、`tests/test_profile.py`、`.claude/skills/resume-tailoring/SKILL.md`、`config/prompt_lock.toml`、`templates/fonts/`、`docs/DECISIONS.md`
+- **提交：** 见本条所在的提交
+- **验证：** `agents.profile check` OK；`tests/test_profile.py`、`tests/test_skills.py` 36 个通过
+- **撤回：** `git revert` 这个提交，再跑 `agents.skills lock`

@@ -66,9 +66,8 @@ Update this file at the end of every work session: what got done, what's next, w
 ## Next action
 
 **Waiting on FL (from the first full run, 11/03):**
-1. **Security clearance, waiting for FL's OK on the proposal:** the top "worth applying" job was Maxar's `Junior Data Engineer (TS/SCI)`. FL said to add a rule (2026-11-03). `config/proposals/fit_scoring.v2.toml` is written and evaluated, NOT adopted: 44 golden cases pass, 2 of today's 50 jobs move (both Maxar TS/SCI, apply to skip), of 2,462 DE postings 218 must already hold one and 43 must be able to get one. Review page: `uv run python -m agents.evaluate_fit_rules config/proposals/fit_scoring.v2.toml --review`. After OK: copy the proposal over `config/fit_scoring.toml` (drop the PROPOSAL line), `agents.fit_scoring run`, fit-scoring skill text and lock, DECISIONS entry. "Can obtain" stays a profile fact: Alex is false; FL fills in hers at Milestone 5.
-2. **Daily cap:** 70 new jobs were in scope, the cap of 50 left 20 unbriefed, and those are not retried (the run only reads that day's new postings). The cap picks by newest posting id, not by quality. FL decides whether to raise `JD_ANALYSIS_DAILY_MAX` (about $0.04 a job; at 50 a day about $60 a month) or keep it.
-3. **Alarms:** 7 unlabeled review alarms (the earlier "11" counted labeled ones too): `pipeline.alarm_report`, `pipeline.labels add`. None reach the LLM.
+1. **Daily cap:** 70 new jobs were in scope, the cap of 50 left 20 unbriefed, and those are not retried (the run only reads that day's new postings). The cap picks by newest posting id, not by quality. FL decides whether to raise `JD_ANALYSIS_DAILY_MAX` (about $0.04 a job; at 50 a day about $60 a month) or keep it.
+2. **Alarms:** 7 unlabeled review alarms (the earlier "11" counted labeled ones too): `pipeline.alarm_report`, `pipeline.labels add`. None reach the LLM.
 
 **FL any time:** send jobs found on LinkedIn (company + title); Claude runs `pipeline.find_job` and reports; `--stats` gives coverage.
 
@@ -76,7 +75,7 @@ Update this file at the end of every work session: what got done, what's next, w
 
 **Next build step: 2.5,** the tailor → reviewer → revise loop (design first, wait for FL's OK). The drafter writes the `resume.md` format, so `check_resume` and `agents.render_resume` already cover its output (#36); `check_pdf(required=...)` takes the JD keywords. The fictional sample fills 67% of the page, which gives a thin-page warning; that is content, not a template fault.
 
-Standing facts: fit scoring's location check is OFF during the small-company practice phase (final targets California, Washington, Texas for the big-tech phase). The daily run happens by itself at 9:30 LA (#29) and catches up about 6 minutes after the laptop wakes; check it at session start.
+Standing facts: the clearance rule is on (fit-scoring rules v2, #37); FL fills in `has_security_clearance` and `can_obtain_security_clearance` at Milestone 5 (the sample has both false). Fit scoring's location check is OFF during the small-company practice phase (final targets California, Washington, Texas for the big-tech phase). The daily run happens by itself at 9:30 LA (#29) and catches up about 6 minutes after the laptop wakes; check it at session start.
 
 ## Session log
 
@@ -109,3 +108,4 @@ Standing facts: fit scoring's location check is OFF during the small-company pra
 - 2026-11-03 — 9:30 run missed again (laptop asleep until 19:03), catch-up started 19:09. Run 8 ok, the first full end-to-end test: 741 new jobs, 155 DE, 70 in scope, 50 briefed under `jd-analysis@3` for $2.08 (20 over the cap), 50 scored (22 worth applying, 28 skipped), 1 new review alarm, no failed sources; both new report sections present. Found: nothing checks security clearance, so a TS/SCI job ranked first.
 - 2026-11-03 — Step 2.4: Typst one-page template with bundled Liberation Sans, `agents/resume_doc.py`, `agents/pdf_checks.py` (part copied from ai-job-search under MIT), `agents.render_resume` with a review page. Dates now use an ASCII hyphen; `resume-tailoring` v2. Sample renders to 1 page, all checks pass, byte-identical on re-render. Decision #36. 392 tests pass.
 - 2026-11-03 — Clearance dealbreaker written as proposal `fit_scoring.v2` with `agents.evaluate_fit_rules` and 44 golden cases; two new Applicant Profile fields. Not adopted yet: waiting for FL's OK on the review page. 452 tests pass.
+- 2026-11-03 — FL approved; clearance rule adopted as fit-scoring rules v2 (#37), skill v3, rescored: apply 20, skip 30, both Maxar TS/SCI jobs now skip. 452 tests pass.

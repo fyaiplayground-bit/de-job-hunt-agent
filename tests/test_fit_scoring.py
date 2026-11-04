@@ -223,9 +223,8 @@ def test_run_reads_the_posting_text_for_the_clearance_rule(briefed):
         "update gate.results set cleaned_text = 'Must hold an active Secret clearance.'"
         " where posting_version_id = %s", (ids[0],),
     )
-    proposal = load_rules(REPO_ROOT / "config" / "proposals" / "fit_scoring.v2.toml")
     result = run(
-        db, profile=PROFILE, rules=proposal, vocab=VOCAB, today=TODAY,
+        db, profile=PROFILE, rules=RULES, vocab=VOCAB, today=TODAY,
         brief_prompt_version="jd-analysis@3", brief_model="m",
     )
     decisions = {posting_version_id: r for posting_version_id, _, r in result.results}

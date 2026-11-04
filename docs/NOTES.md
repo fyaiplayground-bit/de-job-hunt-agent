@@ -154,6 +154,9 @@ dbt：清洗 → 提取技能 → 汇总（打分、技能频率、覆盖率、�
 | 数据契约 data contract | 事先约定数据长什么样（有哪些字段、取什么值、互相怎么引用），再用代码检查。上下游都按这个约定来，一方改坏了，检查会立刻报错 |
 | 检查档案 | `uv run python -m agents.profile check`：读取三个文件，跑全部检查，输出 OK 或者具体哪里不对 |
 
+### 安全许可（security clearance）
+美国政府发的涉密资格，比如 Secret、Top Secret、TS/SCI，通常只有美国公民能申请，要由雇主发起。"必须已经持有"的职位，没有的人进不去；"必须能够取得"的职位，要看你本人符不符合条件。Public Trust 是背景调查，不算 clearance，所以这类职位不跳过。规则只读文字，要不要跳过由档案里的两个字段决定（#37）。
+
 ### AI 调用（agent 层）
 | 词 | 大白话 |
 | --- | --- |
@@ -246,6 +249,7 @@ PowerShell（Windows 自带）、Git Bash（装 Git 时附带）、Ubuntu/WSL（
 | 看某个职位的简报 | 让 Claude 跑 `uv run python -m agents.jd_analysis show <编号>` |
 | 评估提示词（标准答案集） | 让 Claude 跑 `uv run python -m agents.evaluate_prompt config/proposals/<提议>.md`；加 `--effort low` 可以试不同的思考深度。结果有缓存，重跑免费 |
 | 我在 LinkedIn 上看到一个职位，我们有没有？ | 把公司名和职位名发给 Claude，它会跑 `uv run python -m pipeline.find_job "公司" "职位名"`；看覆盖率用 `... --stats` |
+| 想改打分规则 | 让 Claude 在 `config/proposals/` 写一份提议，跑 `uv run python -m agents.evaluate_fit_rules <提议文件> --review`，你看 `output/fit_rules_review.html`（决定会变的职位和原文），同意后才启用 |
 | 看打分结果 | 让 Claude 跑 `uv run python -m agents.fit_scoring top`（最值得投的）、`... show <编号>`（为什么得这个分）、`... unmatched`（词表还缺哪些技能写法） |
 | 生成简历 PDF 并检查 | 让 Claude 跑 `uv run python -m agents.render_resume`，结果在 `output/resume/`：PDF 和对照页 `review.html`（左边是渲染出来的页面，右边是 ATS 读到的文字） |
 | 暂停每天的 AI 拆解 | 在 `.env` 里设 `JD_ANALYSIS_ENABLED=false`（抓取照常）；每天最多拆几个用 `JD_ANALYSIS_DAILY_MAX` 调 |

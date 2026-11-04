@@ -6,3 +6,5 @@ A proposed change to `config/triage_rules.toml` is written here first, as a full
 2. Evaluate it: `uv run python -m pipeline.evaluate_rules config/proposals/triage_rules.v2.toml`. Hard checks must PASS (every hand-written golden case in its tier, no attack benign or clean, no labeled false positive blocked).
 3. FL reads the report and approves.
 4. Copy the proposal over `config/triage_rules.toml`, recompute with `uv run python -m pipeline.ingest --gate-only`, and record the change in `docs/DECISIONS.md`. Keep the proposal file in this folder as history.
+
+Fit-scoring rules follow the same loop: `uv run python -m agents.evaluate_fit_rules config/proposals/fit_scoring.vN.toml --review` checks the golden cases, lists every job whose decision would change and writes a review page with the source text. After FL approves, copy the proposal over `config/fit_scoring.toml` and run `uv run python -m agents.fit_scoring run`.

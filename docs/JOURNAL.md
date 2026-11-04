@@ -428,3 +428,11 @@
   2. 我读了约 100 条抽样和全部只靠笼统字眼判断的结果。第一版抓错了几种：把 "Employee Polygraph Protection Act"（法律样板话）、"Minimum Clearance Required to Start: None"、"No Clearance" 当成要求；"U.S." 里的句点让"能够取得"被判成"必须持有"。都修了，都写进了标准答案
   3. 仍然存在的灰色情况：一个职位同时写"必须持有或能够取得"时算作"必须持有"；"T-3 Investigation" 这种写法算作要求。没有读完全部 218 条，所以不能说完全没有错判
 - **撤回：** `git revert` 这个提交。提议没有启用，数据库和每日运行都没有变化
+
+### 2.3c · 2026-11-03 · 安全许可规则启用（打分规则 v2）
+- **做了什么：** FL 看过审核页面后同意启用。提议复制成 `config/fit_scoring.toml`（版本 2），提议文件留作历史；`fit-scoring` 说明升到 v3；测试改成检查真规则，以后改规则也要通过这 44 条标准答案；`agents.fit_scoring run` 重新打分
+- **为什么：** DECISIONS #37
+- **文件：** `config/fit_scoring.toml`、`.claude/skills/fit-scoring/SKILL.md`、`config/prompt_lock.toml`、`config/proposals/README.md`、`tests/test_evaluate_fit_rules.py`、`tests/test_fit_scoring.py`、`docs/DECISIONS.md`、`docs/NOTES.md`、`docs/STATUS.md`
+- **提交：** 见本条所在的提交
+- **验证：** 452 个测试通过，ruff 通过。重新打分 50 个：投 20、跳过 30（之前投 21、投 + 找内推 1、跳过 28）。Maxar 那个职位显示跳过，原因写明 TS/SCI。旧分数（规则版本 1）还在表里，没有删。11/03 的报告是旧规则生成的，不重写；下一次每日运行开始用新规则
+- **撤回：** 把 `config/fit_scoring.toml` 改回版本 1（`git revert` 这个提交），再跑 `agents.fit_scoring run`

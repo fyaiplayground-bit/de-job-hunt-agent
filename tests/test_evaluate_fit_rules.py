@@ -1,4 +1,4 @@
-"""The clearance dealbreaker (proposal fit_scoring.v2) and the rules-loop command that evaluates it.
+"""The clearance dealbreaker (decision #37) and the rules-loop command that evaluates it.
 Pure code; no LLM. Scoring tests live in tests/test_fit_scoring.py."""
 
 import copy
@@ -27,11 +27,10 @@ from agents.fit_scoring import (
 from agents.profile import load_profile
 from pipeline.config import REPO_ROOT
 
-PROPOSAL = REPO_ROOT / "config" / "proposals" / "fit_scoring.v2.toml"
 SAMPLE = REPO_ROOT / "data" / "sample"
 TODAY = date(2026, 11, 3)
 PROFILE = load_profile(SAMPLE)
-RULES = load_rules(PROPOSAL)
+RULES = load_rules()
 WITHOUT = replace(RULES, clearance=None, version=1)
 VOCAB = load_vocabulary()
 CASES = tomllib.loads(Path(CASES_FILE).read_text(encoding="utf-8"))["cases"]
@@ -148,4 +147,4 @@ def test_review_page_shows_source_text_and_escapes_it():
     assert "<script>alert" not in page
     assert "&lt;script&gt;" in page
     assert "<mark>TS/SCI</mark>" in page
-    assert "v1 → v2" in page
+    assert f"v1 → v{RULES.version}" in page

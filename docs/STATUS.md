@@ -1,6 +1,6 @@
 # Status
 
-**Last updated:** 2026-10-31 · **Phase:** Milestone 1 done → Milestone 2 (agents) next
+**Last updated:** 2026-11-03 · **Phase:** Milestone 2 (agents) in progress; 2.4 done, 2.5 (tailoring) next
 
 Update this file at the end of every work session: what got done, what's next, what's blocked.
 
@@ -37,10 +37,11 @@ Update this file at the end of every work session: what got done, what's next, w
 
 ### Milestone 2 · Week 2 · Agents
 - [x] Agent modules loading rules from `.claude/skills/` — 2.1: skill loader + prompt lock, LLM client with cache (#30)
-- [ ] Choose resume template engine (LaTeX vs Typst); one-page template
+- [x] Resume template: Typst (#30), one-page template with bundled fonts (2.4, #36)
 - [x] jd-analysis (2.2: brief schema, golden set + evaluation, prompt v3, daily briefs of new jobs; #31–#33)
 - [x] fit-scoring as code (2.3: vocabulary matching, 70/20 score, dealbreakers, daily "worth applying"; #35) and coverage checks (#34)
-- [ ] Tailor → reviewer → revise loop; PDF compile-and-inspect; ATS text-layer check
+- [x] PDF compile-and-inspect; ATS text-layer check (2.4, `agents/pdf_checks.py`, `agents.render_resume`; #36)
+- [ ] Tailor → reviewer → revise loop
 - [ ] Approval queue output for the claude.ai Project to submit from
 - [ ] End-to-end test: real JDs from the pipeline + the sample profile → tailored PDFs
 
@@ -64,7 +65,18 @@ Update this file at the end of every work session: what got done, what's next, w
 
 ## Next action
 
-Claude: check the first daily run with the AI step (11/03 9:30): AI section in the report, briefs in `agents.jd_briefs`, cost. FL: send jobs found on LinkedIn (company + title); Claude runs `pipeline.find_job` and reports; `--stats` gives coverage. Open for FL: label the 11 unlabeled review alarms (`pipeline.alarm_report`; none reach the LLM). The 30-day freehire backfill is done (2.2f). Then: check that 11/03's report shows the "今天值得投的" section; run `agents.fit_scoring unmatched` after a few days of briefs and grow `config/skill_vocabulary.toml` through the loop. Next build step: 2.4, Typst one-page resume template + PDF checks (design first). Done 2026-11-02 (2.3, decision #35), with FL's answers: years count analyst + BIE; up to 1 year short still applies; score = 70 x must-have coverage (core x2) + 20 x nice-to-have coverage + archetype adjustment, apply bar stays ~50% must-have coverage (#8), referral at score >= 65; daily report gets a "worth applying today" section; location check OFF during the small-company practice phase (location shown as info only), final targets California, Washington and Texas for the big-tech phase; skill matching through `config/skill_vocabulary.toml` (synonyms, skill families such as AWS); rules in `config/fit_scoring.toml`; scores in `agents.fit_scores`. Notes from earlier: daily run with a cap, and FL decides on backfilling the remaining ~422 (~$16). For 2.3 (fit-scoring), FL said 2026-11-02: meeting only the minimum/basic requirements can get you screened out, so preferred (nice-to-have) skills matter; today nice-to-haves add at most 10 points and the apply decision uses must-haves only (#8) — revisit how much nice-to-have coverage counts (score and ranking) in the 2.3 design; tailoring already puts any nice-to-have with an Evidence Bank entry on the resume. FL said 2026-11-01: senior roles are fine as long as she has the years the posting asks for, so seniority is not a dealbreaker; compare years_required with years computed from the Evidence Bank roles (open: count analyst + BIE years, or BIE only). The daily run happens by itself at 9:30 LA (#29); check it at session start.
+**Waiting on FL (from the first full run, 11/03):**
+1. **Security clearance:** the top "worth applying" job was Maxar's `Junior Data Engineer (TS/SCI)`, and a second Maxar TS/SCI job also passed. Nothing in the rules looks at clearance. Claude proposed a dealbreaker; if FL says yes, it goes through the loop (propose, show what moves, FL approves, bump `config/fit_scoring.toml`).
+2. **Daily cap:** 70 new jobs were in scope, the cap of 50 left 20 unbriefed, and those are not retried (the run only reads that day's new postings). The cap picks by newest posting id, not by quality. FL decides whether to raise `JD_ANALYSIS_DAILY_MAX` (about $0.04 a job; at 50 a day about $60 a month) or keep it.
+3. **Alarms:** 7 unlabeled review alarms (the earlier "11" counted labeled ones too): `pipeline.alarm_report`, `pipeline.labels add`. None reach the LLM.
+
+**FL any time:** send jobs found on LinkedIn (company + title); Claude runs `pipeline.find_job` and reports; `--stats` gives coverage.
+
+**Claude, after a few more days of briefs:** run `agents.fit_scoring unmatched` and grow `config/skill_vocabulary.toml` through the loop.
+
+**Next build step: 2.5,** the tailor → reviewer → revise loop (design first, wait for FL's OK). The drafter writes the `resume.md` format, so `check_resume` and `agents.render_resume` already cover its output (#36); `check_pdf(required=...)` takes the JD keywords. The fictional sample fills 67% of the page, which gives a thin-page warning; that is content, not a template fault.
+
+Standing facts: fit scoring's location check is OFF during the small-company practice phase (final targets California, Washington, Texas for the big-tech phase). The daily run happens by itself at 9:30 LA (#29) and catches up about 6 minutes after the laptop wakes; check it at session start.
 
 ## Session log
 
@@ -94,3 +106,5 @@ Claude: check the first daily run with the AI step (11/03 9:30): AI section in t
 - 2026-11-02 — Labeled the CDW alarm a false positive (14 golden cases). Coverage checks: `pipeline.find_job` finds a job FL saw elsewhere or explains the miss with one live freehire check, logged in `ops.coverage_checks` (migration 011), `--stats` = measured recall. Trial: Netflix AE roles missed because they predate our first freehire backfill. FL answered the 2.3 questions (see Next action). Decision #34. 341 tests pass.
 - 2026-11-02 — Fixed a silent data-loss bug in freehire paging (a short page mid-results was taken as the end; now paging follows `meta.total`). 30-day freehire backfill (FL approved, no AI): +4,939 postings, 15,434 jobs total; Netflix 10/20 AE role now found. Remaining gap: ~1,300 "data engineer" results beyond the API's 10,000 window only partly recovered via work-mode splits (daily 2-day runs are far below the window). 11 unlabeled review alarms wait for FL. 342 tests pass.
 - 2026-11-02 — Step 2.3: fit-scoring as code (`agents/fit_scoring.py`, `config/fit_scoring.toml`, `config/skill_vocabulary.toml`, `agents.fit_scores` migration 012); the daily run scores the day's briefs and the report lists "今天值得投的". Trial on the 20 v2 pilot briefs: skip 11, apply 8, referral 1; a phrase-through-family false match (Snowflake) found and fixed. Decision #35. 361 tests pass.
+- 2026-11-03 — 9:30 run missed again (laptop asleep until 19:03), catch-up started 19:09. Run 8 ok, the first full end-to-end test: 741 new jobs, 155 DE, 70 in scope, 50 briefed under `jd-analysis@3` for $2.08 (20 over the cap), 50 scored (22 worth applying, 28 skipped), 1 new review alarm, no failed sources; both new report sections present. Found: nothing checks security clearance, so a TS/SCI job ranked first.
+- 2026-11-03 — Step 2.4: Typst one-page template with bundled Liberation Sans, `agents/resume_doc.py`, `agents/pdf_checks.py` (part copied from ai-job-search under MIT), `agents.render_resume` with a review page. Dates now use an ASCII hyphen; `resume-tailoring` v2. Sample renders to 1 page, all checks pass, byte-identical on re-render. Decision #36. 392 tests pass.

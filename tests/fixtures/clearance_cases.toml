@@ -1,0 +1,55 @@
+# Golden cases for the clearance dealbreaker: short wording seen in real postings (2026-11-03)
+# and the tier it must land in. hold = must already have one; obtain = must be able to get one;
+# none = not a requirement. Any change to the clearance patterns has to keep all of these.
+
+cases = [
+    # The jobs that started this (run 8).
+    { text = "Junior Data Engineer (TS/SCI)", tier = "hold" },
+    { text = "Current active TS/SCI security clearance and willingness to work on site", tier = "hold" },
+    # Must already have one.
+    { text = "Clearance: Active Secret Clearance Required", tier = "hold" },
+    { text = "Active SECRET Security Clearance is required.", tier = "hold" },
+    { text = "Must have an active Secret Clearance (this requires US Citizenship)", tier = "hold" },
+    { text = "Please do NOT apply if you do not have an active Poly clearance.", tier = "hold" },
+    { text = "Clearance Level Must Currently Possess: Top Secret", tier = "hold" },
+    { text = "Minimum Clearance Required to Start: TS/SCI", tier = "hold" },
+    { text = "Data Engineer with Security Clearance", tier = "hold" },
+    { text = "Data Platform Engineer (Army Vantage) - Clearance Required", tier = "hold" },
+    { text = "Platform Support (Secret Cleared)", tier = "hold" },
+    { text = "Cleared AWS Modeling & Simulation Data Engineer", tier = "hold" },
+    { text = "Clearance Required: Active DOE Q or higher", tier = "hold" },
+    { text = "Secret Clearance with ability to obtain TS/SCI Clearance", tier = "hold" },
+    { text = "Have an active Secret security clearance (Top Secret preferred)", tier = "hold" },
+    { text = "Active Secret Clearance or ability to obtain one is required", tier = "hold" },
+    # Must be able to get one.
+    { text = "Ability to obtain and maintain a security clearance.", tier = "obtain" },
+    { text = "Must have the ability to obtain U.S. Security Clearance", tier = "obtain" },
+    { text = 'Must be able to OBTAIN and MAINTAIN a Federal or DoD "TOP SECRET" security clearance.', tier = "obtain" },
+    { text = "Clearance Required: Ability to Obtain Top Secret (TS)", tier = "obtain" },
+    { text = "Security Clearance: This position requires the ability to obtain a U.S. Security Clearance", tier = "obtain" },
+    { text = "U.S. citizenship and eligibility for a future Secret clearance.", tier = "obtain" },
+    { text = "Clearance eligibility required.", tier = "obtain" },
+    { text = "Must be government clearance eligible", tier = "obtain" },
+    { text = "US Citizen with/ability to gain and maintain a TS Security clearance", tier = "obtain" },
+    { text = "Clearance: No active clearance required; TS/SCI preferred. Must be able to obtain and maintain a U.S. Government security clearance.", tier = "obtain" },
+    # Not a requirement. Each of these was wrongly flagged by an earlier draft, or nearly was.
+    { text = "Right to Work, Employee Polygraph Protection Act, Family Medical Leave Act", tier = "none" },
+    { text = "Minimum Security Clearance: No Clearance", tier = "none" },
+    { text = "Minimum Clearance Required to Start: None", tier = "none" },
+    { text = "Clearance Level Must Currently Possess: None", tier = "none" },
+    { text = "Clearance Requirements: N/A", tier = "none" },
+    { text = "in accordance with federal, state, and local laws and/or security clearance requirements", tier = "none" },
+    { text = "Please be aware many of our positions require the ability to obtain a security clearance.", tier = "none" },
+    { text = "All employment is contingent upon the successful clearance of a background check and drug test", tier = "none" },
+    { text = "Ability to obtain and maintain a criminal record/fingerprint clearance from the Department of Justice", tier = "none" },
+    { text = "All offers are contingent on a cleared background and possible reference check.", tier = "none" },
+    { text = "ensure that development obstacles are cleared to maintain growth", tier = "none" },
+    { text = "enrollment, advising, financial aid, student clearance, student success", tier = "none" },
+    { text = "candidate qualifications, such as education, experience, skills, and security clearances.", tier = "none" },
+    { text = "Secret clearance preferred", tier = "none" },
+    { text = "Preferred Qualifications: Top Secret Clearance", tier = "none" },
+    # A public trust determination is a background check, not a clearance (kept, not skipped).
+    { text = "Clearance Required: Ability to Obtain Public Trust", tier = "none" },
+    { text = "Must be able to obtain a DHS Public Trust clearance.", tier = "none" },
+    { text = "Clearance Required: Public Trust", tier = "none" },
+]

@@ -44,7 +44,10 @@ APPLICANT_FIELDS: dict[str, dict[str, type]] = {
     "availability": {"notice_period_weeks": int},
     "compensation": {"currency": str, "base_salary_floor": int, "base_salary_target": int},
     "location": {"work_modes": list, "office_cities": list, "relocate": bool},
-    "background": {"age_18_or_over": bool, "background_check_ok": bool},
+    "background": {
+        "age_18_or_over": bool, "background_check_ok": bool, "has_security_clearance": bool,
+        "can_obtain_security_clearance": bool,
+    },
     "eeo": {"gender": str, "race_ethnicity": str, "veteran_status": str, "disability_status": str},
 }
 

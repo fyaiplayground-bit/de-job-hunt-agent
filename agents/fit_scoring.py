@@ -38,11 +38,19 @@ from agents.profile import (
 )
 from agents.skills import load_skill
 from pipeline.config import REPO_ROOT, llm_settings, profile_dir
+from pipeline.safety_gate import GATE_VERSION
 
 RULES_FILE = REPO_ROOT / "config" / "fit_scoring.toml"
 VOCABULARY_FILE = REPO_ROOT / "config" / "skill_vocabulary.toml"
 # A brief's skill name may bundle alternatives: "Cloud SQL / PostgreSQL", "AWS (S3, Glue)".
 NAME_SEPARATORS = re.compile(r"\s+/\s+|\s+or\s+|\s+and\s+|\s*&\s*|[(),]")
+
+
+@dataclass(frozen=True)
+class ClearanceRules:
+    ignore: tuple[re.Pattern[str], ...]
+    obtain: tuple[re.Pattern[str], ...]
+    hold: tuple[re.Pattern[str], ...]
 
 
 @dataclass(frozen=True)
@@ -58,6 +66,17 @@ class Rules:
     location_check: str
     salary_floor_check: bool
     sponsorship_check: bool
+    clearance: ClearanceRules | None = None
+
+
+def _load_clearance(section: dict[str, list[str]] | None) -> ClearanceRules | None:
+    if section is None:
+        return None
+
+    def compiled(key: str) -> tuple[re.Pattern[str], ...]:
+        return tuple(re.compile(pattern, re.IGNORECASE) for pattern in section[key])
+
+    return ClearanceRules(compiled("ignore"), compiled("obtain"), compiled("hold"))
 
 
 def load_rules(path: Path = RULES_FILE) -> Rules:
@@ -74,6 +93,7 @@ def load_rules(path: Path = RULES_FILE) -> Rules:
         location_check=data["dealbreakers"]["location_check"],
         salary_floor_check=bool(data["dealbreakers"]["salary_floor_check"]),
         sponsorship_check=bool(data["dealbreakers"]["sponsorship_check"]),
+        clearance=_load_clearance(data["dealbreakers"].get("clearance")),
     )
     if rules.location_check != "off":
         raise ValueError("location_check: only 'off' exists so far (the state check comes in M5)")
@@ -209,10 +229,45 @@ class FitResult:
         }
 
 
+def find_clearance(text: str, rules: ClearanceRules) -> tuple[str, str] | None:
+    """What the text asks about a security clearance: ("hold" or "obtain", the words that say so).
+    None = it asks for none. A posting that asks for both counts as "hold"."""
+    for pattern in rules.ignore:
+        text = pattern.sub(" ", text)
+    obtain = next((m[0] for p in rules.obtain if (m := p.search(text))), None)
+    for pattern in rules.obtain:
+        text = pattern.sub(" ", text)
+    hold = next((m[0] for p in rules.hold if (m := p.search(text))), None)
+    if hold:
+        return "hold", " ".join(hold.split())
+    return ("obtain", " ".join(obtain.split())) if obtain else None
+
+
+def _clearance_dealbreaker(
+    brief: dict[str, Any], posting_text: str, applicant: dict[str, Any], rules: ClearanceRules
+) -> str | None:
+    hit = find_clearance(f"{brief.get('title', '')}\n{posting_text}", rules)
+    background = applicant["background"]
+    if hit is None or background["has_security_clearance"]:
+        return None
+    tier, words = hit
+    if tier == "obtain" and background["can_obtain_security_clearance"]:
+        return None
+    return f"clearance: the posting asks for one the profile doesn't have ({words!r})"
+
+
 def _dealbreakers(
-    brief: dict[str, Any], applicant: dict[str, Any], years: float, rules: Rules
+    brief: dict[str, Any],
+    applicant: dict[str, Any],
+    years: float,
+    rules: Rules,
+    posting_text: str = "",
 ) -> list[str]:
     found = []
+    if rules.clearance:
+        clearance = _clearance_dealbreaker(brief, posting_text, applicant, rules.clearance)
+        if clearance:
+            found.append(clearance)
     asked = brief.get("years_required")
     if isinstance(asked, int | float) and asked > years + rules.years_tolerance:
         found.append(f"years: asks {asked:g}, profile has {years:g}")
@@ -231,7 +286,12 @@ def _dealbreakers(
 
 
 def score_brief(
-    brief: dict[str, Any], profile: Profile, rules: Rules, vocab: Vocabulary, today: date
+    brief: dict[str, Any],
+    profile: Profile,
+    rules: Rules,
+    vocab: Vocabulary,
+    today: date,
+    posting_text: str = "",
 ) -> FitResult:
     bank = profile.bank
     years = candidate_years(bank, today)
@@ -264,7 +324,7 @@ def score_brief(
     raw = (rules.must_weight * must_cov + rules.nice_weight * (nice_cov or 0.0)
            + rules.archetype_adjustment.get(brief.get("archetype", ""), 0.0))
     result.score = int(max(0, min(100, round(raw))))
-    result.dealbreakers = _dealbreakers(brief, profile.applicant, years, rules)
+    result.dealbreakers = _dealbreakers(brief, profile.applicant, years, rules, posting_text)
     core_first = sorted(
         ((item, m) for item, m in must if m.skill),
         key=lambda pair: (pair[0].get("weight") != "core", LEVELS.index(pair[1].level)),
@@ -292,6 +352,20 @@ class ScoreRun:
     results: list[tuple[int, dict[str, Any], dict[str, Any]]] = field(default_factory=list)
 
 
+def load_briefs(
+    conn: psycopg.Connection, prompt_version: str, model: str
+) -> list[tuple[int, dict[str, Any], str]]:
+    """(posting version, brief, the gate's cleaned text) for every brief of this version."""
+    return conn.execute(
+        "select b.posting_version_id, b.brief, coalesce(g.cleaned_text, '')"
+        " from agents.jd_briefs b"
+        " left join gate.results g on g.posting_version_id = b.posting_version_id"
+        "  and g.gate_version = %s"
+        " where b.prompt_version = %s and b.model = %s order by b.posting_version_id",
+        (GATE_VERSION, prompt_version, model),
+    ).fetchall()
+
+
 def run(
     conn: psycopg.Connection,
     profile: Profile | None = None,
@@ -310,17 +384,13 @@ def run(
     prompt_version = brief_prompt_version or load_skill("jd-analysis").prompt_version
     model = brief_model or llm_settings().model
     fingerprint = profile_fingerprint(folder)
-    rows = conn.execute(
-        "select posting_version_id, brief from agents.jd_briefs"
-        " where prompt_version = %s and model = %s order by posting_version_id",
-        (prompt_version, model),
-    ).fetchall()
+    rows = load_briefs(conn, prompt_version, model)
     wanted = None if only is None else set(only)
     summary = ScoreRun()
-    for posting_version_id, brief in rows:
+    for posting_version_id, brief, posting_text in rows:
         if wanted is not None and posting_version_id not in wanted:
             continue
-        result = score_brief(brief, profile, rules, vocab, today).as_json()
+        result = score_brief(brief, profile, rules, vocab, today, posting_text).as_json()
         conn.execute(
             "insert into agents.fit_scores (posting_version_id, brief_prompt_version,"
             " brief_model, profile_fingerprint, rules_version, vocabulary_version, score,"

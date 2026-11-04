@@ -47,6 +47,8 @@ relocate = false
 [background]
 age_18_or_over = true
 background_check_ok = true
+has_security_clearance = false          # a current US government clearance
+can_obtain_security_clearance = false   # could get one if an employer sponsors it
 
 [eeo]
 # Voluntary self-identification. "decline" = "I don't wish to answer".

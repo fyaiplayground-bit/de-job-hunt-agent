@@ -211,3 +211,23 @@ def test_run_stores_scores_once_per_profile_and_rules(briefed, tmp_path):
     bank.write_text(bank.read_text(encoding="utf-8") + "\n# edited\n", encoding="utf-8")
     run(db, profile=load_profile(edited), only=[ids[0]], **kwargs)  # new fingerprint: new row
     assert db.execute("select count(*) from agents.fit_scores").fetchone()[0] == 3
+
+
+@pytest.mark.db
+def test_run_reads_the_posting_text_for_the_clearance_rule(briefed):
+    from pipeline.gate_step import gate_pending
+
+    db, ids = briefed
+    gate_pending(db)
+    db.execute(
+        "update gate.results set cleaned_text = 'Must hold an active Secret clearance.'"
+        " where posting_version_id = %s", (ids[0],),
+    )
+    proposal = load_rules(REPO_ROOT / "config" / "proposals" / "fit_scoring.v2.toml")
+    result = run(
+        db, profile=PROFILE, rules=proposal, vocab=VOCAB, today=TODAY,
+        brief_prompt_version="jd-analysis@3", brief_model="m",
+    )
+    decisions = {posting_version_id: r for posting_version_id, _, r in result.results}
+    assert decisions[ids[0]]["dealbreakers"][0].startswith("clearance:")
+    assert not any(d.startswith("clearance:") for d in decisions[ids[1]]["dealbreakers"])

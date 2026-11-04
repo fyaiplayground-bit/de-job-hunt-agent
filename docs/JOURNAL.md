@@ -411,3 +411,20 @@
   2. 真实跑了 `agents.render_resume`：1 页，所有检查通过；一条警告：样本内容较短，文字只排到页面 67%。这是内容少，不是模板的问题；所以没有去拉伸版面
   3. 看过渲染出来的页面和对照页
 - **撤回：** `git revert` 这个提交，再跑 `uv sync`
+
+### 2.3b · 2026-11-03 · 安全许可（clearance）规则：提议阶段，还没启用
+- **做了什么：**
+  - 第一次全流程运行里，排第一的"值得投"是 Maxar 的 `Junior Data Engineer (TS/SCI)`，要政府安全许可。打分规则里没有这一项。FL 同意加规则，所以按规则流程先写提议，不改真规则
+  - `config/proposals/fit_scoring.v2.toml`：用正则表达式读职位标题和正文，分三类：**ignore**（不算要求，比如 "No Clearance"、"Polygraph Protection Act"、Public Trust）、**obtain**（必须能够取得）、**hold**（必须已经持有）
+  - 申请资料新增两个字段：`has_security_clearance`、`can_obtain_security_clearance`（样本 Alex 都是 false）。规则只读文字，要不要跳过由档案决定，所以 FL 的真实情况放在 `private/`，不进公开仓库
+  - `agents/fit_scoring.py`：支持这段规则（真规则文件里没有这一段时不起作用），`run` 现在连带读出闸门清洗后的正文
+  - `agents/evaluate_fit_rules.py`：新命令，用当前规则和提议各算一遍，列出决定会变的职位；同时跑标准答案，并把规则用在所有 DE 类职位上做更大范围的测试。`--review` 生成 `output/fit_rules_review.html`，带原文和标记
+  - `tests/fixtures/clearance_cases.toml`：44 条真实写法和它们应该落在哪一类
+- **为什么不让 AI 判断：** 这是决定（#22、#30），而且简报里没有这个字段。加字段要升提示词版本、重新评估，这条规则用代码读原文，免费、结果确定
+- **文件：** `config/proposals/fit_scoring.v2.toml`、`agents/fit_scoring.py`、`agents/evaluate_fit_rules.py`、`agents/profile.py`、`data/sample/applicant_profile.toml`、`tests/fixtures/clearance_cases.toml`、`tests/test_evaluate_fit_rules.py`、`tests/test_fit_scoring.py`、`docs/STATUS.md`
+- **提交：** 见本条所在的提交
+- **验证：**
+  1. 评估结果：44 条标准答案全部通过；今天的 50 个职位里只有 2 个决定会变（Maxar 的两个 TS/SCI 职位，投 → 跳过）；全部 2,462 个 DE 类职位：必须持有 218、必须能取得 43、提到但不算要求 45、没提 2,156
+  2. 我读了约 100 条抽样和全部只靠笼统字眼判断的结果。第一版抓错了几种：把 "Employee Polygraph Protection Act"（法律样板话）、"Minimum Clearance Required to Start: None"、"No Clearance" 当成要求；"U.S." 里的句点让"能够取得"被判成"必须持有"。都修了，都写进了标准答案
+  3. 仍然存在的灰色情况：一个职位同时写"必须持有或能够取得"时算作"必须持有"；"T-3 Investigation" 这种写法算作要求。没有读完全部 218 条，所以不能说完全没有错判
+- **撤回：** `git revert` 这个提交。提议没有启用，数据库和每日运行都没有变化

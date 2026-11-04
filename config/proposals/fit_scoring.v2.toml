@@ -1,0 +1,77 @@
+# PROPOSAL, not adopted until FL approves. Changes from v1: a clearance dealbreaker.
+#
+# Why: run 8 (2026-11-03) ranked Maxar's "Junior Data Engineer (TS/SCI)" first under
+# "worth applying". The role needs an active US government clearance, and nothing checked for it.
+#
+# How a job brief is scored against the candidate profile (decision #35). Code applies these;
+# no LLM is involved, so the same brief, profile and rules always give the same score. Rules as
+# data: change them through the loop (propose, show what moves, FL approves, bump version,
+# record in DECISIONS.md), then `uv run python -m agents.fit_scoring run` rescores everything.
+
+version = 2
+
+# score = must_weight x must-have coverage + nice_weight x nice-to-have coverage + archetype
+# adjustment, kept within 0..100. Coverage is the share of skills the profile covers.
+must_weight = 70
+nice_weight = 20
+core_weight = 2          # a core must-have counts this many times in must-have coverage
+
+[archetype_adjustment]
+analytics_engineer = 5   # the strongest bridge from BI engineering
+pipeline_de = 0
+infra_de = -5
+
+[decision]
+apply_bar = 0.5          # apply when must-have coverage reaches this (decision #8)
+referral_score = 65      # and look for a referral at or above this score
+
+[dealbreakers]
+# A posting may ask for this many more years than the profile has and still be worth applying.
+years_tolerance = 1
+# "off" during the small-company practice phase: location is shown, never a reason to skip.
+# The big-tech phase will limit it to California, Washington and Texas (FL, 2026-11-02).
+location_check = "off"
+salary_floor_check = true   # skip when the posting's top of range is below the profile's floor
+sponsorship_check = true    # skip when the profile needs sponsorship and the posting won't give it
+
+# US government security clearance, read from the posting's title and cleaned text. Regular
+# expressions, ignoring case. Applied in this order:
+#   1. `ignore`: wording that doesn't make it a requirement. Removed from the text first.
+#   2. `obtain`: the employer wants someone who can get one. Removed next, so it can't count as
+#      `hold` too. Skipped unless the profile has one or can_obtain_security_clearance is true.
+#   3. `hold`: the candidate must already have one. Skipped unless has_security_clearance is true.
+# A public trust determination is a background check, not a clearance, and doesn't count.
+[dealbreakers.clearance]
+ignore = [
+    '\bU\.S\.',
+    '\b(clearance\s*(level\s*)?(requirements?|required)?(\s+to\s+start)?|currently possess)\s*:\s*(ability to obtain\s*)?(no clearance|none|n/?a|public trust)\b',
+    '\b(security\s+)?clearance\s*:\s*(?=[^.\n]{0,60}\bobtain\b)',
+    '\bpublic trust\b[^.\n;]{0,25}',
+    '\bno\s+(active\s+|security\s+)?clearance\b[^.\n;]{0,15}',
+    '\b(does not|doesn.t|do not)\s+require\b[^.\n;]{0,30}\bclearance\b',
+    '\bclearance\b[^.\n;]{0,15}\bnot\s+(required|needed)\b',
+    '\b(active\s+|current\s+)?((secret|top[- ]secret|TS\s*/\s*SCI|security|federal|government)\s+)*(clearance|TS\s*/\s*SCI|top[- ]secret)\b\s*(is\s+|are\s+)?(strongly\s+)?(preferred|desired|a plus|nice to have|a bonus)\b(?!\s+qualif)',
+    '\bpreferred qualifications\W{0,6}[^.\n;]{0,25}\bclearance\b',
+    '\b(preferred|desired|nice to have)\s*:[^.\n;]{0,40}\bclearance\b',
+    '\bsecurity clearance requirements?\b',
+    '\bpolygraph protection\b',
+    '\bfingerprint clearance\b',
+    '\beligibility\s*&\s*clearance\b',
+    '\bmany of our positions\b[^.\n;]{0,60}\bclearance\b',
+]
+obtain = [
+    '\b(obtain|obtaining|obtainable|attain|gain)\b[^.\n;]{0,50}\b(clearance|secret|TS\s*/\s*SCI|SCI)\b(\W+(security\s+)?clearance)?',
+    '\beligib\w*\b[^.\n;]{0,30}\b(clearance|secret|TS\s*/\s*SCI)\b(\W+(security\s+)?clearance)?',
+    '\bclearance[- ]eligib\w*\b',
+]
+hold = [
+    '\bTS\s*/\s*SCI\b',
+    '\btop[- ]secret\b',
+    '\b(secret|security|government|DoD|DoW|federal|Q|SCI|TS|poly)\s+clearance\b',
+    '\bsecret cleared\b',
+    '\b(DOE|active)\s+Q\b',
+    '\bpolygraph\b',
+    '\b(active|current|must have|must hold|must possess|currently possess)\b[^.\n;]{0,30}\b(secret|clearance)\b',
+    '\bclearance\s+required\b(?!\s*:)',
+    '(?m)^cleared\s',
+]

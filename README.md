@@ -16,3 +16,5 @@ Python · Postgres · dbt · Airflow · FastAPI · Streamlit · Claude API · AW
 ## Credits
 
 The agent layer adapts ideas from the MIT-licensed [ai-job-search](https://github.com/ai-job-search-dev/ai-job-search) framework.
+
+The resume template bundles [Liberation Sans](https://github.com/liberationfonts/liberation-fonts) 2.1.5 under the SIL Open Font License (`templates/fonts/LICENSE`).

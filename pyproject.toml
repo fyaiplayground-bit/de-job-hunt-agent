@@ -8,7 +8,9 @@ dependencies = [
     "anthropic>=2.3.0",
     "httpx>=0.28.1",
     "psycopg[binary]>=3.3.6",
+    "pypdf>=6.21.4",
     "python-dotenv>=1.2.4",
+    "typst>=0.15.0",
     "tzdata>=2026.6",
 ]
 
@@ -38,6 +40,7 @@ select = ["E", "F", "I", "B", "UP"]
 # compare: their line length and short names, not ours.
 "pipeline/posting_guard.py" = ["E501", "E741"]
 "tests/test_posting_guard.py" = ["E501", "E741"]
+"agents/pdf_checks.py" = ["E501"]
 
 [tool.ruff.format]
-exclude = ["pipeline/posting_guard.py", "tests/test_posting_guard.py"]
+exclude = ["pipeline/posting_guard.py", "tests/test_posting_guard.py", "agents/pdf_checks.py"]

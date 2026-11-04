@@ -57,7 +57,7 @@ Context gets lost between sessions, and long sessions get compacted. The files i
 | Transform | dbt with the Postgres adapter |
 | Orchestration | Plain Python functions first; Airflow DAGs later call the same functions |
 | Agents | Claude API via the Anthropic Python SDK; rules live in `.claude/skills/*/SKILL.md` |
-| Resume output | One-page PDF from a template; layout check + ATS text-layer check (engine still open: LaTeX or Typst) |
+| Resume output | One-page PDF from a Typst template with bundled fonts (`templates/`); layout check + ATS text-layer check (`agents/pdf_checks.py`) |
 | API | FastAPI |
 | Dashboard | Streamlit |
 

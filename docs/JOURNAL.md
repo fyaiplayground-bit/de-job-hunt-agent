@@ -394,3 +394,20 @@
 - **提交：** 见本条所在的提交
 - **验证：** `agents.profile check` OK；`tests/test_profile.py`、`tests/test_skills.py` 36 个通过
 - **撤回：** `git revert` 这个提交，再跑 `agents.skills lock`
+
+### 2.4b · 2026-11-03 · 一页简历模板、PDF 检查、生成命令
+- **做了什么：**
+  - `templates/resume.typ`：单栏、标准标题、联系方式在正文里、没有页眉页脚、左对齐、US Letter、关掉连字和断词、不写生成日期
+  - `agents/resume_doc.py`：把 `resume.md` 读成结构化数据；读不懂的行直接报错，不猜。还给出"PDF 必须显示的每一行"，按阅读顺序排列
+  - `agents/pdf_checks.py`：检查做好的 PDF。失败项：不是一页、没有文字层、缺行或顺序错、缺必须出现的文字（2.5 用来放 JD 关键词）、日期用了长破折号、字体没嵌入、有连字或不可见字符。警告项：文字排到页面不足 80%。折叠文字和日期检查那一段是从 ai-job-search 逐字节复制的（带 MIT 版权头），其余是我们写的；版面测量只借思路，用 pypdf 读文字位置，不需要 Poppler
+  - `agents/render_resume.py`：命令 `agents.render_resume`，生成 `output/resume/Alex_Sample.pdf` 和对照页 `review.html`，同时跑 `check_resume`（事实库检查）
+  - 新依赖：`typst`、`pypdf`
+- **和设计的一处不同：** 对照页左边原计划放 PDF，但应用内的浏览器显示不出来，所以改成嵌入 Typst 渲染的页面图片，再加一个打开真 PDF 的链接。图片和 PDF 来自同一个模板和同一份数据
+- **为什么：** DECISIONS #36
+- **文件：** `templates/resume.typ`、`agents/resume_doc.py`、`agents/pdf_checks.py`、`agents/render_resume.py`、`tests/test_resume_pdf.py`、`pyproject.toml`、`uv.lock`；文档 `CLAUDE.md`、`README.md`、`docs/DESIGN.md`、`docs/NOTES.md`
+- **提交：** 见本条所在的提交
+- **验证：**
+  1. 新增 31 个测试，全部通过，ruff 通过。覆盖：解析格式和各种错误格式；样本 1 页且没有失败项；渲染两次字节相同；内容里的 `$ # * _ = [ ] < > @ %` 和 `--` 原样打印，不会被当成模板语法；每个检查都有一个做坏的例子（两页、没有文字、文件损坏、缺行、乱序、缺关键词、长破折号日期、连字、零宽字符、字体未嵌入、页面太空）
+  2. 真实跑了 `agents.render_resume`：1 页，所有检查通过；一条警告：样本内容较短，文字只排到页面 67%。这是内容少，不是模板的问题；所以没有去拉伸版面
+  3. 看过渲染出来的页面和对照页
+- **撤回：** `git revert` 这个提交，再跑 `uv sync`

@@ -505,3 +505,11 @@
   3. 发现：这 5 个职位里 4 个的网站要账号，1 个是聚合站，0 个不用账号
   4. **没有验证：** 批准这一步留给 FL 真实做；Chrome 填表和提交还没做；明天 9:30 的运行是否正常要明天看
 - **撤回：** `git revert` 这个提交；数据库删除视图 `agents.applications` 和表 `agents.application_events`、`agents.queue_items`，再从 `public.schema_migrations` 删掉 `014_application_queue.sql`
+
+### 2.6a · 2026-11-04 · 第一次真实批准，Milestone 2 完成
+- **做了什么：** FL 批准了第一批的 5 个职位。事件表里每个职位多了一条 approved，历史还在；提交包写好了：5 份 PDF 和一份答案，都标着 `SAMPLE_DO_NOT_SUBMIT`
+- **文件：** 只改了 `docs/JOURNAL.md`、`docs/STATUS.md`；批准记录在数据库，提交包在 `output/`
+- **提交：** 见本条所在的提交
+- **验证：** 5 个职位状态都是 approved。试着把 1 号标记为已投，代码拒绝了，状态没变
+- **撤回：** 不需要撤回；这是虚构档案，不会投出去
+

@@ -42,7 +42,7 @@ Update this file at the end of every work session: what got done, what's next, w
 - [x] fit-scoring as code (2.3: vocabulary matching, 70/20 score, dealbreakers, daily "worth applying"; #35) and coverage checks (#34)
 - [x] PDF compile-and-inspect; ATS text-layer check (2.4, `agents/pdf_checks.py`, `agents.render_resume`; #36)
 - [x] Tailor → reviewer → revise loop (2.5, #38)
-- [x] Approval queue output for the claude.ai Project to submit from (2.6, #40; FL's first approval still to do)
+- [x] Approval queue output for the claude.ai Project to submit from (2.6, #40)
 - [x] End-to-end test: real JDs from the pipeline + the sample profile → tailored PDFs (5-job trial 2026-11-03; FL still to read them)
 
 ### Milestone 3 · Week 3 · Modeling + reporting
@@ -71,8 +71,6 @@ Update this file at the end of every work session: what got done, what's next, w
 **FL any time:** send jobs found on LinkedIn (company + title); Claude runs `pipeline.find_job` and reports; `--stats` gives coverage.
 
 **Claude, after a few more days of briefs:** run `agents.fit_scoring unmatched` and grow `config/skill_vocabulary.toml` through the loop.
-
-**FL, next:** read `output/queue/2026-11-04/index.html` (5 jobs for the sample profile) and say which numbers to approve or pass. That finishes the flow: the pack is named SAMPLE_DO_NOT_SUBMIT and code refuses to mark these applied.
 
 **Claude, next run (11/05):** check that it writes `jd-analysis@4` briefs and that the report's scoring section looks right; `agents.application_queue build` should then find new jobs.
 
@@ -122,3 +120,4 @@ Standing facts: the 87 `jd-analysis@3` briefs stay as they are and are not re-br
 - 2026-11-04 — FL approved: jd-analysis v4, resume-tailoring v4, resume-reviewer v2, vocabulary v2 adopted (#39). New briefs start with the next daily run; the 87 old briefs not re-briefed so far.
 - 2026-11-04 — FL chose new jobs only: the 87 old briefs are not re-briefed.
 - 2026-11-04 — Step 2.6: approval queue (`agents/application_queue.py`, `agents/queue_review.py`, `config/queue.toml`, migration 014), first real batch of 5 built for $0.23. Decision #40. M2 interview note written. **Milestone 2 complete** apart from FL's first approval.
+- 2026-11-04 — FL approved the first batch (all 5). Submit pack written (SAMPLE_DO_NOT_SUBMIT); marking one applied was refused as designed. **Milestone 2 complete.** Form filling isn't built yet.

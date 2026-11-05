@@ -30,6 +30,7 @@ from typing import Any
 
 import psycopg
 
+from agents.evaluate_prompt import _highlight
 from agents.fit_scoring import (
     ClearanceRules,
     Rules,
@@ -38,6 +39,7 @@ from agents.fit_scoring import (
     load_briefs,
     load_rules,
     load_vocabulary,
+    match_skill,
     score_brief,
 )
 from agents.jd_analysis import load_scope
@@ -48,6 +50,7 @@ from pipeline.db import connect
 from pipeline.safety_gate import GATE_VERSION
 
 CASES_FILE = REPO_ROOT / "tests" / "fixtures" / "clearance_cases.toml"
+PHRASE_CASES_FILE = REPO_ROOT / "tests" / "fixtures" / "phrase_match_cases.toml"
 REVIEW_PAGE = REPO_ROOT / "output" / "fit_rules_review.html"
 # Any wording about clearance, even wording the rule treats as no requirement.
 MENTION = re.compile(r"clearance|TS\s*/\s*SCI|top[- ]secret|polygraph|\bcleared\b", re.IGNORECASE)
@@ -70,6 +73,19 @@ def golden_problems(rules: ClearanceRules, path: Path = CASES_FILE) -> list[str]
     return problems
 
 
+def phrase_problems(
+    rules: Rules, vocab: Vocabulary, profile: Profile, path: Path = PHRASE_CASES_FILE
+) -> list[str]:
+    """Labeled requirements that match wrongly; [] means every case passes."""
+    problems = []
+    for case in tomllib.loads(path.read_text(encoding="utf-8"))["cases"]:
+        item = {"skill": case["skill"], "exact_phrases": case["phrases"]}
+        covered = match_skill(item, profile.bank, vocab, rules.phrase_match).skill is not None
+        if covered != case["covered"]:
+            problems.append(f"want covered={case['covered']}: {case['skill']} {case['phrases']}")
+    return problems
+
+
 @dataclass(frozen=True)
 class Move:
     posting_version_id: int
@@ -86,16 +102,21 @@ def compare(
     proposed: Rules,
     vocab: Vocabulary,
     today: date,
+    every_score: bool = False,
+    proposed_vocab: Vocabulary | None = None,
 ) -> tuple[Counter, Counter, list[Move]]:
-    """Decision counts under each rules file, and the jobs whose decision would change."""
+    """Decision counts under each rules file, and the jobs whose decision would change (with
+    `every_score`, also those whose score alone would), decisions first."""
     before, after, moves = Counter(), Counter(), []
     for posting_version_id, brief, text in briefs:
         old = score_brief(brief, profile, current, vocab, today, text).as_json()
-        new = score_brief(brief, profile, proposed, vocab, today, text).as_json()
+        new = score_brief(brief, profile, proposed, proposed_vocab or vocab, today, text).as_json()
         before[old["decision"]] += 1
         after[new["decision"]] += 1
-        if old["decision"] != new["decision"]:
+        changed = old["decision"] != new["decision"]
+        if changed or (every_score and old["score"] != new["score"]):
             moves.append(Move(posting_version_id, brief, text, old, new))
+    moves.sort(key=lambda m: (m.before["decision"] == m.after["decision"], -m.before["score"]))
     return before, after, moves
 
 
@@ -157,7 +178,38 @@ def _decision_label(result: dict[str, Any]) -> str:
     return f"{result['decision']} · {result['score']} 分"
 
 
+def _lost_requirements(move: Move) -> list[str]:
+    """Must-haves counted as covered before and not after."""
+    still = {match["asked"] for match in move.after["covered"]}
+    return [match["asked"] for match in move.before["covered"] if match["asked"] not in still]
+
+
+def _phrase_move_html(move: Move) -> str:
+    """A job moved by how phrases match: what lost credit, in the posting's words."""
+    lost = _lost_requirements(move)
+    items = {item["skill"]: item for item in move.brief["must_haves"]}
+    rows = "".join(
+        f"<li><b>{html.escape(name)}</b>: the posting's words were "
+        f"{html.escape(' | '.join(items.get(name, {}).get('exact_phrases', [])))}</li>"
+        for name in lost
+    )
+    phrases = [p for name in lost for p in items.get(name, {}).get("exact_phrases", [])]
+    url = move.brief.get("url", "")
+    link = f' · <a href="{html.escape(url)}">原帖</a>' if url.startswith("http") else ""
+    return (
+        f"<article><h3>#{move.posting_version_id} {html.escape(move.brief.get('company', ''))} — "
+        f"{html.escape(move.brief.get('title', ''))}{link}</h3>"
+        f"<p>{_decision_label(move.before)} → <b>{_decision_label(move.after)}</b> · 必备覆盖 "
+        f"{(move.before['must_have_coverage'] or 0):.0%} → "
+        f"{(move.after['must_have_coverage'] or 0):.0%}</p>"
+        f"<p>不再算覆盖的必备技能：</p><ul>{rows}</ul>"
+        f"<pre>{_highlight(move.text, phrases, [])}</pre></article>"
+    )
+
+
 def _move_html(move: Move) -> str:
+    if not move.after["dealbreakers"] or _lost_requirements(move):
+        return _phrase_move_html(move)
     words = (
         re.search(r"\((['\"])(.*)\1\)$", move.after["dealbreakers"][0])
         if move.after["dealbreakers"]
@@ -198,6 +250,12 @@ def review_page(
             f"<table><tr><th>职位</th><th>标题</th><th>原文（标出的是起决定作用的词）</th></tr>"
             f"{rows}</table>"
         )
+    wider = ""
+    if current.clearance != proposed.clearance:
+        wider = (
+            f"<h2>更大范围的测试：数据库里所有 DE 类职位（一共 {sum(counts.values())} 个）</h2>"
+            f"<p>其中 {counts['none']} 个根本没提 clearance，这些不受影响。</p>{groups}"
+        )
     return f"""<!doctype html>
 <html lang="zh"><head><meta charset="utf-8"><title>打分规则检查</title>
 <style>
@@ -215,11 +273,9 @@ def review_page(
 </style></head><body>
 <h1>打分规则 v{current.version} → v{proposed.version}：会改变什么</h1>
 <p>决定的数量：{dict(before)} → {dict(after)}。这只是预览，还没有改动任何东西。</p>
-<h2>决定会变的职位（{len(moves)} 个）</h2>
+<h2>会变的职位（{len(moves)} 个，决定变了的排在最前面）</h2>
 {moved}
-<h2>更大范围的测试：数据库里所有 DE 类职位（一共 {sum(counts.values())} 个）</h2>
-<p>其中 {counts["none"]} 个根本没提 clearance，这些不受影响。</p>
-{groups}
+{wider}
 </body></html>
 """
 
@@ -243,30 +299,57 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="python -m agents.evaluate_fit_rules")
     parser.add_argument("proposal", type=Path)
     parser.add_argument("--review", action="store_true", help=f"also write {REVIEW_PAGE.name}")
+    parser.add_argument(
+        "--brief-versions",
+        nargs="+",
+        help="read these jd-analysis versions too, newest brief per job (default: the current one)",
+    )
+    parser.add_argument("--every-score", action="store_true", help="list score-only moves too")
+    parser.add_argument("--vocabulary", type=Path, help="a proposed skill vocabulary")
     args = parser.parse_args(argv)
     sys.stdout.reconfigure(encoding="utf-8")
 
     current, proposed = load_rules(), load_rules(args.proposal)
     problems = golden_problems(proposed.clearance) if proposed.clearance else []
-    print(f"rules v{current.version} -> v{proposed.version}")
+    vocabulary = load_vocabulary()
+    proposed_vocab = load_vocabulary(args.vocabulary) if args.vocabulary else vocabulary
+    profile = load_profile(profile_dir())
+    problems += phrase_problems(proposed, proposed_vocab, profile)
+    print(
+        f"rules v{current.version} -> v{proposed.version}, "
+        f"vocabulary v{vocabulary.version} -> v{proposed_vocab.version}"
+    )
     for problem in problems:
         print(f"  GOLDEN {problem}")
     print(f"golden cases: {'FAIL' if problems else 'PASS'}")
 
-    profile = load_profile(profile_dir())
     prompt_version = load_skill("jd-analysis").prompt_version
     with connect() as conn:
-        briefs = load_briefs(conn, prompt_version, llm_settings().model)
+        versions = args.brief_versions or [prompt_version]
+        newest: dict[int, tuple[int, dict[str, Any], str]] = {}
+        for version in versions:  # later versions replace earlier ones
+            for row in load_briefs(conn, version, llm_settings().model):
+                newest[row[0]] = row
+        briefs = list(newest.values())
         postings = de_postings(conn)
     before, after, moves = compare(
-        briefs, profile, current, proposed, load_vocabulary(), date.today()
+        briefs,
+        profile,
+        current,
+        proposed,
+        vocabulary,
+        date.today(),
+        args.every_score,
+        proposed_vocab,
     )
-    print(f"current briefs ({prompt_version}): {dict(before)} -> {dict(after)}")
+    print(f"briefs ({', '.join(versions)}): {dict(before)} -> {dict(after)}")
     for move in moves:
         print(
             f"  #{move.posting_version_id} {move.brief.get('company')} | "
-            f"{move.brief.get('title')}: {move.before['decision']} -> {move.after['decision']} "
-            f"({'; '.join(move.after['dealbreakers'])})"
+            f"{move.brief.get('title')}: {move.before['decision']} {move.before['score']} -> "
+            f"{move.after['decision']} {move.after['score']} "
+            f"(lost {', '.join(_lost_requirements(move)) or 'nothing'}; "
+            f"{'; '.join(move.after['dealbreakers'])})"
         )
     if proposed.clearance:
         counts, tiers = sort_postings(postings, proposed.clearance)

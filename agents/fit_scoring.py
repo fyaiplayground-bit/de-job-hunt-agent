@@ -44,6 +44,9 @@ RULES_FILE = REPO_ROOT / "config" / "fit_scoring.toml"
 VOCABULARY_FILE = REPO_ROOT / "config" / "skill_vocabulary.toml"
 # A brief's skill name may bundle alternatives: "Cloud SQL / PostgreSQL", "AWS (S3, Glue)".
 NAME_SEPARATORS = re.compile(r"\s+/\s+|\s+or\s+|\s+and\s+|\s*&\s*|[(),]")
+# A posting's phrase may offer alternatives ("Airflow or Dagster"), but "Java & Python" asks
+# for both and "Tableau, Adobe Analytics" is a list.
+PHRASE_ALTERNATIVES = re.compile(r"\s+and/or\s+|\s+or\s+", re.IGNORECASE)
 
 
 @dataclass(frozen=True)
@@ -67,6 +70,7 @@ class Rules:
     salary_floor_check: bool
     sponsorship_check: bool
     clearance: ClearanceRules | None = None
+    phrase_match: str = "any_part"  # any_part / alternatives_only
 
 
 def _load_clearance(section: dict[str, list[str]] | None) -> ClearanceRules | None:
@@ -94,7 +98,10 @@ def load_rules(path: Path = RULES_FILE) -> Rules:
         salary_floor_check=bool(data["dealbreakers"]["salary_floor_check"]),
         sponsorship_check=bool(data["dealbreakers"]["sponsorship_check"]),
         clearance=_load_clearance(data["dealbreakers"].get("clearance")),
+        phrase_match=data.get("skill_matching", {}).get("exact_phrases", "any_part"),
     )
+    if rules.phrase_match not in ("any_part", "alternatives_only"):
+        raise ValueError(f"skill_matching.exact_phrases: unknown value {rules.phrase_match!r}")
     if rules.location_check != "off":
         raise ValueError("location_check: only 'off' exists so far (the state check comes in M5)")
     return rules
@@ -177,12 +184,25 @@ def _resolve(
     return [], ""
 
 
-def match_skill(item: dict[str, Any], bank: EvidenceBank, vocab: Vocabulary) -> SkillMatch:
+def _phrase_parts(raw: str, phrase_match: str) -> list[str]:
+    if phrase_match == "alternatives_only":
+        return [part.strip(" ,") for part in PHRASE_ALTERNATIVES.split(raw) if part.strip(" ,")]
+    return _split(raw)
+
+
+def match_skill(
+    item: dict[str, Any], bank: EvidenceBank, vocab: Vocabulary, phrase_match: str = "any_part"
+) -> SkillMatch:
     """The brief's skill name (and its parts) may match through any route. The posting's exact
     phrases only match a profile skill directly or by synonym, never through a family: a phrase
-    like "cloud data warehouse" quoted next to Snowflake must not make Redshift cover Snowflake."""
+    like "cloud data warehouse" quoted next to Snowflake must not make Redshift cover Snowflake.
+    `phrase_match` says how much of a phrase has to name the skill (config/fit_scoring.toml)."""
     candidates = [(name, True) for name in _split(item["skill"])]
-    candidates += [(p, False) for raw in item.get("exact_phrases", []) for p in _split(raw)]
+    candidates += [
+        (part, False)
+        for raw in item.get("exact_phrases", [])
+        for part in _phrase_parts(raw, phrase_match)
+    ]
     for name, families in candidates:
         skills, how = _resolve(name, bank, vocab, families)
         if not skills:
@@ -295,8 +315,11 @@ def score_brief(
 ) -> FitResult:
     bank = profile.bank
     years = candidate_years(bank, today)
-    must = [(item, match_skill(item, bank, vocab)) for item in brief["must_haves"]]
-    nice = [match_skill(item, bank, vocab) for item in brief["nice_to_haves"]]
+    must = [
+        (item, match_skill(item, bank, vocab, rules.phrase_match))
+        for item in brief["must_haves"]
+    ]
+    nice = [match_skill(item, bank, vocab, rules.phrase_match) for item in brief["nice_to_haves"]]
 
     def weight(item: dict[str, Any]) -> float:
         return rules.core_weight if item.get("weight") == "core" else 1.0

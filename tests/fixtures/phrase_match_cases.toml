@@ -1,0 +1,31 @@
+# Golden cases for how a posting's exact phrases match the fictional sample profile, mostly from
+# real briefs (2026-11-04). The sample has SQL, Python, Git, Excel, Tableau, S3, Airflow and more;
+# it has no Java, CI/CD, Snowflake, Fabric or Azure DevOps. `covered` is what a person would say.
+# Any change to phrase matching or to the vocabulary has to keep all of these.
+
+cases = [
+    # A phrase naming two things doesn't credit one for the other.
+    { skill = "Java", phrases = ["Java & Python"], covered = false },
+    { skill = "CI/CD", phrases = ["Git and CI/CD"], covered = false },
+    { skill = "Snowflake", phrases = ["query optimization and cost management"], covered = false },
+    { skill = "Data extraction", phrases = ["Extract data from C360, Tableau, Adobe Analytics and Adobe Campaign"], covered = false },
+    { skill = "Microsoft Fabric", phrases = ["Microsoft Fabric (Lakehouse, OneLake, Data Pipelines, Semantic Models)"], covered = false },
+    { skill = "Azure DevOps", phrases = ["Azure DevOps (CI/CD, Git, automated deployments)"], covered = false },
+    { skill = "Microsoft Office", phrases = ["Microsoft Excel, Word, Visio and Powerpoint"], covered = false },
+    { skill = "Automated testing", phrases = ["with tests, version control"], covered = false },
+    # A real either/or still counts through the side the profile has.
+    { skill = "Dagster", phrases = ["Airflow or Dagster"], covered = true },
+    { skill = "Java", phrases = ["Java and/or Python"], covered = true },
+    { skill = "Message queues", phrases = ["Kafka or RabbitMQ"], covered = false },
+    # The whole phrase naming a skill still counts.
+    { skill = "Workflow tools", phrases = ["Airflow"], covered = true },
+    { skill = "Version control", phrases = ["version control"], covered = true },
+    # The skill's own name is judged as before, whatever the phrases say.
+    { skill = "Python and SQL", phrases = [], covered = true },
+    { skill = "AWS (S3, Glue)", phrases = [], covered = true },
+    { skill = "Python or Java", phrases = ["Java"], covered = true },
+    # A wording the vocabulary has to know: the slash has no spaces, so it isn't split.
+    { skill = "Git/GitHub", phrases = ["version control (GitHub)"], covered = true },
+    # A clean v4-style entry.
+    { skill = "dbt or Snowflake or BigQuery", phrases = ["dbt", "Snowflake", "BigQuery"], covered = true },
+]

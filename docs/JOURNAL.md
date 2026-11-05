@@ -533,3 +533,20 @@
   5. **没有验证：** 明天 9:30 才是 dbt 第一次跑在每日运行里；配色校验脚本要 Node，这台电脑没装，用的是文档里写明通过的前三个颜色
 - **发现但没改：** 打分时，JD 原话只要有一部分对上就算覆盖。比如 "Java & Python" 让没用过 Java 的人也算满足了 Java，"Git and CI/CD" 同理。试算：如果原话必须整句对上，87 个里 16 个分数会变，3 个决定从投变跳过（Seismic、Jobgether、Sagility）。#39 里提到 Sagility 从跳过变投，现在看也是这个问题造成的。要走规则流程，等 FL 决定
 - **撤回：** `git revert` 这个提交，再 `drop schema analytics_staging, analytics_skills, analytics_marts cascade`，删掉 `agents.profile_skills`，从 `public.schema_migrations` 删掉 `015_profile_skills.sql`
+
+### 3.5 · 2026-11-04 · 打分的 JD 原话匹配：提议阶段，还没启用
+- **做了什么：** FL 同意提议。JD 原话以前只要有一部分对上就算覆盖；提议改成整句对上，或者 "or" 其中一边对上
+  - `config/proposals/fit_scoring.v3.toml`：新增 `[skill_matching] exact_phrases`。代码两种方式都支持，真规则文件没变，所以现在什么都没变
+  - `config/proposals/skill_vocabulary.v3.toml`：加 "Git/GitHub"
+  - `tests/fixtures/phrase_match_cases.toml`：18 条标准答案，多数来自真实简报
+  - `agents.evaluate_fit_rules`：新增 `--every-score`、`--vocabulary`、`--brief-versions`，审核页写明每个职位失去了哪条必备技能，并标出原文
+- **过程：** 我之前试算的是"必须整句对上"，3 个决定会变。逐个读完发现这太严：Jobgether 的 "Airflow or Dagster" 是真的几选一，不该丢；Seismic 的 "Git/GitHub" Alex 确实有。所以改成保留 "or"，并在词表加上这个写法，决定变化从 3 个降到 1 个
+- **为什么：** "Java & Python" 让只会 Python 的人也算满足了 Java
+- **文件：** `agents/fit_scoring.py`、`agents/evaluate_fit_rules.py`、`config/proposals/fit_scoring.v3.toml`、`config/proposals/skill_vocabulary.v3.toml`、`tests/fixtures/phrase_match_cases.toml`、`tests/test_evaluate_fit_rules.py`、`docs/JOURNAL.md`、`docs/STATUS.md`
+- **提交：** 见本条所在的提交
+- **验证：**
+  1. 全部测试通过，ruff 通过；标准答案 18 条全过，当前规则过不了这些答案（证明确实在修问题）
+  2. 87 个职位：1 个决定会变（Sagility，投 → 跳过，它的标题就要 Snowflake，Alex 没有），14 个只有分数变，13 个下降，DRW 上升 5 分（"Java and/or Python" 现在算对上了 Python，仍然跳过）
+  3. 我读了每一个失去的必备技能。可以讨论的一个：EXL 的 "AWS-based data lakes (S3)"，Alex 用过 S3，但新规则不再算 Data lakes
+- **撤回：** `git revert` 这个提交。提议没有启用，分数和每日运行都没有变化
+

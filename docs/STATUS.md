@@ -78,7 +78,7 @@ Update this file at the end of every work session: what got done, what's next, w
 
 **Worth raising:** all job data lives only on this laptop (see NOTES, "数据存在哪里"); the S3 backup is in Milestone 4 and needs FL's personal AWS account. Real applications start at Milestone 5, which doesn't technically depend on Milestones 3 and 4, though those are the DE portfolio work; FL may want to reorder.
 
-**FL, open choice:** exact phrases count when any part matches, so "Java & Python" credits Java. Requiring the whole phrase moves 16 of 87 scores and 3 decisions from apply to skip (Seismic, Jobgether, Sagility; JOURNAL 3.1-3.4). Fix it through the rules loop, or leave it.
+**FL, next:** proposal `fit_scoring.v3` + `skill_vocabulary.v3` waits for your OK; review page `output/fit_rules_review.html`. 1 decision moves (Sagility, apply to skip), 14 scores move. After OK: copy both over the live files (drop the PROPOSAL lines), bump `fit-scoring` skill text and lock, `agents.fit_scoring run`, record decision #42, and note in it that #39's Sagility move was this flaw.
 
 **Claude, next run:** also check that dbt ran inside the daily run and the report has the coverage section.
 

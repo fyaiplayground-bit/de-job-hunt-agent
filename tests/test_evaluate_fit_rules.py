@@ -11,10 +11,14 @@ import pytest
 
 from agents.evaluate_fit_rules import (
     CASES_FILE,
+    PHRASE_CASES_FILE,
     Sample,
+    _lost_requirements,
+    _move_html,
     compare,
     every_nth,
     golden_problems,
+    phrase_problems,
     review_page,
     sort_postings,
 )
@@ -22,6 +26,7 @@ from agents.fit_scoring import (
     find_clearance,
     load_rules,
     load_vocabulary,
+    match_skill,
     score_brief,
 )
 from agents.profile import load_profile
@@ -148,3 +153,87 @@ def test_review_page_shows_source_text_and_escapes_it():
     assert "&lt;script&gt;" in page
     assert "<mark>TS/SCI</mark>" in page
     assert f"v1 → v{RULES.version}" in page
+
+
+# ---------------------------------------------------------------- phrase matching (proposal v3)
+
+PHRASE_RULES = load_rules(REPO_ROOT / "config" / "proposals" / "fit_scoring.v3.toml")
+PHRASE_VOCAB = load_vocabulary(REPO_ROOT / "config" / "proposals" / "skill_vocabulary.v3.toml")
+PHRASE_CASES = tomllib.loads(Path(PHRASE_CASES_FILE).read_text(encoding="utf-8"))["cases"]
+
+
+@pytest.mark.parametrize("case", PHRASE_CASES, ids=lambda c: f"{c['skill']}-{c['phrases']}"[:60])
+def test_phrase_cases(case):
+    item = {"skill": case["skill"], "exact_phrases": case["phrases"]}
+    match = match_skill(item, PROFILE.bank, PHRASE_VOCAB, PHRASE_RULES.phrase_match)
+    assert (match.skill is not None) == case["covered"]
+
+
+def test_phrase_problems_names_a_wrong_case(tmp_path):
+    assert phrase_problems(PHRASE_RULES, PHRASE_VOCAB, PROFILE) == []
+    cases = tmp_path / "cases.toml"
+    cases.write_text(
+        'cases = [{ skill = "Java", phrases = ["Java"], covered = true }]', encoding="utf-8"
+    )
+    problems = phrase_problems(PHRASE_RULES, PHRASE_VOCAB, PROFILE, cases)
+    assert problems == ["want covered=True: Java ['Java']"]
+
+
+def test_the_current_any_part_rule_fails_the_cases_the_proposal_fixes():
+    any_part = replace(PHRASE_RULES, phrase_match="any_part")
+    problems = phrase_problems(any_part, PHRASE_VOCAB, PROFILE)
+    assert any("Java & Python" in problem for problem in problems)
+
+
+def test_an_unknown_phrase_setting_is_refused(tmp_path):
+    text = (REPO_ROOT / "config" / "proposals" / "fit_scoring.v3.toml").read_text(encoding="utf-8")
+    path = tmp_path / "rules.toml"
+    path.write_text(text.replace('"alternatives_only"', '"whatever"'), encoding="utf-8")
+    with pytest.raises(ValueError, match="exact_phrases"):
+        load_rules(path)
+
+
+def test_a_move_from_phrase_matching_names_what_was_lost_and_shows_the_posting():
+    job = {
+        **brief(),
+        "must_haves": [
+            {"skill": "SQL", "weight": "core", "exact_phrases": ["SQL"]},
+            {"skill": "Java", "weight": "core", "exact_phrases": ["Java & Python"]},
+        ],
+    }
+    old = replace(PHRASE_RULES, phrase_match="any_part", version=2)
+    text = "<script>x</script> Java & Python"
+    _, _, moves = compare([(1, job, text)], PROFILE, old, PHRASE_RULES, VOCAB, TODAY, True)
+    assert _lost_requirements(moves[0]) == ["Java"]
+    page = _move_html(moves[0])
+    assert "Java &amp; Python" in page
+    assert "<script>x" not in page
+
+
+def test_compare_can_use_a_proposed_vocabulary():
+    job = {
+        **brief(),
+        "must_haves": [
+            {
+                "skill": "Git/GitHub",
+                "weight": "core",
+                "exact_phrases": ["version control (GitHub)"],
+            },
+        ],
+    }
+    old_vocab = replace(
+        PHRASE_VOCAB,
+        synonyms={k: v for k, v in PHRASE_VOCAB.synonyms.items() if k != "git/github"},
+    )
+    _, _, moves = compare(
+        [(1, job, "text")],
+        PROFILE,
+        PHRASE_RULES,
+        PHRASE_RULES,
+        old_vocab,
+        TODAY,
+        True,
+        PHRASE_VOCAB,
+    )
+    assert moves[0].before["must_have_coverage"] == 0
+    assert moves[0].after["must_have_coverage"] == 1

@@ -12,6 +12,9 @@
 #   keeps each one (as a nice-to-have); listing it as a must-have counts as promoted.
 # work_mode: the expected work mode.
 # years_required: accepted values for the overall years asked for; [] means null.
+# one_entry: optional. Alternatives the posting accepts: a correct brief doesn't split one
+#   group across several must-haves. Each group is a list of "A|B" names.
+# not_must_haves: optional. Job functions a correct brief must not list as must-have skills.
 
 [[case]]
 name = "anthropic-data-engineer"
@@ -201,3 +204,43 @@ nice_to_haves = [
     "AWS|GCP|public clouds|public cloud",
     "Fivetran",
 ]
+
+[[case]]
+name = "totalwine-sr-analytics-engineer"
+source = "freehire"
+source_job_id = "sr-analytics-engineer-totalwine-4i2dlbfm"
+content_hash = "37016a6ea4af4f2f1a63410ebdb0c3b8a2cecd396eede1dab09d469a32249ac5"
+why = "either/or tool list and a background line that were scored as separate gaps (FL, 11/04)"
+must_haves = ["SQL", "dbt", "Data modeling|dimensional modeling", "Data warehousing|data warehouse"]
+archetype = ["analytics_engineer"]
+work_mode = "onsite"
+years_required = [3]
+one_entry = [["dbt", "Snowflake", "BigQuery"]]
+not_must_haves = ["BI development", "Analytics engineering"]
+
+[[case]]
+name = "agility-robotics-senior-data-engineer"
+source = "freehire"
+source_job_id = "senior-data-engineer-data-analytics-agility-robotics-koogur42"
+content_hash = "db7ac8f6ea3f1e8d81c9d036cb1f024368e477866d4556f56571a2afc77499e9"
+why = "several either/or lines: languages and orchestration tools"
+must_haves = ["Python", "Apache Spark|Spark", "Apache Airflow|Airflow", "Data modeling"]
+archetype = ["pipeline_de"]
+work_mode = "remote"
+years_required = [5]
+nice_to_haves = ["C++"]
+one_entry = [["Python", "Java", "Scala"], ["Apache Airflow|Airflow", "Dagster", "Prefect"]]
+not_must_haves = ["Data engineering"]
+
+[[case]]
+name = "cheil-senior-data-engineer-crm"
+source = "freehire"
+source_job_id = "senior-data-engineer-crm-cheil-worldwide-f5ln557a"
+content_hash = "7a79400bebfc465dcb430116bcd8497297015d447bbe39e4a2e3741773295f0d"
+why = "either/or cloud: Google Cloud (BigQuery) or AWS (Redshift, S3)"
+must_haves = ["Python", "SQL"]
+archetype = ["pipeline_de"]
+work_mode = "hybrid"
+years_required = [6]
+one_entry = [["Google BigQuery|BigQuery", "Amazon Redshift|Redshift"]]
+not_must_haves = ["Data engineering"]

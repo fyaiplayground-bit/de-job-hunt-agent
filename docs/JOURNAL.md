@@ -456,3 +456,24 @@
   4. 我逐条读了 5 份简历：AI 没有编造工具或数字；Airflow 写成 "first DAG"、"the load still runs from a cron script"，Spark 写成课程练习，都如实。可以讨论的：Cheil 那份总结写了 "advanced Python and SQL"（JD 的原话）和 "Builds data platforms"，证据里没有 "advanced"。代码查不出这种语气上的抬高，审稿 AI 这次也没有提，要 FL 判断
   5. 没有验证：FL 还没读结果；真实档案还没跑（Milestone 5）
 - **撤回：** `git revert` 这个提交；数据库执行 `drop table agents.tailored_resumes`，再从 `public.schema_migrations` 删掉 `013_tailored_resumes.sql`
+
+### 2.5b · 2026-11-04 · FL 看完试跑后的三处修改：提议阶段，提示词和词表还没启用
+- **FL 的反馈：** "moving into analytics engineering" 多余，BIE 几乎就是 Analytics Engineer；看不懂 `replace` 和"起草时的选择"；totalwine 为什么只有 58 分
+- **做了什么：**
+  - **A. 去掉转型说法：** 提议 `resume-tailoring` v4、`resume-reviewer` v2；代码检查（已生效）：定位行和总结里不许出现 "moving into"、"transitioning"、"aspiring"、"career change"
+  - **B. 对照页改成中文（已生效）：** 改写：原来 X，改成 Y；加一条经历；调到最前面……"起草时的选择"改名"起草 AI 的说明（不会上简历）"
+  - **C. 修打分：** 提议 `jd-analysis` v4（"几选一"合并成一条必备技能；职能背景不算技能）、`skill_vocabulary` v2（BI development、SQL 调优的几种写法）
+  - 标准答案加了 3 个职位（totalwine、Agility Robotics、Cheil）和两项新检查：几选一有没有被拆开、职能有没有被当成技能
+  - `agents/evaluate_scoring.py`：新命令，用提议重新拆解指定职位，列出分数和必备技能的前后变化，`--review` 生成 `output/scoring_review.html`。`agents.tailor run` 加了试跑参数，结果放 `output/tailored_trial/`，不写数据库
+  - 事实检查跟着调整：`Python or Java` 被 Python 覆盖，不代表简历可以写 Java；全部由事实库已有的词组成的短语（比如 "dbt tests"）不算编造
+- **为什么：** totalwine 的 JD 写 "dbt, Snowflake, BigQuery, or similar"，被拆成 3 个必备技能；"3-6 years in analytics engineering, data modeling, or BI development" 里的 BI development 被当成缺的技能。粗略扫描 87 份简报，47 份可能有这个问题，有些职位可能被错误跳过
+- **文件：** `config/proposals/resume-tailoring.v4.md`、`resume-reviewer.v2.md`、`jd-analysis.v4.md`、`skill_vocabulary.v2.toml`、`agents/evaluate_scoring.py`、`agents/evaluate_prompt.py`、`agents/jd_analysis.py`、`agents/resume_checks.py`、`agents/tailor.py`、`agents/tailor_review.py`、`tests/fixtures/jd_golden.toml`、`tests/test_evaluate_scoring.py`、`tests/test_evaluate_prompt.py`、`tests/test_tailor.py`
+- **提交：** 见本条所在的提交
+- **验证：**
+  1. 535 个测试通过，ruff 通过
+  2. 标准答案第一次判 v4 不通过：看起来丢了 3 个加分技能和 1 个必备技能。查原文发现技能都还在，只是写成了 "Microsoft Fabric or Power BI or streaming data" 这种合并形式，评分程序不认识。改成和打分同样的拆分方式后，新旧提示词用同一把尺子量：必备 86/86、加分 29/29（都一样），几选一 0/4 → 4/4，职能当技能 1 → 0，通过。这是改了尺子，所以记在这里，FL 可以在 `output/golden_review.html` 对照检查
+  3. 10 个真实职位：8 个上升，UChicago Medicine 62 → 59。Agility Robotics 从跳过变成投（31 → 45）；Hunter Industries 从投变成跳过（38 → 31），看原文这个判断是对的，它的核心就是 Snowflake、Power BI 和 Oracle Fusion；totalwine 58 → 85（我之前手算的是 70，因为 "Familiarity with" 的 Git、CI/CD 按提示词原有规则移到了加分项，semantic layer 也不在必备里了）
+  4. 重跑 5 份简历：都是 ready，都没有转型说法。发现并修好一个误报："dbt tests" 被判成编造，JD 的关键词被删掉了
+  5. 花费：这次提议一共 $1.89（标准答案 $0.48、重新拆解 $0.36、简历 $0.86 + 修误报后重跑 $0.19），高于我说的约 $1.3
+  6. 还有疑问：semantic layer 只出现在 JD 的职责里，v4 没有把它列为加分项；有的定位行写成 "Senior Data Engineer"；总结写 "Data engineer who builds"。都留给 FL 判断
+- **撤回：** `git revert` 这个提交。提议没有启用；已生效的只有对照页文字和转型说法检查

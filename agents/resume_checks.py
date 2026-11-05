@@ -20,6 +20,13 @@ MAX_BULLET_CHARS = 220  # about two lines on the page
 BANNED_OPENINGS = ("responsible for", "worked on", "helped")
 WORD = re.compile(r"[A-Za-z][A-Za-z0-9+#]*")
 FIRST_PERSON = re.compile(r"\bI\b|\b[Mm]y\b")
+# Advertises a gap (FL, 2026-11-04). Only the headline and summary: a bullet may describe a
+# system "moving to" somewhere.
+TRANSITION = re.compile(
+    r"\b(moving|moved|transitioning|transitioned|pivoting|shifting)\s+(in)?to\b"
+    r"|\btransition\s+(in)?to\b|\baspiring\b|\bcareer\s+(change|switch|transition)\b",
+    re.IGNORECASE,
+)
 
 
 @dataclass(frozen=True)
@@ -104,6 +111,23 @@ def _words(text: str) -> set[str]:
     return {word.lower() for word in WORD.findall(text)}
 
 
+def _unbacked_alternatives(
+    brief: dict[str, Any], bank: EvidenceBank, vocab: Vocabulary
+) -> list[str]:
+    """In an either/or entry, Python covers "Python or Java", but that gives no right to say Java:
+    the parts the profile doesn't have, wherever the entry was marked covered."""
+    terms = []
+    for item in (*brief["must_haves"], *brief["nice_to_haves"]):
+        if " or " not in item["skill"]:
+            continue
+        for name in (item["skill"], *item.get("exact_phrases", [])):
+            terms += [
+                part for part in _split(name)
+                if " or " not in part and not _resolve(part, bank, vocab)[0]
+            ]
+    return terms
+
+
 def check_no_invented_skills(
     draft: dict[str, Any],
     brief: dict[str, Any],
@@ -117,9 +141,13 @@ def check_no_invented_skills(
     missing = [*fit["not_covered"], *fit["nice_missing"]]
     terms = [term for name in (*missing, *_phrases(brief, missing)) for term in _split(name)]
     terms += [member for members in vocab.families.values() for member in members]
+    terms += _unbacked_alternatives(brief, bank, vocab)
+    fact_words = _words(facts)
     found = []
     for term in dict.fromkeys(terms):
         if not mentions(text, term) or mentions(facts, term):
+            continue
+        if _words(term) <= fact_words:  # "dbt tests": dbt and tests are both in the bank
             continue
         if not _resolve(term, bank, vocab)[0]:
             found.append(f"names {term!r}, which has no Evidence Bank entry")
@@ -136,7 +164,9 @@ def check_no_unknown_names(
     """A capitalized word mid-sentence is usually a product name. It must come from the Evidence
     Bank, the vocabulary's wordings, or the job's wording for a skill the profile covers. This
     catches a tool nobody listed, such as a draft that adds "Terraform" on its own."""
-    covered = [m["asked"] for m in (*fit["covered"], *fit["nice_covered"])]
+    covered = [
+        m["asked"] for m in (*fit["covered"], *fit["nice_covered"]) if " or " not in m["asked"]
+    ]
     allowed = _words(_bank_text(bank))
     allowed |= _words(" ".join([*vocab.synonyms, *vocab.families, *covered]))
     allowed |= _words(" ".join(_phrases(brief, covered)))
@@ -210,6 +240,9 @@ def check_quality(draft: dict[str, Any], brief: dict[str, Any], fit: dict[str, A
     numbered = sum(bool(_numbers(text)) for text in bullets)
     if bullets and numbered / len(bullets) < MIN_NUMBERED_BULLETS:
         problems.append(f"only {numbered} of {len(bullets)} bullets carry a number")
+    for text in (draft["headline"], draft["summary"]):
+        if TRANSITION.search(text):
+            problems.append(f"transition wording advertises a gap: {text!r}")
     for text in [draft["summary"], *bullets]:
         if FIRST_PERSON.search(text):
             problems.append(f"written in the first person: {text!r}")

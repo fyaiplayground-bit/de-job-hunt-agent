@@ -26,6 +26,7 @@ from typing import Any
 
 import psycopg
 
+from agents.fit_scoring import _split
 from agents.jd_analysis import BRIEF_SCHEMA, Candidate, _display_fields
 from agents.llm import AnthropicClient, LlmClient, LlmError, ask, build_request
 from agents.skills import Skill, load_skill, parse_skill
@@ -49,6 +50,8 @@ class GoldenCase:
     work_mode: str
     years_required: tuple[int, ...]  # () = must be null
     nice_to_haves: tuple[tuple[str, ...], ...] = ()
+    one_entry: tuple[tuple[tuple[str, ...], ...], ...] = ()  # alternatives kept together
+    not_must_haves: tuple[str, ...] = ()  # job functions that aren't skills
 
 
 def _alternatives(entries: list[str]) -> tuple[tuple[str, ...], ...]:
@@ -65,6 +68,8 @@ def load_golden(path: Path = GOLDEN_FILE) -> list[GoldenCase]:
             archetype=tuple(raw["archetype"]), work_mode=raw["work_mode"],
             years_required=tuple(raw["years_required"]),
             nice_to_haves=_alternatives(raw.get("nice_to_haves", [])),
+            one_entry=tuple(_alternatives(group) for group in raw.get("one_entry", [])),
+            not_must_haves=tuple(raw.get("not_must_haves", [])),
         ))
     return cases
 
@@ -75,7 +80,10 @@ def normalize(text: str) -> str:
 
 
 def _names(item: dict[str, Any]) -> set[str]:
-    return {normalize(item["skill"]), *(normalize(p) for p in item["exact_phrases"])}
+    """Every name an entry goes by, split the way fit scoring splits them, so "Data modeling or
+    data integration" and "Electronic Health Records (EHR)" count under each of their parts."""
+    names = (item["skill"], *item["exact_phrases"])
+    return {normalize(part) for name in names for part in _split(name)}
 
 
 def _found(alternatives: tuple[str, ...], items: list[dict[str, Any]]) -> set[int]:
@@ -100,6 +108,9 @@ class CaseScore:
     nice_kept: int = 0  # labeled nice-to-haves listed anywhere in the brief
     nice_lost: tuple[str, ...] = ()
     promoted: tuple[str, ...] = ()  # labeled nice-to-haves listed only as must-haves
+    groups_total: int = 0
+    groups_kept: int = 0  # either/or groups not split across several must-haves
+    functions_listed: tuple[str, ...] = ()  # job functions wrongly listed as skills
     error: str | None = None
 
 
@@ -125,6 +136,11 @@ def score_case(case: GoldenCase, brief: dict[str, Any]) -> CaseScore:
         if in_must and not in_nice:
             promoted.append(alternatives[0])
     years = brief["years_required"]
+    groups_kept = sum(
+        len(set().union(*(_found(alternatives, must) for alternatives in group))) <= 1
+        for group in case.one_entry
+    )
+    functions = tuple(f for f in case.not_must_haves if _found((f,), must))
     return CaseScore(
         name=case.name, expected=len(case.must_haves), hits=hits, predicted=len(must),
         matched_predicted=len(matched), missed=tuple(missed), misplaced=tuple(misplaced),
@@ -133,6 +149,8 @@ def score_case(case: GoldenCase, brief: dict[str, Any]) -> CaseScore:
         years_ok=years is None if not case.years_required else years in case.years_required,
         years_got=years, nice_expected=len(case.nice_to_haves), nice_kept=nice_kept,
         nice_lost=tuple(nice_lost), promoted=tuple(promoted),
+        groups_total=len(case.one_entry), groups_kept=groups_kept,
+        functions_listed=functions,
     )
 
 
@@ -155,6 +173,9 @@ class Totals:
     nice_kept: int = 0
     nice_expected: int = 0
     promoted: int = 0
+    groups_kept: int = 0
+    groups_total: int = 0
+    functions_listed: int = 0
     archetype_ok: int = 0
     archetype_scored: int = 0
     work_mode_ok: int = 0
@@ -175,6 +196,9 @@ class Totals:
             t.nice_kept += s.nice_kept
             t.nice_expected += s.nice_expected
             t.promoted += len(s.promoted)
+            t.groups_kept += s.groups_kept
+            t.groups_total += s.groups_total
+            t.functions_listed += len(s.functions_listed)
             if s.archetype_ok is not None:
                 t.archetype_scored += 1
                 t.archetype_ok += s.archetype_ok
@@ -196,6 +220,12 @@ def compare(current: Totals, proposed: Totals) -> list[str]:
         problems.append(
             f"nice-to-haves promoted to must {proposed.promoted} > {current.promoted} "
             "(tolerance 1)"
+        )
+    if proposed.groups_kept < current.groups_kept:
+        problems.append(f"either/or groups kept {proposed.groups_kept} < {current.groups_kept}")
+    if proposed.functions_listed > current.functions_listed:
+        problems.append(
+            f"job functions listed {proposed.functions_listed} > {current.functions_listed}"
         )
     for label, attr in (("archetype", "archetype_ok"), ("work mode", "work_mode_ok"),
                         ("years", "years_ok")):
@@ -292,6 +322,10 @@ def format_evaluation(ev: Evaluation) -> str:
             flags.append("nice-to-have lost: " + ", ".join(s.nice_lost))
         if s.promoted:
             flags.append("promoted to must: " + ", ".join(s.promoted))
+        if s.groups_kept < s.groups_total:
+            flags.append(f"split either/or groups: {s.groups_total - s.groups_kept}")
+        if s.functions_listed:
+            flags.append("job function as skill: " + ", ".join(s.functions_listed))
         lines.append(
             f"- {s.name}: must-haves {s.hits}/{s.expected}, nice kept "
             f"{s.nice_kept}/{s.nice_expected}, listed {s.predicted}"
@@ -302,6 +336,8 @@ def format_evaluation(ev: Evaluation) -> str:
         f"must-haves found: {_pct(t.hits, t.expected)}",
         f"nice-to-haves kept: {_pct(t.nice_kept, t.nice_expected)}",
         f"nice-to-haves promoted to must: {t.promoted}",
+        f"either/or groups kept in one entry: {_pct(t.groups_kept, t.groups_total)}",
+        f"job functions listed as skills: {t.functions_listed}",
         f"listed must-haves that are labeled: {_pct(t.matched_predicted, t.predicted)}"
         " (labels hold the main must-haves only, so this is for comparison, not a score)",
         f"archetype right: {_pct(t.archetype_ok, t.archetype_scored)}",

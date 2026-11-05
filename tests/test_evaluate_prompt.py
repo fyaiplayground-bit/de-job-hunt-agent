@@ -55,8 +55,8 @@ def _brief(**changes):
 
 def test_golden_set_is_well_formed_and_holds_no_posting_text():
     cases = load_golden()
-    assert len(cases) == 10
-    assert len({c.name for c in cases}) == 10
+    assert len(cases) == 13
+    assert len({c.name for c in cases}) == 13
     enums = BRIEF_SCHEMA["properties"]
     for case in cases:
         assert case.source in {"greenhouse", "lever", "freehire"}
@@ -67,8 +67,9 @@ def test_golden_set_is_well_formed_and_holds_no_posting_text():
     # public repo: identifiers and expected values only, never a description
     raw = tomllib.loads(GOLDEN_FILE.read_text(encoding="utf-8"))["case"]
     allowed = {"name", "source", "source_job_id", "content_hash", "why", "must_haves",
-               "archetype", "work_mode", "years_required", "nice_to_haves"}
-    assert all(set(c) == allowed for c in raw)
+               "archetype", "work_mode", "years_required", "nice_to_haves", "one_entry",
+               "not_must_haves"}
+    assert all(set(c) <= allowed for c in raw)
     assert all(len(c["why"]) < 120 for c in raw)
 
 
@@ -190,3 +191,57 @@ def test_evaluate_finds_golden_postings_by_identity_and_writes_no_briefs(db, gre
 
     again = evaluate(db, client, SETTINGS, load_skill("jd-analysis"), [case])
     assert again.cost_usd == 0 and len(client.requests) == 1  # answered from the cache
+
+
+# ---------------------------------------------------------------- either/or and job functions
+
+
+def _either_or_case():
+    return replace(
+        load_golden()[0],
+        must_haves=(("Python",),),
+        nice_to_haves=(),
+        one_entry=((("Python",), ("Java",), ("Scala",)),),
+        not_must_haves=("BI development",),
+    )
+
+
+def _entry(skill, *phrases):
+    return {"skill": skill, "exact_phrases": list(phrases), "weight": "normal"}
+
+
+def test_an_either_or_group_in_one_entry_is_kept():
+    brief = _brief(must_haves=[_entry("Python or Java or Scala", "Python", "Java", "Scala")])
+    score = score_case(_either_or_case(), brief)
+    assert (score.groups_kept, score.groups_total) == (1, 1)
+
+
+def test_an_either_or_group_across_entries_is_split():
+    brief = _brief(must_haves=[_entry("Python", "Python"), _entry("Java", "Java")])
+    score = score_case(_either_or_case(), brief)
+    assert (score.groups_kept, score.groups_total) == (0, 1)
+
+
+def test_a_job_function_listed_as_a_skill_is_counted():
+    brief = _brief(must_haves=[_entry("Python"), _entry("BI development", "BI development")])
+    assert score_case(_either_or_case(), brief).functions_listed == ("BI development",)
+
+
+def test_compare_rejects_a_worse_reading_of_either_or_lines():
+    current = Totals(groups_kept=3, groups_total=3, functions_listed=0)
+    problems = compare(current, Totals(groups_kept=2, groups_total=3, functions_listed=1))
+    assert any("either/or" in problem for problem in problems)
+    assert any("job functions" in problem for problem in problems)
+
+
+def test_v4_proposal_only_adds_the_two_rules():
+    current = load_skill("jd-analysis")
+    proposal_path = REPO_ROOT / "config" / "proposals" / "jd-analysis.v4.md"
+    proposal = parse_skill(proposal_path.read_text(encoding="utf-8"), "v4")
+    assert (proposal.name, proposal.version) == ("jd-analysis", 4)
+    if current.version == 4:  # adopted: the skill file is the proposal
+        assert current.body == proposal.body
+        return
+    added = set(proposal.body.splitlines()) - set(current.body.splitlines())
+    assert all("Alternatives are one entry" in x or "Background is not a skill" in x for x in added)
+    assert not set(current.body.splitlines()) - set(proposal.body.splitlines())

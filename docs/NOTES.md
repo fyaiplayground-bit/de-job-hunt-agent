@@ -160,6 +160,8 @@ dbt：清洗 → 提取技能 → 汇总（打分、技能频率、覆盖率、�
 | AI 写内容，代码管事实 | AI 只写定位、总结、经历的文字；姓名、头衔、公司、日期由代码从事实库填入。AI 碰不到头衔，也就抬高不了头衔 |
 | 起草 + 审稿 | 第一个 AI 写，第二个 AI 没看过起草过程，像招聘经理一样挑毛病，提出"把 A 改成 B"。两个 AI 都改不了事实：每条修改都要过代码检查 |
 | 引用证据 | 每条经历都注明来自事实库的哪几条。检查数字时只看这几条，所以就算数字在别的工作里是真的，放错地方也会被拦 |
+| 几选一 either/or | JD 写 "dbt, Snowflake, BigQuery, or similar" 是说有其中一个就行，只能算一条必备技能。拆成三条，就会把没用过的两个都算成缺口，分数被冤枉地压低 |
+| 转型说法 | "moving into" 这类话等于主动告诉招聘方"我还没做过"。定位行写目标岗位，总结写做过什么，不提转型 |
 | ready / needs_review | ready 只代表代码检查都过了，不代表写得好。代码查不出语气上的抬高，比如把 Python 写成 "advanced Python"。所以最后还要人看 |
 
 ### 安全许可（security clearance）
@@ -261,6 +263,7 @@ PowerShell（Windows 自带）、Git Bash（装 Git 时附带）、Ubuntu/WSL（
 | 看打分结果 | 让 Claude 跑 `uv run python -m agents.fit_scoring top`（最值得投的）、`... show <编号>`（为什么得这个分）、`... unmatched`（词表还缺哪些技能写法） |
 | 生成简历 PDF 并检查 | 让 Claude 跑 `uv run python -m agents.render_resume`，结果在 `output/resume/`：PDF 和对照页 `review.html`（左边是渲染出来的页面，右边是 ATS 读到的文字） |
 | 给职位改写简历 | 让 Claude 跑 `uv run python -m agents.tailor run --top 5`（每份约 $0.18；先加 `--dry-run` 只看选了哪些，不花钱）。结果看 `output/tailored/index.html` |
+| 试一个拆解提示词或词表的提议，对真实职位有什么影响 | 让 Claude 跑 `uv run python -m agents.evaluate_scoring --jd-proposal <提议> --vocabulary <提议> --jobs <编号...> --review`，看 `output/scoring_review.html`；什么都不会写进真数据 |
 | 暂停每天的 AI 拆解 | 在 `.env` 里设 `JD_ANALYSIS_ENABLED=false`（抓取照常）；每天最多拆几个用 `JD_ANALYSIS_DAILY_MAX` 调 |
 | 测试 API key 能不能用 | 让 Claude 跑 `uv run python -m agents.llm ping`（一次很小的真实调用，不到 1 美分） |
 | 看 AI 花了多少钱 | 让 Claude 跑 `uv run python -m agents.llm costs`（今天、本月、总计） |

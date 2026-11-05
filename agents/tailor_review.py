@@ -11,6 +11,13 @@ from agents.resume_doc import parse_resume
 from agents.tailor import Tailored
 
 STATUS_LABEL = {"ready": "可以看了", "needs_review": "有问题，要你看"}
+VERDICT_LABEL = {"pass": "通过", "revise": "要修改"}
+EDIT_LABEL = {
+    "add_bullet": "加一条经历",
+    "add_skill": "加技能",
+    "remove_bullet": "删掉这条",
+    "move_first": "调到最前面",
+}
 REVIEW_FILE = "review.html"
 INDEX_FILE = "index.html"
 STYLE = """
@@ -40,13 +47,13 @@ def _items(lines: list[str], css: str = "") -> str:
 
 def _edit_line(edit: dict) -> str:
     kind = edit["kind"]
-    if kind in ("replace",):
-        body = f"{edit['old']} → {edit['new']}"
-    elif kind in ("add_bullet", "add_skill"):
-        body = f"加上：{edit['new']}"
+    if kind == "replace":
+        body = f"改写：原来“{edit['old']}”，改成“{edit['new']}”"
+    elif kind in EDIT_LABEL:
+        body = f"{EDIT_LABEL[kind]}：{edit['new'] or edit['old']}"
     else:
-        body = edit["old"]
-    return f"[{kind}] {body}（{edit['reason']}）"
+        body = f"{kind}：{edit['new'] or edit['old']}"
+    return f"{body}（原因：{edit['reason']}）"
 
 
 def changes_md(tailored: Tailored) -> str:
@@ -90,13 +97,14 @@ def review_page(tailored: Tailored) -> str:
             rounds += "<h2>为了放进一页删掉的</h2>" + _items(entry["trimmed_to_fit_one_page"])
             continue
         rounds += (
-            f"<h2>审稿第 {entry['round']} 轮：{html.escape(entry['verdict'])}</h2>"
+            f"<h2>审稿第 {entry['round']} 轮："
+            f"{VERDICT_LABEL.get(entry['verdict'], entry['verdict'])}</h2>"
             f"<p>7 秒印象：{html.escape(entry['seven_second_answer'])}</p>"
             + _items([_edit_line(edit) for edit in entry["applied"]])
         )
         if entry["rejected"]:
             refused = [f"{_edit_line(e)}：{e['refused_because']}" for e in entry["rejected"]]
-            rounds += "<p>被代码拒绝的修改：</p>" + _items(refused, "note")
+            rounds += "<p>审稿 AI 提了、但被代码拒绝的修改：</p>" + _items(refused, "note")
         if entry["notes"]:
             rounds += "<p>审稿备注：</p>" + _items(entry["notes"], "note")
     link = ""
@@ -119,7 +127,8 @@ ${tailored.cost_usd:.3f} · 文字排到页面 {tailored.report.fill:.0%}</heade
     <h2>警告</h2>{_items(list(tailored.report.warnings))}
     <h2>JD 要求但没有证据（不写）</h2>{_items(fit["not_covered"])}
     <h2>对上的必备技能</h2>{_items(covered)}
-    <h2>起草时的选择</h2>{_items([f"{c['edit']}（{c['serves']}）" for c in tailored.changes])}
+    <h2>起草 AI 的说明（不会上简历）</h2>
+    {_items([f"{c['edit']}（对应 JD：{c['serves']}）" for c in tailored.changes])}
     {rounds}
   </section>
 </main></body></html>

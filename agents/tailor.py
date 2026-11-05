@@ -33,17 +33,18 @@ from agents.fit_scoring import (
     profile_fingerprint,
     score_brief,
 )
-from agents.jd_analysis import _object
+from agents.jd_analysis import _object, brief_postings
 from agents.llm import AnthropicClient, LlmClient, LlmError, LlmResult, ask, build_request
 from agents.pdf_checks import PdfReport, check_pdf
 from agents.profile import Profile, load_profile, resume_month
 from agents.render_resume import render_pdf
 from agents.resume_checks import Problems, check_draft, draft_bullets
 from agents.resume_doc import ResumeFormatError, parse_resume
-from agents.skills import Skill, load_skill
+from agents.skills import Skill, load_skill, parse_skill
 from pipeline.config import REPO_ROOT, LlmSettings, llm_settings, profile_dir
 
 OUT_DIR = REPO_ROOT / "output" / "tailored"
+TRIAL_DIR = REPO_ROOT / "output" / "tailored_trial"
 MAX_REVIEW_ROUNDS = 2
 MAX_TRIMS = 30
 ESTIMATED_USD_PER_RESUME = 0.2  # for --dry-run only; the 2026-11-03 trial averaged $0.18
@@ -615,6 +616,13 @@ def choose_jobs(jobs: list[Job], ids: list[int], top: int | None) -> tuple[list[
     return chosen, refused
 
 
+def _skill_from(path: Path | None, name: str) -> Skill:
+    """A proposed prompt from its file, or the adopted one."""
+    if path is None:
+        return load_skill(name)
+    return parse_skill(path.read_text(encoding="utf-8"), str(path))
+
+
 def main(argv: list[str] | None = None) -> int:
     from agents.tailor_review import write_index, write_job_files
     from pipeline.db import connect, migrate
@@ -625,19 +633,39 @@ def main(argv: list[str] | None = None) -> int:
     run_cmd.add_argument("ids", nargs="*", type=int, help="posting version ids")
     run_cmd.add_argument("--top", type=int, help="the best scored jobs, instead of ids")
     run_cmd.add_argument("--dry-run", action="store_true", help="list the jobs; no calls")
-    run_cmd.add_argument("--out", type=Path, default=OUT_DIR)
+    run_cmd.add_argument("--out", type=Path)
+    trial = run_cmd.add_argument_group("try proposals on real jobs; nothing is stored")
+    trial.add_argument("--drafter-skill", type=Path, help="a proposed resume-tailoring prompt")
+    trial.add_argument("--reviewer-skill", type=Path, help="a proposed resume-reviewer prompt")
+    trial.add_argument("--jd-proposal", type=Path, help="a proposed jd-analysis prompt (needs ids)")
+    trial.add_argument("--vocabulary", type=Path, help="a proposed skill vocabulary")
     args = parser.parse_args(argv)
     sys.stdout.reconfigure(encoding="utf-8")
     if bool(args.ids) == bool(args.top):
         parser.error("give posting version ids or --top N, not both")
+    if args.jd_proposal and not args.ids:
+        parser.error("--jd-proposal needs posting version ids")
+    is_trial = any((args.drafter_skill, args.reviewer_skill, args.jd_proposal, args.vocabulary))
+    out = args.out or (TRIAL_DIR if is_trial else OUT_DIR)
 
     settings = llm_settings()
     folder = profile_dir()
-    profile, rules, vocab = load_profile(folder), load_rules(), load_vocabulary()
-    drafter, reviewer = load_skill("resume-tailoring"), load_skill("resume-reviewer")
+    profile, rules = load_profile(folder), load_rules()
+    vocab = load_vocabulary(args.vocabulary) if args.vocabulary else load_vocabulary()
+    drafter = _skill_from(args.drafter_skill, "resume-tailoring")
+    reviewer = _skill_from(args.reviewer_skill, "resume-reviewer")
     with connect() as conn:
         migrate(conn)
-        jobs = scored_jobs(conn, profile, rules, vocab, settings, date.today())
+        if args.jd_proposal:
+            proposal = _skill_from(args.jd_proposal, "jd-analysis")
+            briefs, _ = brief_postings(conn, AnthropicClient(), settings, proposal, args.ids)
+            jobs = [
+                Job(i, brief, text, score_brief(
+                    brief, profile, rules, vocab, date.today(), text).as_json())
+                for i, (brief, text) in briefs.items()
+            ]
+        else:
+            jobs = scored_jobs(conn, profile, rules, vocab, settings, date.today())
         chosen, refused = choose_jobs(jobs, args.ids, args.top)
         for reason in refused:
             print(f"REFUSED {reason}")
@@ -656,14 +684,15 @@ def main(argv: list[str] | None = None) -> int:
             label = f"#{job.posting_version_id} {job.brief['company']} | {job.brief['title']}"
             try:
                 tailored = tailor_job(
-                    conn, client, job, profile, vocab, settings, drafter, reviewer, args.out
+                    conn, client, job, profile, vocab, settings, drafter, reviewer, out
                 )
             except (LlmError, ResumeFormatError) as exc:
                 print(f"FAILED {label}: {exc}")
                 failed += 1
                 continue
-            store(conn, tailored, profile_fingerprint(folder), settings, drafter, reviewer)
-            page = write_job_files(tailored, args.out)
+            if not is_trial:
+                store(conn, tailored, profile_fingerprint(folder), settings, drafter, reviewer)
+            page = write_job_files(tailored, out)
             results.append(tailored)
             print(
                 f"{tailored.status:12} {label}: {tailored.llm_calls} calls, "
@@ -673,7 +702,7 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"    {problem}")
             print(f"    {page}")
         if results:
-            print(f"index: {write_index(results, args.out)}")
+            print(f"index: {write_index(results, out)}")
         print(f"paid in this run: ${sum(t.paid_now_usd for t in results):.2f}")
     return 1 if failed or refused else 0
 

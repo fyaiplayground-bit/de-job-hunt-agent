@@ -200,6 +200,24 @@ def select_candidates(
     return todo, done
 
 
+def candidates_by_id(conn: psycopg.Connection, ids: Collection[int]) -> list[Candidate]:
+    rows = conn.execute(
+        "select p.posting_version_id, p.source, p.company,"
+        " coalesce(p.payload->>'title', p.payload->>'text', ''), p.payload, g.cleaned_text"
+        " from raw.job_postings p join gate.results g"
+        "   on g.posting_version_id = p.posting_version_id and g.gate_version = %s"
+        " where p.posting_version_id = any(%s) order by p.posting_version_id",
+        (GATE_VERSION, list(ids)),
+    ).fetchall()
+    candidates = []
+    for posting_version_id, source, company, title, payload, cleaned_text in rows:
+        name, location, url = _display_fields(source, company, payload)
+        candidates.append(
+            Candidate(posting_version_id, source, name, title, location, url, cleaned_text)
+        )
+    return candidates
+
+
 def make_brief(candidate: Candidate, output: dict[str, Any]) -> dict[str, Any]:
     """The LLM's answer plus the facts code copies from the job board."""
     return {
@@ -210,6 +228,26 @@ def make_brief(candidate: Candidate, output: dict[str, Any]) -> dict[str, Any]:
         "board_location": candidate.location,
         **output,
     }
+
+
+def brief_postings(
+    conn: psycopg.Connection,
+    client: LlmClient,
+    settings: LlmSettings,
+    skill: Skill,
+    ids: Collection[int],
+) -> tuple[dict[int, tuple[dict[str, Any], str]], float]:
+    """Briefs under a prompt that may be only a proposal, for trying it on real jobs: posting
+    version -> (brief, cleaned text), and what was paid. Nothing goes to agents.jd_briefs."""
+    briefs, paid = {}, 0.0
+    for candidate in candidates_by_id(conn, ids):
+        request = build_request(skill, BRIEF_SCHEMA, candidate.data(), settings)
+        result = ask(conn, client, request)
+        paid += 0.0 if result.cached else result.cost_usd or 0.0
+        briefs[candidate.posting_version_id] = (
+            make_brief(candidate, result.output), candidate.cleaned_text
+        )
+    return briefs, paid
 
 
 def estimate_cost(request: LlmRequest) -> float:

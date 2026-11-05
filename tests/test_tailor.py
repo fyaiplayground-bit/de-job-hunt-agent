@@ -678,3 +678,93 @@ def test_a_word_opening_a_new_sentence_is_not_a_product_name():
 def test_first_person_is_sent_back():
     bad = draft(summary="I build data pipelines in SQL and Python.")
     assert any("first person" in problem for problem in check_quality(bad, BRIEF, JOB.fit))
+
+
+# ---------------------------------------------------------------- FL's notes on the trial, 11/04
+
+
+@pytest.mark.parametrize(
+    "where, text",
+    [
+        ("summary", "Business Intelligence Engineer moving into analytics engineering."),
+        ("summary", "Transitioning to data engineering after years in BI."),
+        ("headline", "Aspiring Data Engineer"),
+        ("summary", "Engineer making a career change."),
+    ],
+)
+def test_transition_wording_is_sent_back(where, text):
+    problems = check_quality(draft(**{where: text}), BRIEF, JOB.fit)
+    assert any("transition wording" in problem for problem in problems)
+
+
+def test_describing_a_system_moving_is_fine():
+    fine = draft()
+    fine["experience"][0]["bullets"][0]["text"] = "Moved the team's SQL into Git with 6 reviews"
+    assert not any("transition" in p for p in check_quality(fine, BRIEF, JOB.fit))
+
+
+EITHER_OR = {
+    **BRIEF,
+    "must_haves": [
+        {
+            "skill": "Python or Java or Terraform",
+            "weight": "core",
+            "exact_phrases": ["Python", "Java", "Terraform"],
+        },
+        {"skill": "SQL", "weight": "core", "exact_phrases": ["SQL"]},
+    ],
+    "nice_to_haves": [],
+}
+
+
+def test_an_either_or_entry_is_covered_by_one_part_but_gives_no_right_to_the_others():
+    fit = score_brief(EITHER_OR, PROFILE, RULES, VOCAB, TODAY, "").as_json()
+    assert fit["not_covered"] == []  # Python covers the entry
+    bad = draft(summary="Engineer who writes Java and Python.")
+    assert any("Java" in p for p in check_no_invented_skills(bad, EITHER_OR, fit, BANK, VOCAB))
+    fine = draft(summary="Engineer who writes Python.")
+    assert check_no_invented_skills(fine, EITHER_OR, fit, BANK, VOCAB) == []
+
+
+def test_an_either_or_entry_lends_no_words_to_the_name_check():
+    fit = score_brief(EITHER_OR, PROFILE, RULES, VOCAB, TODAY, "").as_json()
+    bad = draft()
+    bad["experience"][0]["bullets"][0]["text"] = "Deployed it with Terraform"
+    problems = check_no_unknown_names(bad, EITHER_OR, fit, BANK, VOCAB)
+    assert any("Terraform" in problem for problem in problems)
+
+
+def test_review_page_uses_plain_labels(no_db, tmp_path):
+    review = {
+        **PASS_REVIEW,
+        "verdict": "revise",
+        "edits": [
+            edit("replace", "Designed a star schema", "Modeled a star schema"),
+        ],
+    }
+    tailored, _ = run_job(no_db, tmp_path, [review])
+    page = review_page(tailored)
+    assert "改写：原来" in page
+    assert "[replace]" not in page
+    assert "要修改" in page
+    assert "不会上简历" in page
+
+
+def test_a_phrase_made_of_words_the_bank_uses_is_not_invented():
+    """The sample really has dbt tests, so a missing skill's phrase "dbt tests" stays allowed."""
+    job = {
+        **BRIEF,
+        "nice_to_haves": [
+            {
+                "skill": "Data testing frameworks",
+                "exact_phrases": ["dbt tests", "Great Expectations"],
+            },
+        ],
+    }
+    fit = score_brief(job, PROFILE, RULES, VOCAB, TODAY, "").as_json()
+    fine = draft(summary="Engineer with dbt tests on every model.")
+    assert check_no_invented_skills(fine, job, fit, BANK, VOCAB) == []
+    bad = draft(summary="Engineer who runs Great Expectations.")
+    assert any(
+        "Great Expectations" in p for p in check_no_invented_skills(bad, job, fit, BANK, VOCAB)
+    )

@@ -15,17 +15,17 @@ version = 3
 sha256 = "00c18750b0768d4f582773f66307ae40252868a245d8aae2a701eb666098da0d"
 
 [skills.jd-analysis]
-version = 3
-sha256 = "a1e97c0da63d6c98eb1bb7ec419d39344058468659ad4daa4177dc951ec0c7e7"
+version = 4
+sha256 = "b020dbe9764ccd025a2fac68163ea79ec44b8069a7e825996c40ef106bf568e9"
 
 [skills.outreach-drafting]
 version = 1
 sha256 = "dd1a996b77c1cf461cc646de9511ec567b740bd2e926879646c34d15b5809998"
 
 [skills.resume-reviewer]
-version = 1
-sha256 = "d2a410b24ac6b26b467a1f55a9467fbd753ae5008e983a4af693ef330e606ca6"
+version = 2
+sha256 = "57964e92f310d219cc2c8e464c1cecee2dff8737895eddf69f140edf17404743"
 
 [skills.resume-tailoring]
-version = 3
-sha256 = "b2a6abcf268c6197babde88ad35ebd63e7218d0d895533807f9c4141d6115c14"
+version = 4
+sha256 = "7c386cdefaa18750eaf1bbc532862d33b76e19b25417b56a09d7fa94c075e8f8"

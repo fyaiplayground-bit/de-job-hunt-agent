@@ -1,5 +1,6 @@
-"""Tests for agents/evaluate_scoring.py, the proposed vocabulary and brief_postings."""
+"""Tests for agents/evaluate_scoring.py, the vocabulary v2 wordings and brief_postings."""
 
+from dataclasses import replace
 from datetime import UTC, date, datetime
 from uuid import uuid4
 
@@ -15,8 +16,15 @@ from pipeline.config import REPO_ROOT, LlmSettings
 
 PROFILE = load_profile(REPO_ROOT / "data" / "sample")
 RULES = load_rules()
-CURRENT = load_vocabulary()
-PROPOSED = load_vocabulary(REPO_ROOT / "config" / "proposals" / "skill_vocabulary.v2.toml")
+PROPOSED = load_vocabulary()
+V2_WORDINGS = {
+    "bi development", "business intelligence", "sql performance tuning", "sql tuning",
+    "query optimization", "query tuning", "query performance tuning",
+}
+# The vocabulary as it was before v2, to show what those wordings move.
+CURRENT = replace(
+    PROPOSED, synonyms={k: v for k, v in PROPOSED.synonyms.items() if k not in V2_WORDINGS}
+)
 TODAY = date(2026, 11, 4)
 
 
@@ -38,7 +46,7 @@ def brief(*skills, **changes):
 @pytest.mark.parametrize(
     "wording", ["BI development", "Query optimization", "SQL performance tuning"]
 )
-def test_the_proposed_vocabulary_covers_these_wordings(wording):
+def test_the_vocabulary_covers_these_wordings(wording):
     job = brief(wording)
     assert score_brief(job, PROFILE, RULES, CURRENT, TODAY).not_covered == [wording]
     assert score_brief(job, PROFILE, RULES, PROPOSED, TODAY).not_covered == []

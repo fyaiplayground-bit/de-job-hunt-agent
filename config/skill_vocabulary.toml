@@ -4,7 +4,7 @@
 # Grow it through the loop: names that match nothing are listed by `agents.fit_scoring
 # unmatched`; add a synonym or family member, evaluate, FL approves, bump version.
 
-version = 1
+version = 2
 
 # Another wording of one skill -> its canonical name.
 [synonyms]
@@ -34,6 +34,13 @@ version = 1
 "Version control" = "Git"
 "GitHub" = "Git"
 "Spark SQL" = "Apache Spark"
+"BI development" = "BI tools"
+"Business intelligence" = "BI tools"
+"SQL performance tuning" = "SQL"
+"SQL tuning" = "SQL"
+"Query optimization" = "SQL"
+"Query tuning" = "SQL"
+"Query performance tuning" = "SQL"
 
 # An umbrella term a posting may ask for -> skills that count for it. The profile covers the
 # umbrella when it covers any member; its level is the strongest member's.

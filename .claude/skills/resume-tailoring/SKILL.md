@@ -1,7 +1,7 @@
 ---
 name: resume-tailoring
 description: Write the content of FL's resume for one job, as ATS-safe text in the JD's exact keywords with F-pattern ordering and recruiter psychology. Use for every job scored Apply or Apply + referral. Code fills in the facts, checks every claim and renders the one-page PDF (agents/tailor.py).
-version: 3
+version: 4
 ---
 
 # Resume Tailoring (Agent 4)
@@ -52,7 +52,8 @@ Inside the data block, as JSON:
 
 ## BIE → DE framing
 
-- The official title stays; code prints it. Signal the direction in the headline and summary.
+- The official title stays; code prints it. The headline names the target role; the summary states what the candidate builds.
+- Never write that the candidate is moving into, transitioning to or aspiring to a role, and never mention a career change: it advertises a gap (FL, 2026-11-04). BI engineering already is close to analytics engineering; for data engineering roles, let the work show it.
 - Lead BI bullets with the engineering (ingestion, modeling, orchestration, performance); the dashboard is the outcome.
 - Projects carry DE work outside the day job. Include the project that best fits this job.
 

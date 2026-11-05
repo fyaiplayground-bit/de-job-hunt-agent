@@ -477,3 +477,12 @@
   5. 花费：这次提议一共 $1.89（标准答案 $0.48、重新拆解 $0.36、简历 $0.86 + 修误报后重跑 $0.19），高于我说的约 $1.3
   6. 还有疑问：semantic layer 只出现在 JD 的职责里，v4 没有把它列为加分项；有的定位行写成 "Senior Data Engineer"；总结写 "Data engineer who builds"。都留给 FL 判断
 - **撤回：** `git revert` 这个提交。提议没有启用；已生效的只有对照页文字和转型说法检查
+
+### 2.5c · 2026-11-04 · 启用 FL 同意的三处修改
+- **做了什么：** FL 看完审核页面后同意。`jd-analysis` v4、`resume-tailoring` v4、`resume-reviewer` v2 复制成正式版本，提示词锁已更新；`skill_vocabulary` v2 启用；提议文件留作历史；测试改成检查正式版本。没有重新拆解现有的 87 份简报
+- **为什么：** DECISIONS #39
+- **文件：** `.claude/skills/jd-analysis/SKILL.md`、`.claude/skills/resume-tailoring/SKILL.md`、`.claude/skills/resume-reviewer/SKILL.md`、`config/prompt_lock.toml`、`config/skill_vocabulary.toml`、`tests/test_evaluate_prompt.py`、`tests/test_evaluate_scoring.py`、`docs/DECISIONS.md`、`docs/STATUS.md`
+- **提交：** 见本条所在的提交
+- **验证：** 全部测试通过，ruff 通过，`agents.skills check` 通过。真实使用从下一次每日运行开始，那时才能确认新简报进了 `agents.jd_briefs` 的 `jd-analysis@4`，报告也正常
+- **注意：** 打分和改写只读当前提示词版本的简报。下一次运行之前 `agents.tailor run --top N` 和 `agents.fit_scoring top` 查不到职位，这是预期的
+- **撤回：** `git revert` 这个提交，再跑 `agents.skills lock`

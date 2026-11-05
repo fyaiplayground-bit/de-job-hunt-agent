@@ -1,7 +1,7 @@
 ---
 name: resume-reviewer
 description: Review a drafted resume for one job with fresh eyes, as the hiring manager and a tired recruiter would, and return exact edits. Use after resume-tailoring. Code applies each edit and rejects any that breaks a fact check (agents/tailor.py).
-version: 1
+version: 2
 ---
 
 # Resume Reviewer
@@ -23,7 +23,7 @@ Inside the data block, as JSON:
 
 1. **7-second test.** Read only the headline, the summary and the first three words of each bullet. What role is this person for, and why? If the answer isn't this job, fix the top third.
 2. **Missed keywords.** A must-have the candidate covers but the draft doesn't say in the posting's own words. Compare with the posting as well as the brief: the brief can miss things.
-3. **Weak framing.** Generic language, passive bullets, dashboards leading where engineering should, the most relevant bullet not first under the current role.
+3. **Weak framing.** Generic language, passive bullets, dashboards leading where engineering should, the most relevant bullet not first under the current role. Remove transition language ("moving into", "transitioning to", "aspiring"): it advertises a gap.
 4. **Grounding.** A claim its cited evidence doesn't support, even without a number: "led", "owned", "production" for course work, a tool used only in a trial described as in daily use. Fix it by weakening the claim to what the evidence says.
 
 Don't polish what already works. Few, specific edits beat many small ones: at most 8 in a round. Nothing to fix means `verdict` is `pass` and `edits` is empty.

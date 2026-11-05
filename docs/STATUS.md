@@ -1,6 +1,6 @@
 # Status
 
-**Last updated:** 2026-11-03 · **Phase:** Milestone 2 (agents) in progress; 2.5 done, approval queue next
+**Last updated:** 2026-11-03 · **Phase:** Milestone 2 done; Milestone 3 (dbt, dashboard) next
 
 Update this file at the end of every work session: what got done, what's next, what's blocked.
 
@@ -42,7 +42,7 @@ Update this file at the end of every work session: what got done, what's next, w
 - [x] fit-scoring as code (2.3: vocabulary matching, 70/20 score, dealbreakers, daily "worth applying"; #35) and coverage checks (#34)
 - [x] PDF compile-and-inspect; ATS text-layer check (2.4, `agents/pdf_checks.py`, `agents.render_resume`; #36)
 - [x] Tailor → reviewer → revise loop (2.5, #38)
-- [ ] Approval queue output for the claude.ai Project to submit from
+- [x] Approval queue output for the claude.ai Project to submit from (2.6, #40; FL's first approval still to do)
 - [x] End-to-end test: real JDs from the pipeline + the sample profile → tailored PDFs (5-job trial 2026-11-03; FL still to read them)
 
 ### Milestone 3 · Week 3 · Modeling + reporting
@@ -72,9 +72,17 @@ Update this file at the end of every work session: what got done, what's next, w
 
 **Claude, after a few more days of briefs:** run `agents.fit_scoring unmatched` and grow `config/skill_vocabulary.toml` through the loop.
 
-**Claude, next run:** check that it writes `jd-analysis@4` briefs, that the report's scoring section looks right, and that `agents.tailor run --top N` finds jobs again. Until that run those two commands find nothing, which is expected.
+**FL, next:** read `output/queue/2026-11-04/index.html` (5 jobs for the sample profile) and say which numbers to approve or pass. That finishes the flow: the pack is named SAMPLE_DO_NOT_SUBMIT and code refuses to mark these applied.
 
-**Then:** the approval queue (design first). Standing facts: the 87 `jd-analysis@3` briefs stay as they are and are not re-briefed (FL, 2026-11-04); scoring and tailoring work from new jobs only. jd-analysis v4, resume-tailoring v4, resume-reviewer v2 and vocabulary v2 are live (#39). A skill named only in a posting's duties can drop out of the brief (totalwine's semantic layers); FL accepted this for now. The daily AI cap stays at 50 (FL, 2026-11-03). On a busy day the jobs over the cap are not briefed or retried: run 8 had 70 in scope and left 20, chosen by newest posting id rather than quality; the report shows the count, so revisit it once there are more days of volume. The clearance rule is on (fit-scoring rules v2, #37); FL fills in `has_security_clearance` and `can_obtain_security_clearance` at Milestone 5 (the sample has both false). Fit scoring's location check is OFF during the small-company practice phase (final targets California, Washington, Texas for the big-tech phase). The daily run happens by itself at 9:30 LA (#29) and catches up about 6 minutes after the laptop wakes; check it at session start.
+**Claude, next run (11/05):** check that it writes `jd-analysis@4` briefs and that the report's scoring section looks right; `agents.application_queue build` should then find new jobs.
+
+**FL's goal for later (2026-11-04):** automate submission as far as possible. Design it with real sites: Claude can fill forms up to the final page, never enters passwords, creates accounts or solves CAPTCHAs, and a person approves every batch. Of today's 5 jobs, 4 are on sites that usually need an account and 1 is an aggregator link.
+
+**Worth raising:** all job data lives only on this laptop (see NOTES, "数据存在哪里"); the S3 backup is in Milestone 4 and needs FL's personal AWS account. Real applications start at Milestone 5, which doesn't technically depend on Milestones 3 and 4, though those are the DE portfolio work; FL may want to reorder.
+
+**Then:** Milestone 3 (design first).
+
+Standing facts: the 87 `jd-analysis@3` briefs stay as they are and are not re-briefed (FL, 2026-11-04); scoring and tailoring work from new jobs only. jd-analysis v4, resume-tailoring v4, resume-reviewer v2 and vocabulary v2 are live (#39). A skill named only in a posting's duties can drop out of the brief (totalwine's semantic layers); FL accepted this for now. The daily AI cap stays at 50 (FL, 2026-11-03). On a busy day the jobs over the cap are not briefed or retried: run 8 had 70 in scope and left 20, chosen by newest posting id rather than quality; the report shows the count, so revisit it once there are more days of volume. The clearance rule is on (fit-scoring rules v2, #37); FL fills in `has_security_clearance` and `can_obtain_security_clearance` at Milestone 5 (the sample has both false). Fit scoring's location check is OFF during the small-company practice phase (final targets California, Washington, Texas for the big-tech phase). The daily run happens by itself at 9:30 LA (#29) and catches up about 6 minutes after the laptop wakes; check it at session start.
 
 ## Session log
 
@@ -113,3 +121,4 @@ Update this file at the end of every work session: what got done, what's next, w
 - 2026-11-04 — Run 9 ok on time: 59 new DE, 37 briefed for $1.42, 15 worth applying, 4 skipped by the clearance rule. FL's notes on the trial: proposals for resume wording, jd-analysis v4 (either/or lines are one must-have, job functions aren't skills) and vocabulary v2, evaluated, not adopted; review page labels now plain Chinese. $1.89. 535 tests pass.
 - 2026-11-04 — FL approved: jd-analysis v4, resume-tailoring v4, resume-reviewer v2, vocabulary v2 adopted (#39). New briefs start with the next daily run; the 87 old briefs not re-briefed so far.
 - 2026-11-04 — FL chose new jobs only: the 87 old briefs are not re-briefed.
+- 2026-11-04 — Step 2.6: approval queue (`agents/application_queue.py`, `agents/queue_review.py`, `config/queue.toml`, migration 014), first real batch of 5 built for $0.23. Decision #40. M2 interview note written. **Milestone 2 complete** apart from FL's first approval.

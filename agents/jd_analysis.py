@@ -344,6 +344,7 @@ def main(argv: list[str] | None = None) -> int:
     run_cmd = commands.add_parser("run", help="brief in-scope postings that have no brief yet")
     run_cmd.add_argument("--limit", type=int, help="at most this many postings")
     run_cmd.add_argument("--dry-run", action="store_true", help="count and estimate; no calls")
+    run_cmd.add_argument("--ids", type=int, nargs="+", help="only these posting versions")
     show_cmd = commands.add_parser("show", help="print the stored brief(s) of one posting version")
     show_cmd.add_argument("posting_version_id", type=int)
     args = parser.parse_args(argv)
@@ -367,7 +368,9 @@ def main(argv: list[str] | None = None) -> int:
                 print(json.dumps(brief, indent=2, ensure_ascii=False))
             return 0
         client = None if args.dry_run else AnthropicClient()
-        summary = run(conn, client, settings, limit=args.limit, dry_run=args.dry_run)
+        summary = run(
+            conn, client, settings, limit=args.limit, dry_run=args.dry_run, only=args.ids
+        )
         print(format_summary(summary, args.dry_run))
     return 1 if summary.failed else 0
 

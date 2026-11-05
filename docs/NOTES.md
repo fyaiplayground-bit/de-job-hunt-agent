@@ -231,6 +231,17 @@ PowerShell（Windows 自带）、Git Bash（装 Git 时附带）、Ubuntu/WSL（
 
 ---
 
+### 数据存在哪里
+| 什么 | 在哪 | 备份 |
+| --- | --- | --- |
+| 职位原文、闸门结果、去重、AI 简报、分数、队列 | 这台电脑上 Docker 里的 Postgres，数据卷 `de-job-hunt-agent_pgdata`（2026-11-04 约 216 MB） | **没有。** S3 备份是 Milestone 4 |
+| 每日报告、简历 PDF、对照页、提交包 | `output/`，只在这台电脑（Git 不管） | 没有，大多能重新生成 |
+| 代码、规则、文档、虚构样本 | GitHub 公开仓库 | 有 |
+| 你的真实简历和事实库（Milestone 5） | `private/`，Git 不管，现在只有说明文件 | 还没有 |
+| `.env`（数据库密码、API key） | 这台电脑，Git 不管 | 没有，丢了可以重新生成 |
+
+调用 AI 时，职位内容和档案内容会发给 Anthropic API，现在是虚构样本，Milestone 5 起是你的真实资料。电脑坏了或者数据卷被删，历史职位就没了，代码还在，现在还在招的职位能重新抓。
+
 ## 4. 常用操作
 
 大多数操作由 Claude 来跑。你只需要记住下面这些：
@@ -262,6 +273,7 @@ PowerShell（Windows 自带）、Git Bash（装 Git 时附带）、Ubuntu/WSL（
 | 想改打分规则 | 让 Claude 在 `config/proposals/` 写一份提议，跑 `uv run python -m agents.evaluate_fit_rules <提议文件> --review`，你看 `output/fit_rules_review.html`（决定会变的职位和原文），同意后才启用 |
 | 看打分结果 | 让 Claude 跑 `uv run python -m agents.fit_scoring top`（最值得投的）、`... show <编号>`（为什么得这个分）、`... unmatched`（词表还缺哪些技能写法） |
 | 生成简历 PDF 并检查 | 让 Claude 跑 `uv run python -m agents.render_resume`，结果在 `output/resume/`：PDF 和对照页 `review.html`（左边是渲染出来的页面，右边是 ATS 读到的文字） |
+| 生成今天的待投清单 | 让 Claude 跑 `uv run python -m agents.application_queue build`，看 `output/queue/<日期>/index.html`；然后告诉 Claude "批准 1、3，跳过 2，原因……" |
 | 给职位改写简历 | 让 Claude 跑 `uv run python -m agents.tailor run --top 5`（每份约 $0.18；先加 `--dry-run` 只看选了哪些，不花钱）。结果看 `output/tailored/index.html` |
 | 试一个拆解提示词或词表的提议，对真实职位有什么影响 | 让 Claude 跑 `uv run python -m agents.evaluate_scoring --jd-proposal <提议> --vocabulary <提议> --jobs <编号...> --review`，看 `output/scoring_review.html`；什么都不会写进真数据 |
 | 暂停每天的 AI 拆解 | 在 `.env` 里设 `JD_ANALYSIS_ENABLED=false`（抓取照常）；每天最多拆几个用 `JD_ANALYSIS_DAILY_MAX` 调 |
@@ -331,6 +343,7 @@ PowerShell（Windows 自带）、Git Bash（装 Git 时附带）、Ubuntu/WSL（
 - **数据质量：** 多个来源会抓到同一个职位，必须跨来源去重，加载要能重复运行而不产生重复数据（M1 已完成，见上面的"原始层设计"和"跨来源去重"）。
 - **把"生成"和"检查"分开：** 简历 PDF 由模板生成，再由一段独立的代码读成品 PDF 来检查：是否正好一页、文字层能否按顺序读出每一行、日期是否安全、字体是否嵌入。每项检查都有一个故意做坏的 PDF 来证明它真的会报错。同样的输入渲染两次，PDF 字节完全相同，这和数据管道的可复现是一回事。
 - **让 AI 够不着事实：** 改写简历时，AI 只能写内容，姓名、头衔、公司、日期都由代码填入；每条经历必须注明证据，代码只允许用这些证据里的数字。第二个 AI 审稿，但它的修改也要过代码检查，破坏事实的直接拒绝。写测试时还发现了一个真漏洞：职位要 "Apache Kafka" 时，简历写 "Kafka" 查不出来。代码查不出语气上的抬高，这一点我如实保留给人判断。5 份试跑平均每份 $0.18。
+- **状态用事件日志：** 投递队列里每个职位一行，不再改动；状态变化单独记一条，只增不改，再用一个视图看当前状态。这样每个申请的历史都在，投递漏斗可以直接从这里算，也符合数据建模里"事实不覆盖"的思路。
 - **可解释的打分：** 打分完全由代码完成，规则写在带版本号的配置文件里。每个对上的技能都附带匹配方式（名字、别名、同义词、技能家族）和证据条目，每个"跳过"都写明原因。试算时发现 Snowflake 被误判为覆盖：AI 在原文写法里引用了 "cloud data warehouse"，走技能家族对上了 Redshift。修复办法是只让技能名本身走家族匹配。分数按档案指纹存储，换档案就自动全部重算。
 - **一个静默的数据缺失 bug：** 回填时发现一个搜索只拿回 899 条，而 API 说总共有 11,298 条。原因是代码把"这一页不满"当成"没有更多了"，而 API 偶尔会在中间少给一条。这种 bug 不报错、不崩溃，只是悄悄少数据，平时的运行看起来一切正常。我是通过核对 API 返回的总数发现的，修复后改为按总数翻页，并加了一个测试专门复现"中间一页不满"的情况。教训：分页结束条件要用权威的总数，不要靠推断。
 - **衡量数据管道的完整性：** 抓取全不全不能靠猜。我做了一个检查工具：用户在 LinkedIn 上找到的职位，查我们有没有；没有的话，在线问一次聚合平台，判断是标题不在搜索词里、发布时间早于抓取窗口、还是我们的来源根本没有。每次检查都记下来，得到一个真实的召回率，漏掉的原因直接告诉我们该修哪里。第一批检查就发现了一个系统性缺口：在我们开始抓取之前发布、现在仍在招的职位全部漏掉了。

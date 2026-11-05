@@ -1,0 +1,72 @@
+# The approval queue (decision #40). Code applies these; no LLM is involved. Rules as data: change
+# them through the loop (propose, show what moves, FL approves, bump version, record in DECISIONS).
+
+version = 1
+
+daily_jobs = 5     # jobs to prepare in a batch: enough to run the whole flow (FL, 2026-11-04)
+per_company = 1    # at most this many jobs from one company in a batch: more reads as a mass mailing
+
+# How an application site works, by the end of its web address. Sorted by what it means for FL:
+# no_account sites can be filled straight away; account sites need FL to register and log in
+# once, because Claude never creates accounts or enters passwords (decision #10); aggregator
+# links aren't the application itself. Anything else shows as unknown. Rough, from what these
+# systems usually do: a site can differ.
+[sites]
+no_account = ["greenhouse.io", "lever.co", "ashbyhq.com"]
+account = [
+    "myworkdayjobs.com", "oraclecloud.com", "ukg.net", "ultipro.com", "icims.com",
+    "recruitingbypaycor.com", "paylocity.com", "jibeapply.com",
+]
+aggregator = ["adzuna.com"]
+
+# Answers to likely form questions, read from the Applicant Profile by code. A question matching
+# `never_guess` is always left for FL, even if it matches an answer too: experience claims can't
+# be read off a form field. A question matching nothing is also left for FL. Regular expressions,
+# ignoring case.
+[answers]
+never_guess = ['\byears?\b', '\bexperience\b', '\bdegree\b', '\bbachelor', '\bmaster', '\bcertif']
+
+[[answers.fields]]
+pattern = 'authori[sz]ed|authori[sz]ation|legally'
+field = "work_authorization.authorized_us"
+label = "Authorized to work in the US"
+
+[[answers.fields]]
+pattern = 'sponsor|visa'
+field = "work_authorization.needs_sponsorship_now"
+label = "Needs sponsorship now"
+
+[[answers.fields]]
+pattern = 'sponsor|visa'
+field = "work_authorization.needs_sponsorship_future"
+label = "Needs sponsorship in the future"
+
+[[answers.fields]]
+pattern = 'salary|compensation|pay expectation'
+field = "compensation.base_salary_target"
+label = "Target base salary"
+
+[[answers.fields]]
+pattern = '\bstart\b|notice|availab'
+field = "availability.notice_period_weeks"
+label = "Notice period, weeks"
+
+[[answers.fields]]
+pattern = 'relocat'
+field = "location.relocate"
+label = "Willing to relocate"
+
+[[answers.fields]]
+pattern = 'background check'
+field = "background.background_check_ok"
+label = "OK with a background check"
+
+[[answers.fields]]
+pattern = 'clearance'
+field = "background.has_security_clearance"
+label = "Has a security clearance"
+
+[[answers.fields]]
+pattern = '\b18\b|over the age'
+field = "background.age_18_or_over"
+label = "18 or over"

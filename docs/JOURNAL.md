@@ -486,3 +486,22 @@
 - **验证：** 全部测试通过，ruff 通过，`agents.skills check` 通过。真实使用从下一次每日运行开始，那时才能确认新简报进了 `agents.jd_briefs` 的 `jd-analysis@4`，报告也正常
 - **注意：** 打分和改写只读当前提示词版本的简报。下一次运行之前 `agents.tailor run --top N` 和 `agents.fit_scoring top` 查不到职位，这是预期的
 - **撤回：** `git revert` 这个提交，再跑 `agents.skills lock`
+
+### 2.6 · 2026-11-04 · 待投队列（Milestone 2 最后一步）
+- **做了什么：**
+  - `agents/application_queue.py`：命令 `build`、`approve`、`pass`、`applied`。按分数挑 5 个还在招的职位，同一家公司只留一个，同一个职位不重复，然后走改写流程
+  - `agents/queue_review.py`：清单页 `output/queue/<日期>/index.html`，批准后写提交包（PDF 和表单答案）
+  - `config/queue.toml`：每批几个、每家几个、网站分类、表单答案的规则
+  - 迁移 014：`agents.queue_items`（排进队列的职位，不再改动）、`agents.application_events`（每次状态变化记一条，只增不改）、视图 `agents.applications`（每个职位现在的状态）
+  - `agents.jd_analysis run --ids`：只拆解指定职位
+  - **文件名和设计不同：** 设计里叫 `agents/queue.py`，实际叫 `application_queue.py`，避免和 Python 自带的 `queue` 混淆
+  - **和设计不同：** 设计说样本档案不生成提交包。改成生成，但文件名是 `SAMPLE_DO_NOT_SUBMIT`，这样现在就能看到整个流程；标记"已投"仍然被代码拒绝
+- **为什么：** DECISIONS #40
+- **文件：** `agents/application_queue.py`、`agents/queue_review.py`、`agents/jd_analysis.py`、`config/queue.toml`、`db/migrations/014_application_queue.sql`、`tests/test_application_queue.py`、`docs/DECISIONS.md`、`docs/INTERVIEW_NOTES.md`、`docs/NOTES.md`、`docs/STATUS.md`
+- **提交：** 见本条所在的提交
+- **验证：**
+  1. 新增 43 个测试（全部 578 个通过），ruff 通过。重点：同一医院两个名字只留一个（来自真实数据）；经验类问题绝不代答；样本简历不能标记已投；步骤不能跳；不在招的职位不进队列；同一天再跑不花钱也不变
+  2. **真实跑了一遍：** 把试跑过的 10 份 v4 简报存进数据库（全部来自缓存，$0），`build` 生成 5 个职位，花 $0.23（只有 UChicago 是新改写）。页面看过，提交包预览过（放在临时文件夹，没有改动批次）
+  3. 发现：这 5 个职位里 4 个的网站要账号，1 个是聚合站，0 个不用账号
+  4. **没有验证：** 批准这一步留给 FL 真实做；Chrome 填表和提交还没做；明天 9:30 的运行是否正常要明天看
+- **撤回：** `git revert` 这个提交；数据库删除视图 `agents.applications` 和表 `agents.application_events`、`agents.queue_items`，再从 `public.schema_migrations` 删掉 `014_application_queue.sql`

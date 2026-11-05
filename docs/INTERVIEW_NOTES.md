@@ -70,3 +70,26 @@ pipeline.daily     one command: lock → fetch → gate → report → ops.daily
 ### Talking about AI assistance honestly
 
 I designed the system and made every decision recorded in `DECISIONS.md`; I used Claude Code as a pair programmer to write much of the code. Be ready to walk through any file, and say "I built it with an AI pair programmer, and here's why it's designed this way" rather than hiding it.
+
+---
+
+## Milestone 2 · Agents (done 2026-11-04)
+
+### The 30-second version
+
+> "On top of the pipeline I built an agent layer that reads each job posting, scores the fit, and writes a tailored one-page resume, then queues it for my approval. The rule I held to: the LLM reads and drafts, code decides. Scores, dealbreakers and every fact on the resume are checked by plain code, so the same input gives the same output, and an LLM can't invent a title or a number."
+
+### What an engineer will probe
+
+- **How do you keep LLM output deterministic?** Every call is stored in Postgres under a hash of the whole request, so a re-run is answered from the table at no cost. Prompts are versioned files, and a test fails if the text changes without a version bump. Scoring has no LLM at all.
+- **How do you stop it making things up?** The LLM can't reach the facts: name, titles, employers and dates are filled in by code from an Evidence Bank. Each bullet must cite its evidence, and its numbers must be in the metrics of what it cites, so even a true number from another job is rejected. A second LLM reviews with fresh context, but its edits go through the same checks. I'm honest about the limit: code can't catch overstated tone, so a person still reads the result.
+- **How do you evaluate prompts?** A golden set of 13 real postings with labels. Early on a new prompt failed: it looked as if it had lost skills. Reading the source showed the skills were there in a merged form my scorer couldn't read, so I fixed the scorer and measured old and new with the same ruler. The evaluation also proved a cheaper setting was just as good, and it is why a prompt change never ships unmeasured.
+- **Tell me about a bug the data found.** A user reading the results asked why a good job scored only 58. "dbt, Snowflake, BigQuery, or similar" had been split into three must-haves, so the two tools the candidate lacked counted as gaps. A rough scan flagged 47 of 87 briefs, including jobs wrongly skipped. I changed the prompt so either/or lines are one requirement, added those cases to the golden set, and checked 10 real jobs against their source text before adopting it.
+- **Data modeling choice?** The approval queue stores each queued job as one immutable row and its status as an append-only event log, with a view for the current state. The whole history is kept, and the application funnel can be built straight from it.
+- **Safety?** Postings are untrusted input. They pass a safety gate first and go to the LLM as data, never as instructions; the resume drafter doesn't read the posting at all, only a structured brief. A batch built from the fictional profile is locked by code so it can't be marked as sent.
+
+### Numbers worth quoting
+
+- About 16,800 postings stored; about 900 in scope for the AI step at any time, filtered by code first because reading one costs about $0.04.
+- About $0.18 for a checked one-page resume, measured on real jobs, against an estimate of $0.30-0.50.
+- 44 labeled wordings for the security clearance rule; 2,462 data engineering postings as a wider test.

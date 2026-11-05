@@ -1,0 +1,22 @@
+version: 2
+
+sources:
+  - name: raw
+    tables:
+      - name: job_postings
+      - name: job_sightings
+      - name: ingest_runs
+  - name: dedupe
+    tables:
+      - name: jobs
+  - name: agents
+    tables:
+      - name: jd_briefs
+      - name: fit_scores
+      - name: llm_calls
+      - name: queue_items
+      - name: application_events
+      - name: profile_skills
+  - name: ops
+    tables:
+      - name: daily_runs

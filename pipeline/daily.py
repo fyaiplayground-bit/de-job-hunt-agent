@@ -31,6 +31,7 @@ import psycopg
 from psycopg.types.json import Jsonb
 
 from agents import fit_scoring, jd_analysis
+from agents.coverage_report import coverage_lines
 from agents.llm import AnthropicClient, LlmClient
 from agents.profile import load_profile
 from ingestion.http import make_client
@@ -92,6 +93,10 @@ class DailySummary:
     fit_worth: list[dict[str, Any]] = field(default_factory=list)  # apply / apply_referral
     fit_skipped: dict[str, int] = field(default_factory=dict)  # reason -> count
     fit_error: str | None = None
+    # dbt and the coverage report (decision #41)
+    analytics_status: str = "off"  # off / ok / error
+    analytics_error: str | None = None
+    coverage: dict[str, Any] = field(default_factory=dict)
 
 
 def search_window_days(conn: psycopg.Connection, today: date) -> int:
@@ -230,6 +235,27 @@ def _score_new(
     summary.fit_skipped = dict(sorted(skipped.items(), key=lambda item: (-item[1], item[0])))
 
 
+def refresh_analytics(
+    conn: psycopg.Connection, summary: DailySummary, profile_folder: Path | None
+) -> None:
+    """Rebuild the dbt models and read the coverage report. A failure is reported, never raised:
+    the day's ingest doesn't depend on it, and the models can be rebuilt at any time."""
+    from agents.coverage_report import read_coverage
+    from pipeline.analytics import refresh
+
+    try:
+        result = refresh(conn, profile_folder)
+        if result.ok:
+            summary.coverage = read_coverage(conn)
+    except Exception as exc:  # e.g. a broken profile file: keep the rest of the day's work
+        summary.analytics_status = "error"
+        summary.analytics_error = f"{type(exc).__name__}: {exc}"
+        return
+    summary.analytics_status = "ok" if result.ok else "error"
+    if not result.ok:
+        summary.analytics_error = "; ".join(result.failed) or result.error
+
+
 def run_daily(
     conn: psycopg.Connection,
     client: httpx.Client,
@@ -241,6 +267,7 @@ def run_daily(
     daily_max: int = 50,
     scope: jd_analysis.Scope | None = None,
     profile_folder: Path | None = None,
+    analytics: Callable[[psycopg.Connection, DailySummary, Path | None], None] | None = None,
 ) -> DailySummary:
     """Fetch, gate, brief and score today's new jobs (when `llm` is given) and summarize. The
     caller holds the lock and records the run."""
@@ -257,6 +284,8 @@ def run_daily(
         _analyze_new(conn, summary, new_versions, llm, settings, daily_max, scope)
         if summary.jd_status in ("ok", "partial"):
             _score_new(conn, summary, new_versions, settings, profile_folder, today)
+    if analytics is not None:
+        analytics(conn, summary, profile_folder)
     failed = sum(r.status == "error" for r in results)
     summary.status = "ok" if not failed and summary.jd_status != "error" else "partial"
     return summary
@@ -334,6 +363,12 @@ def render_report(s: DailySummary) -> str:
     if s.fit_status != "off":
         lines += ["", f"## 今天值得投的（按 {s.fit_profile or '档案'} 打分）", ""]
         lines += _fit_lines(s)
+    if s.analytics_status != "off":
+        lines += ["", f"## 技能覆盖（按 {s.fit_profile or '当前档案'} 算）", ""]
+        if s.analytics_status == "error":
+            lines.append(f"❌ 这一步出错了，其他结果不受影响：`{s.analytics_error}`")
+        else:
+            lines += coverage_lines(s.coverage)
     if s.triage_new:
         lines += ["", "## 安全闸门（今天新进来的）", ""]
         lines += [f"- {tier}: {n}" for tier, n in sorted(s.triage_new.items())]
@@ -433,6 +468,7 @@ def main() -> int:
                     conn, client, now=lambda: datetime.now(UTC),
                     llm=AnthropicClient if analysis.enabled else None,
                     daily_max=analysis.daily_max,
+                    analytics=refresh_analytics,
                 )
         except Exception as exc:  # record any crash, write the report, exit non-zero
             summary = DailySummary(local_date=local_date, window_days=0, status="error")

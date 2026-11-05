@@ -513,3 +513,23 @@
 - **验证：** 5 个职位状态都是 approved。试着把 1 号标记为已投，代码拒绝了，状态没变
 - **撤回：** 不需要撤回；这是虚构档案，不会投出去
 
+## Milestone 3 · 建模和报告
+
+### 3.1–3.4 · 2026-11-04 · dbt、覆盖率报告、看板
+- **做了什么：**
+  - **3.1 dbt 和 staging：** `dbt/` 项目，只读管道的表，建在 `analytics_*` 这几个 schema 里。staging 把三个来源的 JSON 摊平，每个职位取最新的简报和分数
+  - **3.2 skills 和 marts：** `skill_requirements`、`skill_mentions`（"A or B" 拆成两行，同义词归成一个技能），以及 `mart_skill_frequency`、`mart_coverage_summary`、`mart_coverage_by_archetype`、`mart_funnel`、`mart_pipeline_daily`、`mart_ai_costs`，加数据测试
+  - **3.3 覆盖率报告：** `agents/coverage_report.py`，每日报告新增"技能覆盖"一节；`coverage-report` 升到 v2（现在是代码）。每日运行打分后重建 dbt，出错只记下来，不影响抓取
+  - **3.4 看板：** `dashboard/app.py`（英文、只有这台电脑能打开），四个标签：Skills、Coverage、Funnel、Pipeline。只读 marts
+  - `pipeline/analytics.py`：把词表写成 seed，把档案的技能写进 `agents.profile_skills`（迁移 015），再跑 dbt
+- **为什么：** DECISIONS #41
+- **文件：** `dbt/`、`pipeline/analytics.py`、`pipeline/daily.py`、`agents/coverage_report.py`、`dashboard/`、`.streamlit/config.toml`、`.claude/launch.json`、`.claude/skills/coverage-report/SKILL.md`、`config/prompt_lock.toml`、`db/migrations/015_profile_skills.sql`、`pyproject.toml`、`uv.lock`、`tests/test_analytics.py`、`docs/`
+- **提交：** 见本条所在的提交（原计划分步提交，它们互相依赖，所以合成一个）
+- **验证：**
+  1. dbt 在真实数据上 56 步全过；新增 15 个测试（全部 593 个通过），其中 dbt 在测试数据库里真实构建，看板也真实跑了一遍
+  2. **dbt 全过不代表数字对。** 我读了结果，又发现两个测试查不出来的错，都修了：(a) Alex 显示"有" CI/CD、Snowflake、Java，因为一个 "Java & Python" 的短语算覆盖就把 Java 也标成有了；改成按技能名字判断，和打分用同一段代码；(b) 87 个职位全挤在同一天，因为抓取日期是 UTC；改成洛杉矶时间的运行日期
+  3. 看了看板的每个标签，又修了两处版面：柱子少时标签被挤掉；Oct 31 排到了 11 月后面
+  4. 真实结果：近 30 天覆盖率 47%（87 个里 41 个），今天 49%（37 个里 18 个）；SQL 76%、Python 66%、ETL 61%；数据管道 DE 56%、分析工程师 39%、基础设施 DE 0%
+  5. **没有验证：** 明天 9:30 才是 dbt 第一次跑在每日运行里；配色校验脚本要 Node，这台电脑没装，用的是文档里写明通过的前三个颜色
+- **发现但没改：** 打分时，JD 原话只要有一部分对上就算覆盖。比如 "Java & Python" 让没用过 Java 的人也算满足了 Java，"Git and CI/CD" 同理。试算：如果原话必须整句对上，87 个里 16 个分数会变，3 个决定从投变跳过（Seismic、Jobgether、Sagility）。#39 里提到 Sagility 从跳过变投，现在看也是这个问题造成的。要走规则流程，等 FL 决定
+- **撤回：** `git revert` 这个提交，再 `drop schema analytics_staging, analytics_skills, analytics_marts cascade`，删掉 `agents.profile_skills`，从 `public.schema_migrations` 删掉 `015_profile_skills.sql`

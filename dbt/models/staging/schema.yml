@@ -1,0 +1,59 @@
+version: 2
+
+models:
+  - name: stg_postings
+    description: One row per posting version; each source's JSON flattened to the same columns.
+    columns:
+      - name: posting_version_id
+        tests: [unique, not_null]
+      - name: source
+        tests:
+          - accepted_values:
+              arguments:
+                values: [greenhouse, lever, freehire, linkedin]
+  - name: stg_jobs
+    description: One row per real job after cross-source dedupe.
+    columns:
+      - name: identity_key
+        tests: [unique, not_null]
+      - name: posting_version_id
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_postings')
+                field: posting_version_id
+  - name: stg_briefs
+    description: One row per posting, its newest jd-analysis brief.
+    columns:
+      - name: posting_version_id
+        tests: [unique, not_null]
+      - name: archetype
+        tests:
+          - accepted_values:
+              arguments:
+                values: [analytics_engineer, pipeline_de, infra_de]
+  - name: stg_fit_scores
+    description: The newest score of each posting's newest brief; read from Python, never recomputed.
+    columns:
+      - name: posting_version_id
+        tests: [unique, not_null]
+      - name: decision
+        tests:
+          - accepted_values:
+              arguments:
+                values: [apply_referral, apply, skip]
+  - name: stg_application_events
+    columns:
+      - name: event_id
+        tests: [unique, not_null]
+      - name: posting_version_id
+        tests:
+          - relationships:
+              arguments:
+                to: ref('stg_queue_items')
+                field: posting_version_id
+  - name: stg_queue_items
+    columns:
+      - name: posting_version_id
+        tests: [unique, not_null]

@@ -1,0 +1,10 @@
+# One light theme: the chart colors are validated against this surface.
+[theme]
+base = "light"
+
+[browser]
+gatherUsageStats = false
+
+# Only this computer can open it, like the database port.
+[server]
+address = "127.0.0.1"

@@ -1,0 +1,40 @@
+version: 2
+
+models:
+  - name: mart_skill_frequency
+    description: Skills the market asks for over 30 days, with the profile's status and the week's trend.
+    columns:
+      - name: skill_key
+        tests: [unique, not_null]
+      - name: status
+        tests:
+          - accepted_values:
+              arguments:
+                values: [have, learning, not_covered]
+      - name: trend
+        tests:
+          - accepted_values:
+              arguments:
+                values: [up, down, flat, not_enough_data]
+  - name: mart_coverage_summary
+    description: Share of scored postings where the profile's skills clear the apply bar, by period.
+    columns:
+      - name: period
+        tests: [unique, not_null]
+  - name: mart_coverage_by_archetype
+    description: Coverage by role type, last 30 days.
+    columns:
+      - name: archetype
+        tests: [unique, not_null]
+  - name: mart_funnel
+    description: Jobs reaching each stage, from found to offer.
+    columns:
+      - name: stage_order
+        tests: [unique, not_null]
+  - name: mart_pipeline_daily
+    description: One row per day the pipeline ran.
+    columns:
+      - name: local_date
+        tests: [unique, not_null]
+  - name: mart_ai_costs
+    description: AI spending by day and prompt.

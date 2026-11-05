@@ -1,0 +1,28 @@
+version: 2
+
+models:
+  - name: skill_requirements
+    description: One row per requirement in a brief, with whether the profile covers it.
+    columns:
+      - name: posting_version_id
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_briefs')
+                field: posting_version_id
+      - name: kind
+        tests:
+          - accepted_values:
+              arguments:
+                values: [must_have, nice_to_have]
+  - name: skill_mentions
+    description: One row per skill named in a requirement, under one key per skill.
+    columns:
+      - name: skill_key
+        tests: [not_null]
+      - name: status
+        tests:
+          - accepted_values:
+              arguments:
+                values: [have, learning, not_covered]

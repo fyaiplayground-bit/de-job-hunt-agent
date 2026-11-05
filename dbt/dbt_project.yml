@@ -1,0 +1,45 @@
+# dbt turns the pipeline's tables into models for analysis (decision #41). It only reads raw, gate,
+# dedupe, agents and ops; everything it builds lives in the analytics_* schemas and can be rebuilt.
+# Run through `uv run python -m pipeline.analytics`, which loads .env and writes the seed first.
+name: job_hunt
+version: "1.0.0"
+config-version: 2
+profile: job_hunt
+
+model-paths: ["models"]
+seed-paths: ["seeds"]
+test-paths: ["tests"]
+macro-paths: ["macros"]
+target-path: target
+log-path: logs
+
+flags:
+  send_anonymous_usage_stats: false
+
+vars:
+  # The date "today" means. Left null it is today in Los Angeles; tests set a fixed date.
+  as_of: null
+  # Must-have coverage needed to apply (decision #8; config/fit_scoring.toml apply_bar).
+  coverage_bar: 0.5
+  # Briefs older than this prompt version aren't counted: v2 was a 20-job pilot.
+  min_brief_version: 3
+  # A trend needs this many briefed jobs in each of the two weeks compared.
+  min_trend_jobs: 20
+  # The same pattern as DE_TITLE in pipeline/daily.py; a test keeps them equal.
+  de_title_pattern: 'data engineer|analytics engineer|data platform|etl\b|data infrastructure|data pipeline'
+
+models:
+  job_hunt:
+    staging:
+      +schema: analytics_staging
+      +materialized: view
+    skills:
+      +schema: analytics_skills
+      +materialized: table
+    marts:
+      +schema: analytics_marts
+      +materialized: table
+
+seeds:
+  job_hunt:
+    +schema: analytics_skills

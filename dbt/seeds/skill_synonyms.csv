@@ -1,0 +1,34 @@
+wording_key,canonical
+amazon web services,AWS
+batch processing,ETL
+bi development,BI tools
+business intelligence,BI tools
+data ingestion,ETL
+data integration,ETL
+data modelling,Data modeling
+data models,Data modeling
+data pipeline development,ETL
+data pipelines,ETL
+data testing,Data quality
+data validation,Data quality
+dimensional modeling,Data modeling
+elt,ETL
+elt pipelines,ETL
+etl pipelines,ETL
+etl/elt,ETL
+etl/elt pipelines,ETL
+github,Git
+google cloud,GCP
+google cloud platform,GCP
+microsoft azure,Azure
+ms sql server,Microsoft SQL Server
+postgres,PostgreSQL
+query optimization,SQL
+query performance tuning,SQL
+query tuning,SQL
+spark sql,Apache Spark
+sql performance tuning,SQL
+sql tuning,SQL
+star schema,Data modeling
+t-sql,Microsoft SQL Server
+version control,Git

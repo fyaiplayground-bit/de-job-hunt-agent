@@ -1,6 +1,6 @@
 # Status
 
-**Last updated:** 2026-11-03 · **Phase:** Milestone 2 done; Milestone 3 (dbt, dashboard) next
+**Last updated:** 2026-11-03 · **Phase:** Milestones 1-3 done; Milestone 4 (Airflow, API, S3 backup) next
 
 Update this file at the end of every work session: what got done, what's next, what's blocked.
 
@@ -46,9 +46,9 @@ Update this file at the end of every work session: what got done, what's next, w
 - [x] End-to-end test: real JDs from the pipeline + the sample profile → tailored PDFs (5-job trial 2026-11-03; FL still to read them)
 
 ### Milestone 3 · Week 3 · Modeling + reporting
-- [ ] dbt models: staging → skills → marts
-- [ ] Daily coverage report (Agent 9)
-- [ ] Streamlit dashboard (skill trends, application funnel)
+- [x] dbt models: staging → skills → marts (#41)
+- [x] Daily coverage report (Agent 9, #41)
+- [x] Streamlit dashboard (skill trends, application funnel, #41)
 
 ### Milestone 4 · Week 4 · Production polish
 - [ ] Airflow DAGs calling the pipeline functions
@@ -78,7 +78,11 @@ Update this file at the end of every work session: what got done, what's next, w
 
 **Worth raising:** all job data lives only on this laptop (see NOTES, "数据存在哪里"); the S3 backup is in Milestone 4 and needs FL's personal AWS account. Real applications start at Milestone 5, which doesn't technically depend on Milestones 3 and 4, though those are the DE portfolio work; FL may want to reorder.
 
-**Now:** Milestone 3, design with FL for her OK (FL, 2026-11-04: Milestone 3 before the backup; she knows the data has one copy until Milestone 4).
+**FL, open choice:** exact phrases count when any part matches, so "Java & Python" credits Java. Requiring the whole phrase moves 16 of 87 scores and 3 decisions from apply to skip (Seismic, Jobgether, Sagility; JOURNAL 3.1-3.4). Fix it through the rules loop, or leave it.
+
+**Claude, next run:** also check that dbt ran inside the daily run and the report has the coverage section.
+
+**Then:** Milestone 4 (design first): S3 backup first, it needs FL's personal AWS account.
 
 Standing facts: the 87 `jd-analysis@3` briefs stay as they are and are not re-briefed (FL, 2026-11-04); scoring and tailoring work from new jobs only. jd-analysis v4, resume-tailoring v4, resume-reviewer v2 and vocabulary v2 are live (#39). A skill named only in a posting's duties can drop out of the brief (totalwine's semantic layers); FL accepted this for now. The daily AI cap stays at 50 (FL, 2026-11-03). On a busy day the jobs over the cap are not briefed or retried: run 8 had 70 in scope and left 20, chosen by newest posting id rather than quality; the report shows the count, so revisit it once there are more days of volume. The clearance rule is on (fit-scoring rules v2, #37); FL fills in `has_security_clearance` and `can_obtain_security_clearance` at Milestone 5 (the sample has both false). Fit scoring's location check is OFF during the small-company practice phase (final targets California, Washington, Texas for the big-tech phase). The daily run happens by itself at 9:30 LA (#29) and catches up about 6 minutes after the laptop wakes; check it at session start.
 
@@ -122,3 +126,4 @@ Standing facts: the 87 `jd-analysis@3` briefs stay as they are and are not re-br
 - 2026-11-04 — Step 2.6: approval queue (`agents/application_queue.py`, `agents/queue_review.py`, `config/queue.toml`, migration 014), first real batch of 5 built for $0.23. Decision #40. M2 interview note written. **Milestone 2 complete** apart from FL's first approval.
 - 2026-11-04 — FL approved the first batch (all 5). Submit pack written (SAMPLE_DO_NOT_SUBMIT); marking one applied was refused as designed. **Milestone 2 complete.** Form filling isn't built yet.
 - 2026-11-04 — FL chose Milestone 3 next, before the S3 backup. dbt 1.12 with the Postgres adapter 1.11 and Streamlit 1.66 install together here (checked in a scratch environment).
+- 2026-11-04 — Milestone 3: dbt project (56 steps pass), coverage report in the daily run, Streamlit dashboard. Two wrong numbers found by reading results, fixed. Coverage 47% of 87 postings for the sample. Decision #41. 593 tests pass. dbt's first real daily run is 11/05.

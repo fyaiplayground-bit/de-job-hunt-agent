@@ -7,8 +7,8 @@ version = 2
 sha256 = "92fe3f8019eb8ab2aefa742f677ef19922a415f2d9cee26f3c782b85d137cad0"
 
 [skills.coverage-report]
-version = 1
-sha256 = "0b1166d9b269cdcd6bdd4e7ae071c7706579b36f110d8b714134182622088c86"
+version = 2
+sha256 = "58c82fc3b8557197ca1098deb8c021a0cb249d345870a1b669fb70e40c8bbf73"
 
 [skills.fit-scoring]
 version = 3

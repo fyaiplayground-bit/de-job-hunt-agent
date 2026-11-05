@@ -93,3 +93,25 @@ I designed the system and made every decision recorded in `DECISIONS.md`; I used
 - About 16,800 postings stored; about 900 in scope for the AI step at any time, filtered by code first because reading one costs about $0.04.
 - About $0.18 for a checked one-page resume, measured on real jobs, against an estimate of $0.30-0.50.
 - 44 labeled wordings for the security clearance rule; 2,462 data engineering postings as a wider test.
+
+---
+
+## Milestone 3 · Modeling + reporting (done 2026-11-04)
+
+### The 30-second version
+
+> "On top of the raw data I built a dbt project with three layers: staging flattens each source's JSON, a skills layer gets one row per skill per job, and marts answer business questions: which skills the market wants, what share of jobs my skills cover, and how my applications are going. It rebuilds daily with data tests, and a Streamlit dashboard reads only the marts."
+
+### What an engineer will probe
+
+- **Why three layers?** Each has one job. Staging only cleans, with no business logic; if a source changes its JSON, one model changes. The skills layer holds the grain I analyze. Marts are shaped for one question each, so the dashboard stays simple.
+- **What's the grain of the skills table?** One row per job per skill named. "Python or Java" gives two rows, so demand for each is counted, and "Data pipelines" and "ETL pipelines" share a key through a seeded vocabulary. Separately, one row per requirement says whether my profile covers it, because those are different questions.
+- **Why doesn't dbt compute the fit score?** The score is a business rule already in tested Python. Recomputing it in SQL would give two definitions that drift, so dbt reads the stored result. The same logic made me keep the dedupe view where it is: the daily pipeline depends on it.
+- **Tell me about a bug tests didn't catch.** All tests passed and the numbers were wrong. My fictional candidate showed as having Snowflake and Java, and 87 jobs fell on one date. I only saw it by reading the output against what I knew. The first was deriving a skill's status from whether a requirement was covered; I switched to the same name resolution the scorer uses. The second was a UTC date in a Los Angeles report. Tests check what you thought of; someone still has to look at the numbers.
+- **How do you handle private data in a public repo?** The real profile can't be a dbt seed. Code copies it into a database table at run time, so it never reaches git, and a test checks the only seed is the public vocabulary.
+- **What if dbt fails?** The daily run catches it and says so in the report; ingestion is unaffected, because the analytics schemas can always be rebuilt from raw.
+
+### Numbers worth quoting
+
+- 56 dbt steps (models, seed, data tests) on about 16,800 postings; AI step adds no cost here, since everything is SQL over stored results.
+- Top must-haves in 87 postings so far: SQL 76%, Python 66%, ETL 61%, data modeling 49%. Say the sample size out loud: it's small, and the report prints it for that reason.

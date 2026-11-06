@@ -1,4 +1,5 @@
-# PROPOSAL, not adopted until FL approves. Adds Git/GitHub: found checking fit_scoring.v3.
+# PROPOSAL, not adopted until FL approves. Adds Git/GitHub, found checking fit_scoring.v3, and
+# a Data lakes family (FL, 2026-11-05: S3 experience counts for "AWS-based data lakes (S3)").
 # Shared skill vocabulary for fit-scoring (decision #35): how the names job briefs use map to
 # the canonical skill names an Evidence Bank uses. Generic, not about any one candidate: the
 # candidate's own spellings are the aliases in their Evidence Bank. Matching ignores case.
@@ -66,3 +67,5 @@ version = 3
 "Data visualization" = ["Tableau", "Amazon QuickSight", "Power BI", "Looker"]
 "Dashboards" = ["Tableau", "Amazon QuickSight", "Power BI", "Looker"]
 "Containers" = ["Docker", "Kubernetes"]
+"Data lake" = ["Amazon S3", "Azure Data Lake Storage", "Google Cloud Storage"]
+"Data lakes" = ["Amazon S3", "Azure Data Lake Storage", "Google Cloud Storage"]

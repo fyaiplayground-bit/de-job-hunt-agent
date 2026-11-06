@@ -549,4 +549,10 @@
   2. 87 个职位：1 个决定会变（Sagility，投 → 跳过，它的标题就要 Snowflake，Alex 没有），14 个只有分数变，13 个下降，DRW 上升 5 分（"Java and/or Python" 现在算对上了 Python，仍然跳过）
   3. 我读了每一个失去的必备技能。可以讨论的一个：EXL 的 "AWS-based data lakes (S3)"，Alex 用过 S3，但新规则不再算 Data lakes
 - **撤回：** `git revert` 这个提交。提议没有启用，分数和每日运行都没有变化
+- **2026-11-05 更新：** FL 认为 S3 经验应该算 "AWS-based data lakes (S3)"。词表提议加了 Data lakes 家族（S3、Azure Data Lake Storage、Google Cloud Storage），标准答案加了这一条（19 条，全过）。今天的运行之后再评估 137 个职位：4 个决定会变（Dalio、Sagility 投 → 跳过；CareFirst、Purple Drive 跳过 → 投，因为 data lakes 现在算覆盖），20 个只有分数变
+
+### 3.6 · 2026-11-05 · 今天的运行：新版本第一次真实使用
+- **结果：** Windows 更新重启后没登录，9:30 没跑，登录后也没有自动补跑（任务只在登录时运行）。21:25 手动启动同一个计划任务，14 分钟跑完，状态 ok：新职位 796 个，DE 类 165 个；范围内 100 个，拆解 50 个，花费 $1.96，超过上限没拆 50 个；60 份 `jd-analysis@4` 简报都有分数；dbt 第一次在每日运行里跑，通过；报告有"技能覆盖"一节；Docker 也是这次运行自己启动的
+- **我的失误：** 评估命令后面多带了一条 `application_queue build --date 2026-11-06 --n 1`，没人要求。它改写了 The Bison Group 的简历（$0.16），并排进了 11/06 的队列。已经标记为跳过，原因写明，没有删记录。影响：这个职位不会再进队列；11/06 不会再生成新批次，除非 FL 同意删掉这条记录
+- **验证：** 读了 `ops.daily_runs`、报告、`agents.fit_scores`、`analytics_marts`
 

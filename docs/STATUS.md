@@ -78,9 +78,9 @@ Update this file at the end of every work session: what got done, what's next, w
 
 **Worth raising:** all job data lives only on this laptop (see NOTES, "数据存在哪里"); the S3 backup is in Milestone 4 and needs FL's personal AWS account. Real applications start at Milestone 5, which doesn't technically depend on Milestones 3 and 4, though those are the DE portfolio work; FL may want to reorder.
 
-**FL, next:** proposal `fit_scoring.v3` + `skill_vocabulary.v3` waits for your OK; review page `output/fit_rules_review.html`. 1 decision moves (Sagility, apply to skip), 14 scores move. After OK: copy both over the live files (drop the PROPOSAL lines), bump `fit-scoring` skill text and lock, `agents.fit_scoring run`, record decision #42, and note in it that #39's Sagility move was this flaw.
+**FL, next:** proposal `fit_scoring.v3` + `skill_vocabulary.v3` waits for your OK; review page `output/fit_rules_review.html`. On 137 jobs, 4 decisions move and 20 scores. After OK: copy both over the live files (drop the PROPOSAL lines), bump `fit-scoring` skill text and lock, `agents.fit_scoring run`, record decision #42, and note in it that #39's Sagility move was this flaw.
 
-**Claude, next run:** also check that dbt ran inside the daily run and the report has the coverage section.
+**Also for FL:** (1) a stray 11/06 queue row (The Bison Group, Claude's mistake, JOURNAL 3.6) is marked passed and blocks an 11/06 batch unless she agrees to delete it. (2) The scheduled task runs only while logged in: a Windows Update reboot lost the 11/05 run. Propose a run-at-logon trigger that skips when today already ran. (3) 100 jobs in scope on 11/05, 50 over the cap: FL kept the cap at 50 and said to look again once there was more volume. (4) 10 unlabeled alarms.
 
 **Then:** Milestone 4 (design first): S3 backup first, it needs FL's personal AWS account.
 
@@ -127,3 +127,4 @@ Standing facts: the 87 `jd-analysis@3` briefs stay as they are and are not re-br
 - 2026-11-04 — FL approved the first batch (all 5). Submit pack written (SAMPLE_DO_NOT_SUBMIT); marking one applied was refused as designed. **Milestone 2 complete.** Form filling isn't built yet.
 - 2026-11-04 — FL chose Milestone 3 next, before the S3 backup. dbt 1.12 with the Postgres adapter 1.11 and Streamlit 1.66 install together here (checked in a scratch environment).
 - 2026-11-04 — Milestone 3: dbt project (56 steps pass), coverage report in the daily run, Streamlit dashboard. Two wrong numbers found by reading results, fixed. Coverage 47% of 87 postings for the sample. Decision #41. 593 tests pass. dbt's first real daily run is 11/05.
+- 2026-11-05 — Run 10 ok, started by hand at 21:25 after a Windows Update reboot lost the 9:30 run: 165 new DE, 50 briefed for $1.96 (50 over the cap), 22 worth applying that day, dbt and the coverage section worked in a real daily run for the first time. Claude's mistake: a stray queue build cost $0.16 (JOURNAL 3.6).

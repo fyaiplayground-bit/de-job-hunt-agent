@@ -26,6 +26,8 @@ cases = [
     { skill = "Python or Java", phrases = ["Java"], covered = true },
     # A wording the vocabulary has to know: the slash has no spaces, so it isn't split.
     { skill = "Git/GitHub", phrases = ["version control (GitHub)"], covered = true },
+    # A family the vocabulary has to know (FL, 2026-11-05): object storage is a data lake.
+    { skill = "Data lakes", phrases = ["AWS-based data lakes (S3)"], covered = true },
     # A clean v4-style entry.
     { skill = "dbt or Snowflake or BigQuery", phrases = ["dbt", "Snowflake", "BigQuery"], covered = true },
 ]

@@ -75,7 +75,7 @@ Update this file at the end of every work session: what got done, what's next, w
 
 **Worth raising:** all job data lives only on this laptop (see NOTES, "数据存在哪里"); the S3 backup is in Milestone 4 and needs FL's personal AWS account. Real applications start at Milestone 5, which doesn't technically depend on Milestones 3 and 4, though those are the DE portfolio work; FL may want to reorder.
 
-**Also for FL:** (1) a stray 11/06 queue row (The Bison Group, Claude's mistake, JOURNAL 3.6) is marked passed and blocks an 11/06 batch unless she agrees to delete it. (2) 100 jobs in scope on 11/05, 50 over the cap: FL kept the cap at 50 and said to look again once there was more volume. (3) 10 unlabeled review alarms (`pipeline.alarm_report`, `pipeline.labels add`); none reach the LLM.
+**Also for FL:** (1) 100 jobs in scope on 11/05, 50 over the cap: FL kept the cap at 50 and said to look again once there was more volume. (2) 10 unlabeled review alarms (`pipeline.alarm_report`, `pipeline.labels add`); none reach the LLM.
 
 **Then:** Milestone 4 (design first): S3 backup first, it needs FL's personal AWS account.
 
@@ -125,3 +125,4 @@ Standing facts: fit-scoring rules v3 and vocabulary v3 are live (#42); the next 
 - 2026-11-05 — Run 10 ok, started by hand at 21:25 after a Windows Update reboot lost the 9:30 run: 165 new DE, 50 briefed for $1.96 (50 over the cap), 22 worth applying that day, dbt and the coverage section worked in a real daily run for the first time. Claude's mistake: a stray queue build cost $0.16 (JOURNAL 3.6).
 - 2026-11-05 — FL approved: fit-scoring rules v3 and vocabulary v3 adopted (#42), which also corrects #39 on Sagility.
 - 2026-11-05 — Daily run now also starts 5 minutes after login and skips if today already ran (#43). Skip verified through the real task; the login trigger itself awaits a real login.
+- 2026-11-05 — FL agreed: deleted the stray 11/06 queue row (The Bison Group) and its page. Its resume and cached answers stay, so tailoring that job again is free.

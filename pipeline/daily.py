@@ -13,6 +13,7 @@ an Airflow task (or a cloud scheduler) can call the same function later (decisio
 - Report: output/daily/<date>.md plus output/daily/latest.md (gitignored, stays on this machine).
 """
 
+import argparse
 import os
 import re
 import subprocess
@@ -433,12 +434,32 @@ def acquire_lock(conn: psycopg.Connection) -> bool:
     return conn.execute("select pg_try_advisory_lock(%s)", (LOCK_KEY,)).fetchone()[0]
 
 
-def main() -> int:
+def already_ran_today(local_date: str, directory: Path = REPORT_DIR) -> bool:
+    """Today's report exists and isn't a failed run. Reads a file, not the database, so a login
+    after today's run doesn't start Docker just to find out."""
+    path = directory / f"{local_date}.md"
+    if not path.is_file():
+        return False
+    return not any(
+        line.startswith("❌ **") for line in path.read_text(encoding="utf-8").splitlines()
+    )
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(prog="python -m pipeline.daily")
+    parser.add_argument(
+        "--if-not-run-today", action="store_true",
+        help="do nothing if today's run already succeeded (the scheduled task uses this)",
+    )
+    args = parser.parse_args(argv)
     # The scheduled task writes to a log file, where Windows would default to a non-UTF-8 code page.
     sys.stdout.reconfigure(encoding="utf-8")
-    settings = load_settings()
     now = datetime.now(UTC)
     local_date = now.astimezone(report_timezone()).date().isoformat()
+    if args.if_not_run_today and already_ran_today(local_date):
+        print(f"{local_date}: already ran today; nothing to do")
+        return 0
+    settings = load_settings()
 
     conn = wait_for_database(settings, start_docker_desktop)
     if conn is None:

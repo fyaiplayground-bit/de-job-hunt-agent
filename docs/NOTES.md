@@ -263,7 +263,7 @@ PowerShell（Windows 自带）、Git Bash（装 Git 时附带）、Ubuntu/WSL（
 | 看数据库在不在跑 | Docker Desktop → Containers → `jobhunt-postgres` 显示绿色 |
 | Docker 显示 "paused" | 在 Docker Desktop 窗口或任务栏的鲸鱼图标菜单里点 **Resume** |
 | 跑测试 / 检查代码 | 让 Claude 跑 `uv run pytest` 和 `uv run ruff check .` |
-| 每天的运行 | 定时任务每天 9:30（洛杉矶时间）自动运行。错过了就手动跑：跟 Claude 说"跑一下今天的"，或者双击 `scripts` 文件夹里的 `daily.cmd`，等一两分钟再看报告（跑重复了也不会存重复数据） |
+| 每天的运行 | 定时任务每天 9:30（洛杉矶时间）自动运行，登录后 5 分钟也会检查一次，今天跑过就跳过。错过了就手动跑：跟 Claude 说"跑一下今天的"，或者双击 `scripts` 文件夹里的 `daily.cmd`，等一两分钟再看报告（跑重复了也不会存重复数据） |
 | 看每日报告 | 双击桌面上的快捷方式（打开 `output/daily/latest.md`），或者直接问 Claude"今天怎么样" |
 | 停掉定时任务 | 让 Claude 删除名为 "de-job-hunt-agent daily" 的计划任务 |
 | 抓一次职位 | 让 Claude 跑 `uv run python -m pipeline.ingest`（大约 2 分钟；可以重复跑，不会重复存） |
@@ -306,6 +306,7 @@ PowerShell（Windows 自带）、Git Bash（装 Git 时附带）、Ubuntu/WSL（
 - **公开文件里有真名和雇主** → 初始文件是写给自己看的 → 提交前改成泛化说法；以后每次提交前都检查（JOURNAL 0.3）。
 - **提交作者显示真名** → 全局 git 设置用的是真名 → 只给本仓库设置 `Felix`，再改写前两个提交（JOURNAL 0.4）。
 - **Claude 的强制推送被拦** → Claude Code 的权限检查把改写历史当成破坏性操作 → 由你自己在终端运行那两条命令。这样做是对的：会覆盖远端的操作应该由你来确认。
+- **某天 9:30 没跑、登录后也没补** → 任务只在登录时运行，Windows 更新重启后把你登出了 → 加了"登录后 5 分钟"的触发条件，今天跑过就跳过（#43）。
 - **`docker: command not found`** → 仅当前用户安装后，Claude Code 读到的还是旧的命令路径 → Claude 用 Docker 的完整路径运行。
 - **`docker-credential-desktop ... not found in %PATH%`** → 拉取镜像时 Docker 要调用同一个文件夹里的另一个小工具 → 运行前把 Docker 的 `resources\bin` 文件夹临时加进命令路径。
 - **Docker Desktop 装好了，但引擎没在跑** → 应用没打开 → 打开 Docker Desktop；第一次打开要你自己同意服务条款，登录可以跳过。

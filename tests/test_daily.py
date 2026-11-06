@@ -20,12 +20,15 @@ from pipeline.config import (
 from pipeline.daily import (
     DailySummary,
     acquire_lock,
+    already_ran_today,
     render_report,
+    report_timezone,
     run_daily,
     search_window_days,
     wait_for_database,
     write_report,
 )
+from pipeline.daily import main as daily_main
 from pipeline.ingest import Target
 
 TODAY = date(2026, 11, 1)
@@ -286,3 +289,80 @@ def test_a_broken_profile_only_stops_the_scoring(db, greenhouse_jobs, freehire_j
     assert (summary.status, summary.jd_status, summary.fit_status) == ("ok", "ok", "error")
     assert "not found" in summary.fit_error
     assert "打分出错了，其他结果不受影响" in render_report(summary)
+
+
+# ---------------------------------------------------------------- catching up at login (#43)
+
+
+def _report(tmp_path, local_date, status):
+    summary = DailySummary(local_date=local_date, window_days=2, status=status)
+    return write_report(render_report(summary), local_date, tmp_path)
+
+
+def test_no_report_means_it_has_not_run(tmp_path):
+    assert already_ran_today("2026-11-06", tmp_path) is False
+
+
+@pytest.mark.parametrize("status, ran", [("ok", True), ("partial", True), ("error", False)])
+def test_a_failed_run_does_not_count(tmp_path, status, ran):
+    _report(tmp_path, "2026-11-06", status)
+    assert already_ran_today("2026-11-06", tmp_path) is ran
+
+
+def test_yesterdays_report_does_not_count(tmp_path):
+    _report(tmp_path, "2026-11-05", "ok")
+    assert already_ran_today("2026-11-06", tmp_path) is False
+
+
+def test_an_analytics_failure_alone_still_counts_as_run(tmp_path):
+    summary = DailySummary(
+        local_date="2026-11-06", window_days=2, status="ok",
+        analytics_status="error", analytics_error="model broke",
+    )
+    write_report(render_report(summary), "2026-11-06", tmp_path)
+    assert already_ran_today("2026-11-06", tmp_path) is True
+
+
+def _today_local():
+    return datetime.now(UTC).astimezone(report_timezone()).date().isoformat()
+
+
+def test_the_flag_skips_without_touching_the_database(tmp_path, monkeypatch, capsys):
+    _report(tmp_path, _today_local(), "ok")
+    monkeypatch.setattr("pipeline.daily.REPORT_DIR", tmp_path)
+    monkeypatch.setattr(
+        "pipeline.daily.already_ran_today", lambda d: already_ran_today(d, tmp_path)
+    )
+
+    def must_not_run(*args, **kwargs):
+        raise AssertionError("it should have stopped before connecting")
+
+    monkeypatch.setattr("pipeline.daily.wait_for_database", must_not_run)
+    assert daily_main(["--if-not-run-today"]) == 0
+    assert "already ran today" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("args", [[], ["--if-not-run-today"]])
+def test_a_manual_run_and_a_day_not_yet_run_both_go_ahead(tmp_path, monkeypatch, args):
+    """Without the flag it always runs; with it, only if today hasn't run."""
+    if not args:
+        _report(tmp_path, _today_local(), "ok")
+    monkeypatch.setattr(
+        "pipeline.daily.already_ran_today", lambda d: already_ran_today(d, tmp_path)
+    )
+    monkeypatch.setattr("pipeline.daily.write_report", lambda *a, **k: tmp_path / "report.md")
+    reached = []
+
+    def stop_here(settings, start_docker):
+        reached.append(True)
+        return None  # as if the database were down: main reports it and stops
+
+    monkeypatch.setattr("pipeline.daily.wait_for_database", stop_here)
+    assert daily_main(args) == 1
+    assert reached == [True]
+
+
+def test_the_scheduled_script_uses_the_flag():
+    from pipeline.config import REPO_ROOT
+
+    assert "--if-not-run-today" in (REPO_ROOT / "scripts" / "daily.cmd").read_text(encoding="utf-8")

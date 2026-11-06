@@ -4,7 +4,7 @@
 # Grow it through the loop: names that match nothing are listed by `agents.fit_scoring
 # unmatched`; add a synonym or family member, evaluate, FL approves, bump version.
 
-version = 2
+version = 3
 
 # Another wording of one skill -> its canonical name.
 [synonyms]
@@ -33,6 +33,7 @@ version = 2
 "Microsoft Azure" = "Azure"
 "Version control" = "Git"
 "GitHub" = "Git"
+"Git/GitHub" = "Git"
 "Spark SQL" = "Apache Spark"
 "BI development" = "BI tools"
 "Business intelligence" = "BI tools"
@@ -64,3 +65,5 @@ version = 2
 "Data visualization" = ["Tableau", "Amazon QuickSight", "Power BI", "Looker"]
 "Dashboards" = ["Tableau", "Amazon QuickSight", "Power BI", "Looker"]
 "Containers" = ["Docker", "Kubernetes"]
+"Data lake" = ["Amazon S3", "Azure Data Lake Storage", "Google Cloud Storage"]
+"Data lakes" = ["Amazon S3", "Azure Data Lake Storage", "Google Cloud Storage"]

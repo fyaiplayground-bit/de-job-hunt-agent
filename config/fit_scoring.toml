@@ -3,13 +3,19 @@
 # data: change them through the loop (propose, show what moves, FL approves, bump version,
 # record in DECISIONS.md), then `uv run python -m agents.fit_scoring run` rescores everything.
 
-version = 2
+version = 3
 
 # score = must_weight x must-have coverage + nice_weight x nice-to-have coverage + archetype
 # adjustment, kept within 0..100. Coverage is the share of skills the profile covers.
 must_weight = 70
 nice_weight = 20
 core_weight = 2          # a core must-have counts this many times in must-have coverage
+
+[skill_matching]
+# How much of a posting's exact phrase must name a skill for it to count. alternatives_only: the
+# whole phrase, or one side of an "or". "Java & Python" no longer credits Java to someone who has
+# only Python, while "Airflow or Dagster" still counts for someone with Airflow.
+exact_phrases = "alternatives_only"
 
 [archetype_adjustment]
 analytics_engineer = 5   # the strongest bridge from BI engineering

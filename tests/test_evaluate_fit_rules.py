@@ -155,10 +155,10 @@ def test_review_page_shows_source_text_and_escapes_it():
     assert f"v1 → v{RULES.version}" in page
 
 
-# ---------------------------------------------------------------- phrase matching (proposal v3)
+# ---------------------------------------------------------------- phrase matching (decision #42)
 
-PHRASE_RULES = load_rules(REPO_ROOT / "config" / "proposals" / "fit_scoring.v3.toml")
-PHRASE_VOCAB = load_vocabulary(REPO_ROOT / "config" / "proposals" / "skill_vocabulary.v3.toml")
+PHRASE_RULES = load_rules()
+PHRASE_VOCAB = load_vocabulary()
 PHRASE_CASES = tomllib.loads(Path(PHRASE_CASES_FILE).read_text(encoding="utf-8"))["cases"]
 
 

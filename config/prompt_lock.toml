@@ -11,8 +11,8 @@ version = 2
 sha256 = "58c82fc3b8557197ca1098deb8c021a0cb249d345870a1b669fb70e40c8bbf73"
 
 [skills.fit-scoring]
-version = 3
-sha256 = "00c18750b0768d4f582773f66307ae40252868a245d8aae2a701eb666098da0d"
+version = 4
+sha256 = "118c0614f088d15668f53459aff0322dea6dae53615e7822a60bec2fd7102b88"
 
 [skills.jd-analysis]
 version = 4

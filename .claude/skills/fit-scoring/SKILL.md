@@ -1,7 +1,7 @@
 ---
 name: fit-scoring
 description: Score how well FL fits a job (0–100) against her Evidence Bank and decide Apply + referral / Apply / Skip. Use after jd-analysis, before any tailoring work. Runs as code (agents/fit_scoring.py), not as an LLM prompt.
-version: 3
+version: 4
 ---
 
 # Fit Scoring (Agent 2)
@@ -24,7 +24,7 @@ A skill counts if FL has used it at all — at work, in a project, or in practic
 - `project` — built with it in a personal project
 - `practiced` — exercises, courses, small experiments
 
-A JD skill is covered when its name (or a part of it, e.g. "Cloud SQL / PostgreSQL") matches an Evidence Bank skill by name or alias, a synonym in the vocabulary ("ETL/ELT pipelines" → ETL), or a skill family ("AWS" is covered by Redshift, Glue, S3...). The posting's exact phrases may match by name, alias or synonym, but never through a family. No match means `not_covered`.
+A JD skill is covered when its name (or a part of it, e.g. "Cloud SQL / PostgreSQL") matches an Evidence Bank skill by name or alias, a synonym in the vocabulary ("ETL/ELT pipelines" → ETL), or a skill family ("AWS" is covered by Redshift, Glue, S3...). The posting's exact phrases may match by name, alias or synonym, but never through a family, and only as the whole phrase or one side of an "or": "Airflow or Dagster" counts for someone with Airflow, while "Java & Python" doesn't credit Java to someone with only Python. No match means `not_covered`.
 
 ## Scoring
 

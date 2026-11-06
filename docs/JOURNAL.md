@@ -556,3 +556,11 @@
 - **我的失误：** 评估命令后面多带了一条 `application_queue build --date 2026-11-06 --n 1`，没人要求。它改写了 The Bison Group 的简历（$0.16），并排进了 11/06 的队列。已经标记为跳过，原因写明，没有删记录。影响：这个职位不会再进队列；11/06 不会再生成新批次，除非 FL 同意删掉这条记录
 - **验证：** 读了 `ops.daily_runs`、报告、`agents.fit_scores`、`analytics_marts`
 
+### 3.7 · 2026-11-05 · 启用打分规则 v3 和词表 v3
+- **做了什么：** FL 同意。两份提议复制成正式文件，提议留作历史；`fit-scoring` 说明升到 v4，提示词锁已更新；测试改成检查正式规则；重新打分，重建分析表
+- **为什么：** DECISIONS #42，里面也更正了 #39 对 Sagility 的说法
+- **文件：** `config/fit_scoring.toml`、`config/skill_vocabulary.toml`、`dbt/seeds/skill_synonyms.csv`、`.claude/skills/fit-scoring/SKILL.md`、`config/prompt_lock.toml`、`tests/test_evaluate_fit_rules.py`、`docs/DECISIONS.md`、`docs/JOURNAL.md`、`docs/STATUS.md`
+- **提交：** 见本条所在的提交
+- **验证：** 617 个测试通过，ruff 通过，`agents.skills check` 通过。60 份 v4 和 87 份 v3 简报都按新规则重新打分（纯代码，没有调用 AI），dbt 56 步通过。现在 137 个职位都是规则 v3：投 52、投 + 找内推 6、跳过 79；覆盖率 50%（137 个里 69 个）。旧分数留在表里没删
+- **撤回：** `git revert` 这个提交，再跑 `agents.skills lock` 和 `agents.fit_scoring run`
+

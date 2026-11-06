@@ -17,6 +17,7 @@ elt pipelines,ETL
 etl pipelines,ETL
 etl/elt,ETL
 etl/elt pipelines,ETL
+git/github,Git
 github,Git
 google cloud,GCP
 google cloud platform,GCP

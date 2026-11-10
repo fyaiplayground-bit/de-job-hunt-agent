@@ -25,7 +25,7 @@ Console → region **US West (Oregon) us-west-2** (top right) → **S3** → **C
 - Copy settings from an existing bucket: skip
 - Object Ownership: **ACLs disabled (recommended)**
 - **Block all public access**: leave it on (the default), all four boxes ticked
-- Bucket Versioning: **Disable**. Each day already gets its own file, and the key can't overwrite-delete; versions would only add cost and keep expired backups around
+- Bucket Versioning: **Disable**. Each day already gets its own file name, and with versioning the 30-day expiry would keep hidden old versions that cost money until a second rule removes them
 - Tags: skip
 - Default encryption: leave **SSE-S3** (the default). Bucket Key only matters for KMS, so leave it as it is
 - Advanced settings: leave Object Lock **off**, or the 30-day expiry can't delete old backups

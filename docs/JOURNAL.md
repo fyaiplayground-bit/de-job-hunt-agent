@@ -602,3 +602,14 @@
 - **文件：** 只改了文档；`.env` 不在仓库里
 - **提交：** 见本条所在的提交
 - **撤回：** 在 `.env` 里清空 `AWS_PROFILE` 就会关掉备份；S3 里的文件由 FL 在控制台删除
+
+### 4.3 · 2026-11-09 · 每日运行拆成步骤（为 Airflow 做准备，行为不变）
+- **做了什么：** 新增 `pipeline/daily_steps.py`：开始一次运行 → 抓取（可以按来源分开）→ 安全闸门 → 算出今天的新职位 → AI 拆解 → 打分 → dbt → 备份 → 汇总。每一步把自己的结果存进新表 `ops.daily_run_steps`（迁移 016），下一步从表里读，所以每一步都可以在单独的进程里跑、单独重试。`run_daily` 改成按顺序调用这些步骤，Windows 计划任务照常
+- **为什么：** DECISIONS #45；FastAPI 先放下，等决定要不要上云时再说
+- **文件：** `pipeline/daily_steps.py`、`pipeline/daily.py`、`db/migrations/016_daily_run_steps.sql`、`tests/test_daily_steps.py`、`docs/DECISIONS.md`、`docs/JOURNAL.md`、`docs/STATUS.md`
+- **提交：** 见本条所在的提交
+- **验证：**
+  1. 原来 29 个每日运行测试一个没改，全部通过：行为没变
+  2. 新增 6 个测试：一步一步分开跑（像 Airflow 那样，每步重新查运行信息）和一次跑完的结果一样；AI 和打分分开跑也一样；`run_daily` 每一步都存下来了；**抓取重试后，第一次已经存进去的职位仍然算今天的新职位**；没算出新职位前不能打分
+  3. **没有验证：** 真实数据上的运行要等明天 9:30 的计划任务
+- **撤回：** `git revert` 这个提交；`drop table ops.daily_run_steps`，再从 `public.schema_migrations` 删掉 `016_daily_run_steps.sql`

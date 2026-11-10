@@ -51,8 +51,8 @@ Update this file at the end of every work session: what got done, what's next, w
 - [x] Streamlit dashboard (skill trends, application funnel, #41)
 
 ### Milestone 4 · Week 4 · Production polish
-- [ ] Airflow DAGs calling the pipeline functions
-- [ ] FastAPI endpoints: /analyze, /score, /tailor, /critique, /coverage
+- [ ] Airflow DAGs calling the pipeline functions (4.3 steps done 2026-11-09; 4.4 DAG next; #45)
+- [ ] FastAPI endpoints: set aside until the cloud decision before Milestone 5 (#45)
 - [x] S3 backup after each daily run (#44; first real backup and restore check 2026-11-09)
 - [ ] README with architecture diagram; interview notes
 
@@ -77,7 +77,7 @@ Update this file at the end of every work session: what got done, what's next, w
 
 **Also for FL:** (1) 100 jobs in scope on 11/05, 50 over the cap: FL kept the cap at 50 and said to look again once there was more volume. (2) 10 unlabeled review alarms (`pipeline.alarm_report`, `pipeline.labels add`); none reach the LLM.
 
-**Then:** Milestone 4 continues with Airflow and FastAPI (design first). Check that the next daily run's report has the backup section.
+**Then:** next run (11/10): check the report has the backup section, `ops.daily_run_steps` has every step, and nothing changed in the numbers (step 4.3 refactor). Then 4.4: Airflow DAG in Docker, triggered by hand and compared with the Windows run (#45). FastAPI waits for the cloud decision before Milestone 5 (#45).
 
 Standing facts: fit-scoring rules v3 and vocabulary v3 are live (#42); the next daily run is their first real use. The 87 `jd-analysis@3` briefs stay as they are and are not re-briefed (FL, 2026-11-04); scoring and tailoring work from new jobs only. jd-analysis v4, resume-tailoring v4, resume-reviewer v2 and vocabulary v2 are live (#39). A skill named only in a posting's duties can drop out of the brief (totalwine's semantic layers); FL accepted this for now. The daily AI cap stays at 50 (FL, 2026-11-03). On a busy day the jobs over the cap are not briefed or retried: run 8 had 70 in scope and left 20, chosen by newest posting id rather than quality; the report shows the count, so revisit it once there are more days of volume. The clearance rule is on (fit-scoring rules v2, #37); FL fills in `has_security_clearance` and `can_obtain_security_clearance` at Milestone 5 (the sample has both false). Fit scoring's location check is OFF during the small-company practice phase (final targets California, Washington, Texas for the big-tech phase). The daily run happens by itself at 9:30 LA (#29), catches up about 6 minutes after the laptop wakes, and also starts 5 minutes after login if today hasn't run (#43); check it at session start.
 
@@ -129,3 +129,4 @@ Standing facts: fit-scoring rules v3 and vocabulary v3 are live (#42); the next 
 - 2026-11-09 — Laptop asleep 11/06 2:16 a.m. to 11/09 8:13 p.m.: no runs for four days. The catch-up started 6 minutes after waking (run 11, ok, 5-day window: 249 new DE, 143 in scope, 50 briefed for $2.13, 93 over the cap). Step 4.1: S3 backup code (#44); a real 83 MB dump restored and matched; waiting for FL's AWS setup.
 - 2026-11-09 — FL finished the AWS setup (bucket in us-east-1). First real backup: 83 MB daily and monthly copies, read back and restored, all tables matched; a restore from S3 matched too; the key can't delete.
 - 2026-11-09 — FL confirmed the 30-day lifecycle rule on the backup bucket.
+- 2026-11-09 — Step 4.3: the daily run split into saved steps for Airflow, behavior unchanged (#45). FastAPI set aside until the cloud decision.

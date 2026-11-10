@@ -2,8 +2,9 @@
 
     uv run python -m pipeline.daily
 
-`run_daily()` is a plain function: the Windows scheduled task calls it through `main()` today, and
-an Airflow task (or a cloud scheduler) can call the same function later (decision #27).
+`run_daily()` is a plain function: the Windows scheduled task calls it through `main()`. It runs
+the steps in pipeline/daily_steps.py one after another; an Airflow DAG calls the same steps as
+separate tasks (decisions #27, #45).
 
 - Search window: searches look back (days since the last successful daily run + 1), between 2
   and 7 days, so a laptop that was off for a few days catches up instead of missing jobs.
@@ -21,7 +22,7 @@ import sys
 import time
 from collections import Counter
 from collections.abc import Callable
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field
 from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Any
@@ -29,7 +30,6 @@ from zoneinfo import ZoneInfo
 
 import httpx
 import psycopg
-from psycopg.types.json import Jsonb
 
 from agents import fit_scoring, jd_analysis
 from agents.coverage_report import coverage_lines
@@ -45,8 +45,7 @@ from pipeline.config import (
     profile_dir,
 )
 from pipeline.db import connect, migrate
-from pipeline.gate_step import gate_pending
-from pipeline.ingest import TargetResult, ingest_all, read_targets, select_targets
+from pipeline.ingest import TargetResult
 from pipeline.safety_gate import GATE_VERSION
 
 REPORT_DIR = Path(__file__).resolve().parent.parent / "output" / "daily"
@@ -114,14 +113,9 @@ def search_window_days(conn: psycopg.Connection, today: date) -> int:
     return max(MIN_WINDOW_DAYS, min(MAX_WINDOW_DAYS, (today - last).days + 1))
 
 
-def _summarize(
-    conn: psycopg.Connection, summary: DailySummary, results: list[TargetResult]
-) -> list[int]:
-    """New = everything this run's ingest runs added: a job is new when every copy of it (across
-    sources) was first stored by one of these runs. Run ids, not clocks, so it can't drift.
-    Returns the chosen posting version of each new job."""
-    run_ids = [r.run_id for r in results]
-    summary.targets = [
+def summarize_targets(results: list[TargetResult]) -> list[dict[str, Any]]:
+    """One line per fetched target for the report."""
+    return [
         {
             "source": r.source,
             "target": r.target,
@@ -134,12 +128,23 @@ def _summarize(
         }
         for r in results
     ]
-    summary.new_versions = sum(r.versions_new for r in results)
+
+
+def summarize_jobs(
+    conn: psycopg.Connection, summary: DailySummary, run_ids: list[Any]
+) -> list[int]:
+    """New = everything these ingest runs added: a job is new when every copy of it (across
+    sources) was first stored by one of these runs. Run ids, not clocks, so it can't drift.
+    Returns the chosen posting version of each new job."""
+    run_ids = [str(run_id) for run_id in run_ids]
+    summary.new_versions = conn.execute(
+        "select count(*) from raw.job_postings where run_id = any(%s::uuid[])", (run_ids,)
+    ).fetchone()[0]
     new_jobs = conn.execute(
         "with first_seen as ("
         "  select i.identity_key from dedupe.job_identity i"
         "  join raw.job_postings p using (posting_version_id)"
-        "  group by i.identity_key having bool_and(p.run_id = any(%s)))"
+        "  group by i.identity_key having bool_and(p.run_id = any(%s::uuid[])))"
         " select p.company, coalesce(p.payload->>'title', p.payload->>'text', ''),"
         " p.posting_version_id"
         " from dedupe.jobs j join first_seen using (identity_key)"
@@ -156,7 +161,7 @@ def _summarize(
         conn.execute(
             "select r.triage, count(*) from gate.results r"
             " join raw.job_postings p using (posting_version_id)"
-            " where r.gate_version = %s and p.run_id = any(%s) group by 1 order by 1",
+            " where r.gate_version = %s and p.run_id = any(%s::uuid[]) group by 1 order by 1",
             (GATE_VERSION, run_ids),
         ).fetchall()
     )
@@ -170,7 +175,7 @@ def _summarize(
     return [posting_version_id for _, _, posting_version_id in new_jobs]
 
 
-def _analyze_new(
+def analyze_new(
     conn: psycopg.Connection,
     summary: DailySummary,
     new_versions: list[int],
@@ -201,7 +206,7 @@ def _analyze_new(
     summary.jd_top_skills = ranked[:5]
 
 
-def _score_new(
+def score_new(
     conn: psycopg.Connection,
     summary: DailySummary,
     new_versions: list[int],
@@ -306,29 +311,26 @@ def run_daily(
     profile_folder: Path | None = None,
     analytics: Callable[[psycopg.Connection, DailySummary, Path | None], None] | None = None,
     backup: Callable[[psycopg.Connection, DailySummary, date], None] | None = None,
+    run_id: int | None = None,
 ) -> DailySummary:
-    """Fetch, gate, brief and score today's new jobs (when `llm` is given) and summarize. The
-    caller holds the lock and records the run."""
-    started = now()
-    today = started.astimezone(report_timezone()).date()
-    window = search_window_days(conn, today)
-    summary = DailySummary(local_date=today.isoformat(), window_days=window)
-    chosen = select_targets(targets if targets is not None else read_targets(), days=window)
-    results = ingest_all(conn, client, chosen, sleep=sleep)
-    gate_pending(conn)
-    new_versions = _summarize(conn, summary, results)
+    """Fetch, gate, brief and score today's new jobs (when `llm` is given) and summarize, one
+    step after another (pipeline/daily_steps.py, decision #45). The caller holds the lock and
+    records the run; without a `run_id` a run is opened here."""
+    from pipeline import daily_steps as steps
+
+    ctx = steps.run_context(conn, run_id) if run_id else steps.start_run(conn, now())
+    steps.fetch(conn, ctx, client, targets=targets, sleep=sleep)
+    steps.gate(conn, ctx)
+    steps.summarize(conn, ctx)
     if llm is not None:
         settings = llm_config or llm_settings()
-        _analyze_new(conn, summary, new_versions, llm, settings, daily_max, scope)
-        if summary.jd_status in ("ok", "partial"):
-            _score_new(conn, summary, new_versions, settings, profile_folder, today)
+        if steps.analyze(conn, ctx, llm, settings, daily_max, scope) in ("ok", "partial"):
+            steps.score(conn, ctx, settings, profile_folder)
     if analytics is not None:
-        analytics(conn, summary, profile_folder)
+        steps.analytics(conn, ctx, analytics, profile_folder)
     if backup is not None:
-        backup(conn, summary, today)
-    failed = sum(r.status == "error" for r in results)
-    summary.status = "ok" if not failed and summary.jd_status != "error" else "partial"
-    return summary
+        steps.backup(conn, ctx, backup)
+    return steps.assemble(conn, ctx)
 
 
 def _analysis_lines(s: DailySummary) -> list[str]:
@@ -518,11 +520,9 @@ def main(argv: list[str] | None = None) -> int:
         if not acquire_lock(conn):
             print("another daily run is in progress; nothing to do")
             return 0
-        run_id = conn.execute(
-            "insert into ops.daily_runs (started_at, local_date, status)"
-            " values (%s, %s, 'running') returning daily_run_id",
-            (now, local_date),
-        ).fetchone()[0]
+        from pipeline import daily_steps as steps
+
+        ctx = steps.start_run(conn, now)
         analysis = daily_analysis_settings()
         try:
             with make_client() as client:
@@ -532,24 +532,13 @@ def main(argv: list[str] | None = None) -> int:
                     daily_max=analysis.daily_max,
                     analytics=refresh_analytics,
                     backup=backup_database,
+                    run_id=ctx.daily_run_id,
                 )
         except Exception as exc:  # record any crash, write the report, exit non-zero
             summary = DailySummary(local_date=local_date, window_days=0, status="error")
             summary.error = f"{type(exc).__name__}: {exc}"
         path = write_report(render_report(summary), summary.local_date)
-        conn.execute(
-            "update ops.daily_runs set finished_at = %s, status = %s, window_days = %s,"
-            " summary = %s, report_path = %s, error = %s where daily_run_id = %s",
-            (
-                datetime.now(UTC),
-                summary.status,
-                summary.window_days,
-                Jsonb(asdict(summary)),
-                str(path),
-                summary.error,
-                run_id,
-            ),
-        )
+        steps.finish_run(conn, ctx, summary, path)
     print(render_report(summary).splitlines()[2])
     print(f"report: {path}")
     return 0 if summary.status == "ok" else 1

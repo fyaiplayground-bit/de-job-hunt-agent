@@ -613,3 +613,16 @@
   2. 新增 6 个测试：一步一步分开跑（像 Airflow 那样，每步重新查运行信息）和一次跑完的结果一样；AI 和打分分开跑也一样；`run_daily` 每一步都存下来了；**抓取重试后，第一次已经存进去的职位仍然算今天的新职位**；没算出新职位前不能打分
   3. **没有验证：** 真实数据上的运行要等明天 9:30 的计划任务
 - **撤回：** `git revert` 这个提交；`drop table ops.daily_run_steps`，再从 `public.schema_migrations` 删掉 `016_daily_run_steps.sql`
+
+### 4.4 · 2026-11-09 · Airflow 在 Docker 里跑每日运行（手动触发，和 Windows 对比）
+- **做了什么：** Airflow 3.3.2 装进 Docker（网页服务、调度器、DAG 读取器，再加一个只跑一次的初始化容器建 `airflow` 数据库）。镜像里给我们的代码单独装了一套 Python 环境（照着 `uv.lock` 装），和 Airflow 自己的包分开。DAG `daily_job_hunt` 一步一个任务：开始 → 四个来源同时抓 → 闸门 → 算新职位 → AI 拆解 → 打分 → dbt → 备份 → 收尾。每个任务都是在命令行跑 `python -m pipeline.daily_steps <步骤>`。和 Windows 并行期间，Airflow 的报告写到 `output/daily/airflow/`，每次运行记下是谁跑的（`runner`），一边在跑时另一边不会开始
+- **为什么：** DECISIONS #46
+- **文件：** `docker-compose.yml`、`docker/airflow/Dockerfile`、`docker/airflow/create_airflow_db.py`、`.dockerignore`、`dags/daily_job_hunt.py`、`pipeline/daily_steps.py`（命令行、失败记录、收尾检查）、`pipeline/daily.py`（Windows 也检查有没有别的运行在跑）、`pipeline/backup.py`（容器里走网络跑 pg_dump）、`db/migrations/017_daily_run_runner.sql`、`.env.example`、`tests/test_daily_steps.py`、`tests/test_dag.py`、`tests/test_backup.py`、文档
+- **提交：** 见本条所在的提交
+- **验证：**
+  1. 全部 658 个测试通过；新增：命令行一步一步跑完一天（和 `run_daily` 数字一样），失败的步骤会记下来并写进报告，正在跑时不能再开一个，DAG 里的每条命令都能被命令行接受
+  2. Airflow 里读取 DAG 没有错误，12 个任务都在
+  3. 手动触发一次（运行 12，在 Windows 当天运行之后）：所有任务成功，3 分钟跑完；新增 183 个职位（DE 18 个），AI 拆解 6 个花了 $0.30，打分 6 个。Greenhouse 14 个公司只多了 5 个新版本，说明没变的职位认得出来，和 Windows 一样
+  4. **对比发现一个问题：** 备份在容器里失败（容器里没有 Docker）。修好后只重跑"备份"和"收尾"两步（Airflow 的单步重跑），上传成功 83.8 MB；再在 Windows 上恢复这份备份，每张表的行数都对得上
+  5. **没有验证：** 定时触发（4.5 再定）
+- **撤回：** `git revert` 这个提交；停掉并删除 Airflow 容器（`docker compose --profile airflow rm -sf airflow-init airflow-apiserver airflow-scheduler airflow-dag-processor`），需要的话 `drop database airflow`；`alter table ops.daily_runs drop column runner`，再从 `public.schema_migrations` 删掉 `017_daily_run_runner.sql`

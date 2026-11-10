@@ -112,8 +112,25 @@ def docker_exe() -> str:
 
 
 def _container_command(*args: str) -> list[str]:
-    user = load_settings().postgres_user
+    """pg_dump or pg_restore: inside the Postgres container through Docker on the laptop, or,
+    when PG_TOOLS_DIR is set (the Airflow container, decision #46), the matching client tools
+    there, reaching the server over the network."""
+    settings = load_settings()
+    tools = os.environ.get("PG_TOOLS_DIR")
+    if tools:
+        host = ["-h", settings.postgres_host, "-p", str(settings.postgres_port)]
+        tool = f"{tools.rstrip('/')}/{args[0]}"  # a Linux path, also when tests run on Windows
+        return [tool, *host, "-U", settings.postgres_user, *args[1:]]
+    user = settings.postgres_user
     return [docker_exe(), "exec", "-i", CONTAINER, *args[:1], "-U", user, *args[1:]]
+
+
+def _tool_env() -> dict[str, str] | None:
+    """The password for the client tools, passed in their environment, never on the command line.
+    Through Docker the container's own login is used, so nothing is added there."""
+    if not os.environ.get("PG_TOOLS_DIR"):
+        return None
+    return {**os.environ, "PGPASSWORD": load_settings().postgres_password}
 
 
 def dump_database(target: Path, database: str | None = None) -> None:
@@ -127,6 +144,7 @@ def dump_database(target: Path, database: str | None = None) -> None:
             stdout=handle,
             stderr=subprocess.PIPE,
             check=False,
+            env=_tool_env(),
         )
     if done.returncode != 0:
         raise BackupError(f"pg_dump failed: {done.stderr.decode(errors='replace')[-300:]}")
@@ -156,6 +174,7 @@ def restore_check(dump: Path, expected: dict[str, int]) -> list[str]:
                 stdin=handle,
                 capture_output=True,
                 check=False,
+                env=_tool_env(),
             )
         if done.returncode != 0:
             return [f"pg_restore failed: {done.stderr.decode(errors='replace')[-300:]}"]

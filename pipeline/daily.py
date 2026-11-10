@@ -522,6 +522,10 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         from pipeline import daily_steps as steps
 
+        running = steps.run_in_progress(conn)  # e.g. an Airflow run (decision #46)
+        if running is not None:
+            print(f"daily run {running} is still in progress; nothing to do")
+            return 0
         ctx = steps.start_run(conn, now)
         analysis = daily_analysis_settings()
         try:

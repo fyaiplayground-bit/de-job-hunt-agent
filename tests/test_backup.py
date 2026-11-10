@@ -214,3 +214,26 @@ def test_a_real_dump_restores_with_every_row(db, greenhouse_jobs, tmp_path):
         f"raw.job_postings: {counts['raw.job_postings']} rows restored, "
         f"{wrong['raw.job_postings']} expected"
     ]
+
+
+def test_inside_the_airflow_container_the_tools_reach_the_server_over_the_network(monkeypatch):
+    """No Docker inside Docker (decision #46): the matching client tools, password in the env."""
+    from pipeline import backup
+
+    monkeypatch.setenv("PG_TOOLS_DIR", "/usr/lib/postgresql/17/bin")
+    monkeypatch.setenv("POSTGRES_HOST", "postgres")
+    monkeypatch.setenv("POSTGRES_PORT", "5432")
+    command = backup._container_command("pg_dump", "-d", "jobhunt")
+    assert command[:5] == ["/usr/lib/postgresql/17/bin/pg_dump", "-h", "postgres", "-p", "5432"]
+    assert command[-2:] == ["-d", "jobhunt"]
+    assert not any("password" in part.lower() for part in command)
+    assert backup._tool_env()["PGPASSWORD"]
+
+
+def test_on_the_laptop_the_tools_run_in_the_postgres_container(monkeypatch):
+    from pipeline import backup
+
+    monkeypatch.delenv("PG_TOOLS_DIR", raising=False)
+    command = backup._container_command("pg_dump", "-d", "jobhunt")
+    assert command[1:4] == ["exec", "-i", backup.CONTAINER]
+    assert backup._tool_env() is None

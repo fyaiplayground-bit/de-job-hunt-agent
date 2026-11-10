@@ -1,0 +1,5 @@
+# The Airflow image needs only the dependency list (docker/airflow/Dockerfile). Everything else,
+# above all private/ and .env, stays out of the build.
+*
+!pyproject.toml
+!uv.lock

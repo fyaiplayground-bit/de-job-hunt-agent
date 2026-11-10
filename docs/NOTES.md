@@ -174,6 +174,19 @@ dbt：清洗 → 提取技能 → 汇总（打分、技能频率、覆盖率、�
 | 数据测试 | 比如某列不能为空、不能重复。**测试全过不等于数字对**：这次 56 步全过，我读结果时还是发现了两个错 |
 | 血缘 lineage | 哪张表来自哪张表的关系图，`uv run python -m pipeline.analytics docs` 生成 |
 
+### Airflow
+| 词 | 大白话 |
+| --- | --- |
+| DAG | 一张"先做什么、后做什么"的流程图。我们的叫 `daily_job_hunt`，就是每天那次运行 |
+| 任务 task | 流程图里的一个格子，对应一个步骤，比如"抓 Greenhouse"、"AI 拆解" |
+| 调度器 scheduler | 盯着流程图，前面的格子做完了，就把下一个格子交出去跑 |
+| 执行器 LocalExecutor | 在同一台机器上直接开进程跑任务。大公司会用 Celery/Kubernetes 分到很多机器上，我们一台笔记本用不着 |
+| 重试 retry | 任务失败后自动再试。我们只给抓取设了重试（2 次，隔 5 分钟），因为网络问题最常见 |
+| 跳过 skipped | 不需要做的任务显示成粉色"跳过"，比如 LinkedIn 关着、没有可打分的职位 |
+| XCom | 任务之间传小纸条。"开始"任务把运行编号传给后面的所有任务 |
+| 单步重跑 clear | 在网页上清掉某一步（和它后面的），只重跑这几步，不用从头抓 |
+| 两套 Python 环境 | Airflow 用自己的一套；我们的代码用另一套（照着 `uv.lock` 装），两边的包互不干扰 |
+
 ### 备份
 | 词 | 大白话 |
 | --- | --- |
@@ -273,6 +286,9 @@ PowerShell（Windows 自带）、Git Bash（装 Git 时附带）、Ubuntu/WSL（
 | 每天的运行 | 定时任务每天 9:30（洛杉矶时间）自动运行，登录后 5 分钟也会检查一次，今天跑过就跳过。错过了就手动跑：跟 Claude 说"跑一下今天的"，或者双击 `scripts` 文件夹里的 `daily.cmd`，等一两分钟再看报告（跑重复了也不会存重复数据） |
 | 看每日报告 | 双击桌面上的快捷方式（打开 `output/daily/latest.md`），或者直接问 Claude"今天怎么样" |
 | 停掉定时任务 | 让 Claude 删除名为 "de-job-hunt-agent daily" 的计划任务 |
+| 打开 Airflow | 跟 Claude 说"开一下 Airflow"，然后浏览器打开 http://127.0.0.1:8080（不用登录）。Airflow 平时不开，重启电脑后也不会自己开 |
+| 手动跑一次 Airflow | 网页上 `daily_job_hunt` 右上角的 **Trigger**。最好在当天 Windows 那次跑完之后，不然新职位会算到 Airflow 那次里；报告在 `output/daily/airflow/` |
+| 关掉 Airflow | 跟 Claude 说"关掉 Airflow"（大约省 1 GB 内存）。**不要**用 `--profile airflow down`，那样会连数据库容器一起删掉 |
 | 抓一次职位 | 让 Claude 跑 `uv run python -m pipeline.ingest`（大约 2 分钟；可以重复跑，不会重复存） |
 | 改搜索条件（地区、职位） | 改 `config/searches.toml` |
 | 找新的招聘页（小公司） | 让 Claude 跑 `uv run python -m pipeline.discover_boards`，你挑选后再加进 `config/companies.toml` |
@@ -340,6 +356,10 @@ PowerShell（Windows 自带）、Git Bash（装 Git 时附带）、Ubuntu/WSL（
 
 - **抓取只拿到了一部分（"不满的一页"被当成了最后一页）** → freehire 偶尔在结果中间返回一页不满的数据（第 850 条那页只有 49 条，总数是 11,298），我们的代码却把"不满的一页"当成翻到底了，后面全丢了 → 改成按 API 给的总数 `meta.total` 判断有没有翻完；只有 API 没给总数时，才按"不满的一页就是最后一页"处理。另外，一次搜索最多只能翻 10,000 条，结果超过这个数时，要按工作方式之类的条件拆成几次搜索。
 
+- **Airflow 镜像装依赖报 `No interpreter found at path /usr/local/bin/python3.12`** → Airflow 官方镜像的 Python 装在 `/usr/python`，不在 `/usr/local` → Dockerfile 里改成 `/usr/python/bin/python3.12`（JOURNAL 4.4）。
+- **Airflow 里的备份失败：`failed to connect to the docker API`** → 笔记本上的备份是让 Docker 在数据库容器里跑 `pg_dump`；Airflow 容器里没有 Docker → 镜像里装 Postgres 17 的客户端工具，直接通过网络连数据库。没有把 Docker 的控制权交给容器（那样容器能操控电脑上所有容器）；也没用镜像自带的 18 版，因为 18 版做的备份，17 版的工具不一定恢复得了（JOURNAL 4.4）。
+- **`airflow tasks clear` 什么都没清** → Airflow 3 里手动触发的运行没有"逻辑日期"，按日期筛就筛不到 → 用 Airflow 的接口（REST API）按运行编号清，或者在网页上点那一步 → Clear。
+
 ## 6. 面试素材（攒着）
 
 每个里程碑结束时，从这里挑出来整理进 `docs/INTERVIEW_NOTES.md`（英文）。
@@ -374,3 +394,4 @@ PowerShell（Windows 自带）、Git Bash（装 Git 时附带）、Ubuntu/WSL（
 - **先用代码省钱，再用 AI：** 拆解一篇 JD 约 $0.04。我先用确定的规则（标题、是否还在招、安全档位、是否陈旧）把 879 个 DE 职位筛到 442 个，规则写在带版本号的配置文件里。再用 20 个职位做试点，量出真实成本：每篇 $0.038，提示缓存省下了一大半输入费用，全部跑完约 $16。先量再决定，而不是凭估算。
 - **AI 输出的确定性：** 打分这类判断全部由代码完成，AI 只负责拆解 JD、起草简历措辞。每次 AI 调用都按整个请求的指纹存进 Postgres：同样的输入、同样的提示词版本、同样的模型，永远拿到同一个答案，重跑也不花钱。提示词就是版本化的文件，改了文字不升版本号，测试会失败。这和规则循环是同一套思路，也是 AI 工程里 evals 的基础。职位描述作为"数据"放进用户消息，里面的指令一律不执行，AI 写出来的简历还要过代码的防编造检查。
 - **候选人档案的数据契约：** agent 读的简历、事实库、申请资料都是结构化的 TOML，有校验程序。事实库是唯一的事实来源，简历只是它的一个视图：简历上的每个技能、每个数字都必须在事实库里找得到，相当于引用完整性检查。JD 里的 "Airflow" 对上候选人的 "Apache Airflow"，靠的是确定的别名查找，不是让 AI 去猜。整个系统先用一个虚构的样本档案开发，公开仓库不含任何个人数据也能跑；有一个测试专门保证样本只用 example.com 和 555-01xx 这类保留的虚构值。
+- **Airflow：** 每日运行拆成 12 个任务（四个来源同时抓）；Airflow 只负责调度，代码在自己的 Python 环境里跑（命令行一步一个），和 Windows 计划任务用的是同一套函数，逻辑只有一份；每一步把结果存进数据库，所以能单步重试、单步重跑；跳过和失败分得清，收尾那步一定会跑，并在报告里点名失败的步骤。上线方式：先和旧的定时任务并行、只手动触发，对比结果（对比时真的发现了备份在容器里跑不通），再决定切换。

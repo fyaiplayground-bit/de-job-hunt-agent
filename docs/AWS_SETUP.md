@@ -65,7 +65,7 @@ Then **Security credentials** → **Create access key** → *Application running
 
 ## 5. Put the key on this computer (2 minutes)
 
-In the terminal, run this one command and answer its four questions: the two key values from step 4, `us-west-2`, and `json`:
+In a Windows terminal (PowerShell, or the Terminal panel in the Claude app; not Ubuntu/WSL, which keeps its own separate AWS settings that the project can't see), run this one command and answer its four questions: the two key values from step 4, `us-west-2`, and `json`:
 
 ```
 aws configure --profile jobhunt-backup

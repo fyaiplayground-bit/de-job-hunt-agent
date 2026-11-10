@@ -575,3 +575,22 @@
   3. 用真实计划任务启动了一次：几秒结束，结果 0，日志写着 already ran today，没有新增运行记录
   4. **没有验证：** 登录触发器要等下一次真实登录才算验证过。下次开工先看日志
 - **撤回：** 在任务计划程序里删掉"登录时"触发器，`git revert` 这个提交
+
+## Milestone 4 · 上线前的打磨
+
+### 4.1 · 2026-11-09 · S3 备份（代码完成，等 FL 设置 AWS）
+- **做了什么：**
+  - `pipeline/backup.py`：导出整个数据库（不含 dbt 能重建的分析表），上传到 `daily/<日期>.dump`；每月第一份另存 `monthly/<月份>.dump`，并真的恢复到一个临时数据库，比对 11 张表的行数后删掉临时库。上传前核对 AWS 账号 ID，对不上就停；上传后核对大小和指纹；比上一份小 30% 以上就报警
+  - 每日运行最后一步做备份，报告新增"备份"一节；出错只记下来，不影响当天的抓取和打分
+  - 命令：`uv run python -m pipeline.backup run`、`uv run python -m pipeline.backup restore-check`
+  - `docs/AWS_SETUP.md`：FL 自己设置 AWS 的 6 步，包括只能读写这个桶、不能删除的权限策略
+  - `.env.example` 新增 `AWS_BACKUP_ACCOUNT_ID`、`AWS_REGION`；新依赖 `boto3`
+- **为什么：** DECISIONS #44，替换 #3 里"只备份 JD 原文、每晚"的说法
+- **文件：** `pipeline/backup.py`、`pipeline/daily.py`、`tests/test_backup.py`、`docs/AWS_SETUP.md`、`.env.example`、`pyproject.toml`、`uv.lock`、`docs/DECISIONS.md`、`docs/JOURNAL.md`、`docs/NOTES.md`、`docs/STATUS.md`
+- **提交：** 见本条所在的提交
+- **验证：**
+  1. 新增 13 个测试（全部 640 个通过），用假 S3，不花钱不联网：每月第一份另存并恢复检查、普通日子只存一份、变小报警、传上去对不上就报错、**账号不对时连 S3 客户端都不建**、没设置好就不备份、备份失败不影响当天
+  2. 在测试数据库上真实导出再恢复，行数一致；故意改一个预期数字，检查能抓到
+  3. **在真实数据库上**导出再恢复了一次（没传 AWS）：83 MB，导出 22 秒，恢复检查 19 秒，11 张表全部一致，临时库已删
+  4. **没有验证：** 真正的上传要等 FL 设置好 AWS
+- **撤回：** `git revert` 这个提交；在 `.env` 里清空 `AWS_PROFILE` 就会关掉备份

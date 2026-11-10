@@ -97,6 +97,10 @@ class DailySummary:
     # dbt and the coverage report (decision #41)
     analytics_status: str = "off"  # off / ok / error
     analytics_error: str | None = None
+    # S3 backup (decision #44)
+    backup_status: str = "off"  # off / ok / warning / error
+    backup: dict[str, Any] = field(default_factory=dict)
+    backup_error: str | None = None
     coverage: dict[str, Any] = field(default_factory=dict)
 
 
@@ -257,6 +261,38 @@ def refresh_analytics(
         summary.analytics_error = "; ".join(result.failed) or result.error
 
 
+def backup_database(conn: psycopg.Connection, summary: DailySummary, today: date) -> None:
+    """Send today's backup to S3 when it is set up. A failure is reported, never raised."""
+    from pipeline.backup import backup_settings, run_backup
+
+    settings = backup_settings()
+    if not settings.enabled:
+        return
+    try:
+        result = run_backup(conn, today, settings)
+    except Exception as exc:  # no network, an expired key: the day's work is still done
+        summary.backup_status = "error"
+        summary.backup_error = f"{type(exc).__name__}: {exc}"
+        return
+    summary.backup = result.as_dict()
+    summary.backup_status = "warning" if result.warnings or result.restore_problems else "ok"
+
+
+def _backup_lines(s: DailySummary) -> list[str]:
+    if s.backup_status == "error":
+        return [f"❌ 备份失败，其他结果不受影响：`{s.backup_error}`"]
+    b = s.backup
+    lines = [f"- 已传到 S3：`{b['key']}`（{b['size_mb']} MB）"]
+    if b["monthly_key"]:
+        lines.append(f"- 本月第一份，另存为 `{b['monthly_key']}`")
+    if b["restore_problems"] == []:
+        lines.append("- 恢复检查：恢复成功，各表行数一致")
+    for problem in b["restore_problems"] or []:
+        lines.append(f"- ⚠️ 恢复检查：{problem}")
+    lines += [f"- ⚠️ {warning}" for warning in b["warnings"]]
+    return lines
+
+
 def run_daily(
     conn: psycopg.Connection,
     client: httpx.Client,
@@ -269,6 +305,7 @@ def run_daily(
     scope: jd_analysis.Scope | None = None,
     profile_folder: Path | None = None,
     analytics: Callable[[psycopg.Connection, DailySummary, Path | None], None] | None = None,
+    backup: Callable[[psycopg.Connection, DailySummary, date], None] | None = None,
 ) -> DailySummary:
     """Fetch, gate, brief and score today's new jobs (when `llm` is given) and summarize. The
     caller holds the lock and records the run."""
@@ -287,6 +324,8 @@ def run_daily(
             _score_new(conn, summary, new_versions, settings, profile_folder, today)
     if analytics is not None:
         analytics(conn, summary, profile_folder)
+    if backup is not None:
+        backup(conn, summary, today)
     failed = sum(r.status == "error" for r in results)
     summary.status = "ok" if not failed and summary.jd_status != "error" else "partial"
     return summary
@@ -370,6 +409,8 @@ def render_report(s: DailySummary) -> str:
             lines.append(f"❌ 这一步出错了，其他结果不受影响：`{s.analytics_error}`")
         else:
             lines += coverage_lines(s.coverage)
+    if s.backup_status != "off":
+        lines += ["", "## 备份", ""] + _backup_lines(s)
     if s.triage_new:
         lines += ["", "## 安全闸门（今天新进来的）", ""]
         lines += [f"- {tier}: {n}" for tier, n in sorted(s.triage_new.items())]
@@ -490,6 +531,7 @@ def main(argv: list[str] | None = None) -> int:
                     llm=AnthropicClient if analysis.enabled else None,
                     daily_max=analysis.daily_max,
                     analytics=refresh_analytics,
+                    backup=backup_database,
                 )
         except Exception as exc:  # record any crash, write the report, exit non-zero
             summary = DailySummary(local_date=local_date, window_days=0, status="error")

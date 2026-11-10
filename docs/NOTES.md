@@ -174,6 +174,13 @@ dbt：清洗 → 提取技能 → 汇总（打分、技能频率、覆盖率、�
 | 数据测试 | 比如某列不能为空、不能重复。**测试全过不等于数字对**：这次 56 步全过，我读结果时还是发现了两个错 |
 | 血缘 lineage | 哪张表来自哪张表的关系图，`uv run python -m pipeline.analytics docs` 生成 |
 
+### 备份
+| 词 | 大白话 |
+| --- | --- |
+| 备份要恢复过才算 | 只传上去不等于能用。每月第一份会真的恢复到一个临时数据库，比对行数，再删掉临时库 |
+| 最小权限 | 备份用的钥匙只能读写这一个桶，不能删除。就算钥匙泄露，旧备份也删不掉；旧备份由 S3 自己按规则过期 |
+| 核对账号 | 这台电脑上可能有别的 AWS 配置（比如工作账号）。每次上传前核对账号 ID，对不上就不传 |
+
 ### 安全许可（security clearance）
 美国政府发的涉密资格，比如 Secret、Top Secret、TS/SCI，通常只有美国公民能申请，要由雇主发起。"必须已经持有"的职位，没有的人进不去；"必须能够取得"的职位，要看你本人符不符合条件。Public Trust 是背景调查，不算 clearance，所以这类职位不跳过。规则只读文字，要不要跳过由档案里的两个字段决定（#37）。
 
@@ -244,7 +251,7 @@ PowerShell（Windows 自带）、Git Bash（装 Git 时附带）、Ubuntu/WSL（
 ### 数据存在哪里
 | 什么 | 在哪 | 备份 |
 | --- | --- | --- |
-| 职位原文、闸门结果、去重、AI 简报、分数、队列 | 这台电脑上 Docker 里的 Postgres，数据卷 `de-job-hunt-agent_pgdata`（2026-11-04 约 216 MB） | **没有。** S3 备份是 Milestone 4 |
+| 职位原文、闸门结果、去重、AI 简报、分数、队列 | 这台电脑上 Docker 里的 Postgres，数据卷 `de-job-hunt-agent_pgdata`（2026-11-09 约 240 MB） | S3，每次每日运行之后（#44；在 FL 设置好 AWS 之前还是关的） |
 | 每日报告、简历 PDF、对照页、提交包 | `output/`，只在这台电脑（Git 不管） | 没有，大多能重新生成 |
 | 代码、规则、文档、虚构样本 | GitHub 公开仓库 | 有 |
 | 你的真实简历和事实库（Milestone 5） | `private/`，Git 不管，现在只有说明文件 | 还没有 |
@@ -284,6 +291,8 @@ PowerShell（Windows 自带）、Git Bash（装 Git 时附带）、Ubuntu/WSL（
 | 看打分结果 | 让 Claude 跑 `uv run python -m agents.fit_scoring top`（最值得投的）、`... show <编号>`（为什么得这个分）、`... unmatched`（词表还缺哪些技能写法） |
 | 生成简历 PDF 并检查 | 让 Claude 跑 `uv run python -m agents.render_resume`，结果在 `output/resume/`：PDF 和对照页 `review.html`（左边是渲染出来的页面，右边是 ATS 读到的文字） |
 | 生成今天的待投清单 | 让 Claude 跑 `uv run python -m agents.application_queue build`，看 `output/queue/<日期>/index.html`；然后告诉 Claude "批准 1、3，跳过 2，原因……" |
+| 设置 S3 备份 | 按 `docs/AWS_SETUP.md` 一步步做，最后把桶名和账号 ID 告诉 Claude |
+| 查备份能不能用 | 让 Claude 跑 `uv run python -m pipeline.backup restore-check`：下载最新一份，恢复到临时库，比对行数 |
 | 看看板 | 跟 Claude 说"打开看板"，或者运行 `uv run streamlit run dashboard/app.py`，只有这台电脑能打开 |
 | 重建分析表 | 每日运行会自动做；手动让 Claude 跑 `uv run python -m pipeline.analytics` |
 | 给职位改写简历 | 让 Claude 跑 `uv run python -m agents.tailor run --top 5`（每份约 $0.18；先加 `--dry-run` 只看选了哪些，不花钱）。结果看 `output/tailored/index.html` |

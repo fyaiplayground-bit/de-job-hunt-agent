@@ -17,7 +17,7 @@ Update this file at the end of every work session: what got done, what's next, w
 - [x] GitHub account + empty **public** repo named `de-job-hunt-agent` (no README, no .gitignore — we have our own)
 - [x] Install Docker Desktop
 - [x] Anthropic API key from the Claude Console (own workspace + monthly spending limit) in `.env`; first live `agents.llm ping` ok 2026-11-01. Key expires **2027-04-30**: remind FL to rotate around 2027-04-15 (new key in the same workspace, replace the line in `.env`, Claude runs `agents.llm ping`)
-- [ ] Personal AWS account + S3 bucket for backups (not the work account) — needed by Milestone 4
+- [ ] Personal AWS account + S3 bucket for backups (not the work account): steps in `docs/AWS_SETUP.md`; then send Claude the bucket name and account ID. The backup code is ready (#44)
 - [ ] Open questions (can wait until Milestone 5): target archetype(s); location / remote, comp floor, work-authorization answers; companies to exclude; daily application target
 
 ## Milestones
@@ -53,7 +53,7 @@ Update this file at the end of every work session: what got done, what's next, w
 ### Milestone 4 · Week 4 · Production polish
 - [ ] Airflow DAGs calling the pipeline functions
 - [ ] FastAPI endpoints: /analyze, /score, /tailor, /critique, /coverage
-- [ ] Nightly S3 backup
+- [ ] S3 backup after each daily run (code and tests done 2026-11-09, #44; waiting for FL's AWS setup)
 - [ ] README with architecture diagram; interview notes
 
 ### Milestone 5 · Go live with FL's real profile
@@ -77,7 +77,7 @@ Update this file at the end of every work session: what got done, what's next, w
 
 **Also for FL:** (1) 100 jobs in scope on 11/05, 50 over the cap: FL kept the cap at 50 and said to look again once there was more volume. (2) 10 unlabeled review alarms (`pipeline.alarm_report`, `pipeline.labels add`); none reach the LLM.
 
-**Then:** Milestone 4 (design first): S3 backup first, it needs FL's personal AWS account.
+**Then:** once FL sends the bucket name and account ID, add them to `.env` with `AWS_PROFILE=jobhunt-backup`, run `pipeline.backup run` and `restore-check`, show her. Next in Milestone 4: Airflow and FastAPI (design first).
 
 Standing facts: fit-scoring rules v3 and vocabulary v3 are live (#42); the next daily run is their first real use. The 87 `jd-analysis@3` briefs stay as they are and are not re-briefed (FL, 2026-11-04); scoring and tailoring work from new jobs only. jd-analysis v4, resume-tailoring v4, resume-reviewer v2 and vocabulary v2 are live (#39). A skill named only in a posting's duties can drop out of the brief (totalwine's semantic layers); FL accepted this for now. The daily AI cap stays at 50 (FL, 2026-11-03). On a busy day the jobs over the cap are not briefed or retried: run 8 had 70 in scope and left 20, chosen by newest posting id rather than quality; the report shows the count, so revisit it once there are more days of volume. The clearance rule is on (fit-scoring rules v2, #37); FL fills in `has_security_clearance` and `can_obtain_security_clearance` at Milestone 5 (the sample has both false). Fit scoring's location check is OFF during the small-company practice phase (final targets California, Washington, Texas for the big-tech phase). The daily run happens by itself at 9:30 LA (#29), catches up about 6 minutes after the laptop wakes, and also starts 5 minutes after login if today hasn't run (#43); check it at session start.
 
@@ -126,3 +126,4 @@ Standing facts: fit-scoring rules v3 and vocabulary v3 are live (#42); the next 
 - 2026-11-05 — FL approved: fit-scoring rules v3 and vocabulary v3 adopted (#42), which also corrects #39 on Sagility.
 - 2026-11-05 — Daily run now also starts 5 minutes after login and skips if today already ran (#43). Skip verified through the real task; the login trigger itself awaits a real login.
 - 2026-11-05 — FL agreed: deleted the stray 11/06 queue row (The Bison Group) and its page. Its resume and cached answers stay, so tailoring that job again is free.
+- 2026-11-09 — Laptop asleep 11/06 2:16 a.m. to 11/09 8:13 p.m.: no runs for four days. The catch-up started 6 minutes after waking (run 11, ok, 5-day window: 249 new DE, 143 in scope, 50 briefed for $2.13, 93 over the cap). Step 4.1: S3 backup code (#44); a real 83 MB dump restored and matched; waiting for FL's AWS setup.

@@ -18,9 +18,17 @@ Console → **Billing and Cost Management** → **Budgets** → **Create budget*
 
 Console → region **US West (Oregon) us-west-2** (top right) → **S3** → **Create bucket**:
 
-- Name: something unique, for example `jobhunt-backup-` plus a few random letters
-- **Block all public access**: leave it on (the default)
-- Default encryption: leave **SSE-S3** (the default)
+- **AWS Region**: check it says **US West (Oregon) us-west-2**. The page often opens on us-east-1, and a bucket can't move region later
+- Bucket type: **General purpose**
+- Bucket namespace: **Global namespace**. The newer "Account Regional namespace" may name buckets differently, and this setup hasn't been tested with it
+- Name: something unique, for example `jobhunt-backup-` plus a few random letters, lowercase
+- Copy settings from an existing bucket: skip
+- Object Ownership: **ACLs disabled (recommended)**
+- **Block all public access**: leave it on (the default), all four boxes ticked
+- Bucket Versioning: **Disable**. Each day already gets its own file, and the key can't overwrite-delete; versions would only add cost and keep expired backups around
+- Tags: skip
+- Default encryption: leave **SSE-S3** (the default). Bucket Key only matters for KMS, so leave it as it is
+- Advanced settings: leave Object Lock **off**, or the 30-day expiry can't delete old backups
 - Create.
 
 Then open the bucket → **Management** → **Create lifecycle rule**:

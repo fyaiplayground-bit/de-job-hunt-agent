@@ -135,3 +135,4 @@ Standing facts: JD briefs run on Claude Haiku 5.5 (`JD_ANALYSIS_MODEL` in `.env`
 - 2026-11-09 — Step 4.4: Airflow 3.3.2 in Docker runs the daily steps as a DAG, triggered by hand; run 12 green, backup fixed for the container and restore-checked (#46).
 - 2026-11-10 — Laptop asleep until 19:06; the catch-up ran at 19:12 (run 13, first Windows run on the saved steps: every step ok, 502 new jobs, 45 briefed for $1.94, backup 86.1 MB). 4.5: the Windows task keeps 9:30, Airflow stays off (#47). README architecture diagram and M4 interview note: Milestone 4 done.
 - 2026-11-10 — AI cost: Haiku and Sonnet tested on the jd-analysis golden set, and Opus's own run-to-run variation measured; JD briefs move to Haiku 5.5 until Milestone 5 (#48), resume work stays on Opus.
+- 2026-11-10 — With FL's OK, backfilled the 164 open in-scope postings that had gone unbriefed over the daily cap, on Haiku 5.5 for $0.20; 325 current briefs scored, dbt rebuilt.

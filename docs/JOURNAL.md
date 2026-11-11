@@ -637,3 +637,14 @@
   2. README 里的数字是 11/10 从数据库里查的；架构图要推到 GitHub 后才能看到渲染效果
 - **撤回：** `git revert` 这个提交
 
+### 2.2b · 2026-11-10 · 考一下便宜的模型：Haiku 5.5 做 JD 拆解
+- **做了什么：** 每天 AI 拆解约 $2（每月约 $60）太贵，你让先试 Haiku。考试命令加了 `--model`（同一个提示词，换模型比）；Haiku 不支持"被拒绝时换模型重试"，所以只对支持的模型发这个设置；价格表里 Sonnet 读缓存的价格从 $0.20 改成 $0.10
+- **为什么：** 换不换模型还没定，考完再由你决定（还没有新的 DECISIONS）
+- **文件：** `agents/evaluate_prompt.py`、`agents/llm.py`、`tests/test_llm.py`、`docs/JOURNAL.md`
+- **提交：** 见本条所在的提交
+- **验证：** 13 道标准答案（`tests/fixtures/jd_golden.toml`），和现在的 Opus 5.5（中等思考）比：
+  1. Opus：必备 86/86、加分 29/29、either/or 4/4、工作方式 12/13
+  2. **Haiku 中等思考（13 道共 $0.02，每个约 $0.0015）：** 必备 85/86（漏了 rosens 的 ETL）、加分 27/29（丢了 Streaming data、Fivetran）、1 个加分被当成必备（EHR）、either/or 3/4（totalwine 拆开了）、工作方式 13/13。按规则不及格（加分和 either/or 两项）
+  3. **Haiku 高思考（$0.04）反而更差：** 必备 79/86，漏了 dbt、Data modeling、Git、CI/CD、Scala 这类真正影响打分的技能。说明 Haiku 的结果不稳定，同一道题每次答得不一样
+- **撤回：** `git revert` 这个提交
+

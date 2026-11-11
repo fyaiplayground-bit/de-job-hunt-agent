@@ -4,11 +4,14 @@
     uv run python -m agents.evaluate_prompt config/proposals/jd-analysis.v3.md
     uv run python -m agents.evaluate_prompt PROPOSAL --effort low            # proposal at low
     uv run python -m agents.evaluate_prompt PROPOSAL --review                # + review page
+    uv run python -m agents.evaluate_prompt --model claude-haiku-5-5         # other model
 
-The current prompt (at LLM_EFFORT) and the proposal (at --effort, default the same) brief every
-golden case with the same model; the report compares must-haves found, nice-to-haves kept,
-nice-to-haves wrongly promoted to must-haves, archetype, work mode and years. Answers are
-cached (decision #30): re-running costs nothing, only a new prompt or effort makes calls.
+The current prompt (at LLM_EFFORT, on LLM_MODEL) and the proposal (at --effort and on --model,
+default the same) brief every golden case; with --model or --effort and no proposal file, the
+current prompt is the proposal, so a cheaper model or effort can be tried. The report compares
+must-haves found, nice-to-haves kept, nice-to-haves wrongly promoted to must-haves, archetype,
+work mode and years. Answers are cached (decision #30): re-running costs nothing, only a new
+prompt, effort or model makes calls.
 Nothing is written to agents.jd_briefs. --review writes output/golden_review.html (local, not
 committed): each posting's text next to its labels and the brief, so a person can check both.
 Same loop as the triage rules (#22): propose, evaluate, FL approves, copy into .claude/skills,
@@ -28,7 +31,7 @@ import psycopg
 
 from agents.fit_scoring import _split
 from agents.jd_analysis import BRIEF_SCHEMA, Candidate, _display_fields
-from agents.llm import AnthropicClient, LlmClient, LlmError, ask, build_request
+from agents.llm import PRICES, AnthropicClient, LlmClient, LlmError, ask, build_request
 from agents.skills import Skill, load_skill, parse_skill
 from pipeline.config import LLM_EFFORTS, REPO_ROOT, LlmSettings, llm_settings
 from pipeline.safety_gate import GATE_VERSION
@@ -472,6 +475,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="python -m agents.evaluate_prompt")
     parser.add_argument("proposal", nargs="?", help="a proposed jd-analysis SKILL.md")
     parser.add_argument("--effort", choices=LLM_EFFORTS, help="effort for the proposal")
+    parser.add_argument("--model", choices=sorted(PRICES), help="model for the proposal")
     parser.add_argument("--review", action="store_true", help=f"write {REVIEW_PAGE.name}")
     args = parser.parse_args(argv)
 
@@ -486,13 +490,17 @@ def main(argv: list[str] | None = None) -> int:
         base = evaluate(conn, client, settings, current, cases)
         print(format_evaluation(base))
         shown, problems = base, []
-        if args.proposal:
-            path = Path(args.proposal)
-            proposed = parse_skill(path.read_text(encoding="utf-8"), str(path))
-            if proposed.name != current.name or proposed.version < current.version:
-                print(f"FAIL {path} should be {current.name} at version >= {current.version}")
-                return 1
-            proposed_settings = replace(settings, effort=args.effort or settings.effort)
+        if args.proposal or args.model or args.effort:
+            proposed = current
+            if args.proposal:
+                path = Path(args.proposal)
+                proposed = parse_skill(path.read_text(encoding="utf-8"), str(path))
+                if proposed.name != current.name or proposed.version < current.version:
+                    print(f"FAIL {path} should be {current.name} at version >= {current.version}")
+                    return 1
+            proposed_settings = replace(
+                settings, model=args.model or settings.model, effort=args.effort or settings.effort
+            )
             shown = evaluate(conn, client, proposed_settings, proposed, cases)
             print()
             print(format_evaluation(shown))

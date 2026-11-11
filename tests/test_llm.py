@@ -108,6 +108,7 @@ class FakeSdk:
     def __init__(self, message):
         self.calls = []
         self.beta = SimpleNamespace(messages=SimpleNamespace(create=self._create))
+        self.messages = SimpleNamespace(create=self._create)
         self._message = message
 
     def _create(self, **kwargs):
@@ -143,6 +144,17 @@ def test_anthropic_client_sends_fallback_and_parses_json():
     assert (reply.input_tokens, reply.output_tokens) == (1500, 300)
     assert (reply.cache_read_tokens, reply.cache_write_tokens) == (0, 1200)
     assert reply.request_id == "req_123"
+
+
+def test_haiku_is_asked_without_fallback_which_it_does_not_accept():
+    from dataclasses import replace
+
+    sdk = FakeSdk(_message())
+    AnthropicClient(sdk).send(replace(_request(), model="claude-haiku-5-5"))
+    call = sdk.calls[0]
+    assert "fallbacks" not in call and "betas" not in call
+    assert call["model"] == "claude-haiku-5-5"
+    assert call["output_config"]["format"]["schema"] == SCHEMA
 
 
 def test_anthropic_client_reports_a_refusal_without_reading_content():

@@ -36,7 +36,7 @@ PRICES: dict[str, tuple[float, float, float, float]] = {
     "claude-opus-5-5": (4.00, 20.00, 0.20, 5.00),
     "claude-opus-5": (5.00, 25.00, 0.50, 6.25),
     "claude-opus-4-8": (5.00, 25.00, 0.50, 6.25),
-    "claude-sonnet-5-5": (2.00, 10.00, 0.20, 2.50),
+    "claude-sonnet-5-5": (2.00, 10.00, 0.10, 2.50),
     "claude-haiku-5-5": (0.10, 0.50, 0.01, 0.125),
 }
 DEFAULT_MAX_TOKENS = 16000  # room for thinking plus the JSON; non-streaming stays under timeouts
@@ -136,6 +136,9 @@ class AnthropicClient:
     Anthropic recommends for that kind of decline; `served_model` records who answered."""
 
     FALLBACK_BETA = "server-side-fallback-2026-07-01"
+    # Models that accept server-side fallback. Haiku 5.5 doesn't: a decline there just comes back
+    # as a refusal, which ask() reports and never caches.
+    FALLBACK_MODELS = frozenset({"claude-opus-5-5", "claude-opus-5", "claude-sonnet-5-5"})
 
     def __init__(self, sdk: Any = None):
         if sdk is None:
@@ -145,9 +148,12 @@ class AnthropicClient:
         self._sdk = sdk
 
     def send(self, request: LlmRequest) -> LlmReply:
-        message = self._sdk.beta.messages.create(
-            betas=[self.FALLBACK_BETA], fallbacks="default", **request.api_kwargs()
-        )
+        if request.model in self.FALLBACK_MODELS:
+            message = self._sdk.beta.messages.create(
+                betas=[self.FALLBACK_BETA], fallbacks="default", **request.api_kwargs()
+            )
+        else:
+            message = self._sdk.messages.create(**request.api_kwargs())
         output: dict[str, Any] = {}
         if message.stop_reason == "end_turn":
             text = next((block.text for block in message.content if block.type == "text"), "")

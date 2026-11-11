@@ -194,6 +194,17 @@ def test_second_ask_is_answered_from_the_cache(db):
 
 
 @pytest.mark.db
+def test_a_fresh_ask_calls_again_and_leaves_the_stored_answer_alone(db):
+    ask(db, FakeClient({"title": "first"}), _request())
+    client = FakeClient({"title": "second"})
+    again = ask(db, client, _request(), fresh=True)
+    assert (again.output, again.cached, again.llm_call_id) == ({"title": "second"}, False, None)
+    assert again.cost_usd == 0.008 and len(client.requests) == 1
+    assert ask(db, client, _request()).output == {"title": "first"}  # the pipeline's answer
+    assert db.execute("select count(*) from agents.llm_calls").fetchone()[0] == 1
+
+
+@pytest.mark.db
 def test_a_changed_request_is_a_new_call(db):
     client = FakeClient({"title": "x"})
     ask(db, client, _request())

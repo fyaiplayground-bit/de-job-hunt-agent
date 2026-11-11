@@ -5,6 +5,7 @@
     uv run python -m agents.evaluate_prompt PROPOSAL --effort low            # proposal at low
     uv run python -m agents.evaluate_prompt PROPOSAL --review                # + review page
     uv run python -m agents.evaluate_prompt --model claude-haiku-5-5         # other model
+    uv run python -m agents.evaluate_prompt --fresh                          # run-to-run noise
 
 The current prompt (at LLM_EFFORT, on LLM_MODEL) and the proposal (at --effort and on --model,
 default the same) brief every golden case; with --model or --effort and no proposal file, the
@@ -278,8 +279,10 @@ def evaluate(
     settings: LlmSettings,
     skill: Skill,
     cases: list[GoldenCase],
+    fresh: bool = False,
 ) -> Evaluation:
-    result = Evaluation(label=f"{skill.prompt_version} · {settings.model} · {settings.effort}")
+    label = f"{skill.prompt_version} · {settings.model} · {settings.effort}"
+    result = Evaluation(label=label + (" · asked again" if fresh else ""))
     for case in cases:
         candidate = resolve(conn, case)
         if candidate is None:
@@ -288,7 +291,7 @@ def evaluate(
         result.candidates[case.name] = candidate
         request = build_request(skill, BRIEF_SCHEMA, candidate.data(), settings)
         try:
-            answer = ask(conn, client, request)
+            answer = ask(conn, client, request, fresh=fresh)
         except LlmError as exc:
             result.scores.append(failed_case(case, str(exc)))
             continue
@@ -476,6 +479,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("proposal", nargs="?", help="a proposed jd-analysis SKILL.md")
     parser.add_argument("--effort", choices=LLM_EFFORTS, help="effort for the proposal")
     parser.add_argument("--model", choices=sorted(PRICES), help="model for the proposal")
+    parser.add_argument(
+        "--fresh", action="store_true",
+        help="ask the model again for the proposal, ignoring stored answers (costs money); "
+        "alone, it shows how much the current prompt's answers vary between runs",
+    )
     parser.add_argument("--review", action="store_true", help=f"write {REVIEW_PAGE.name}")
     args = parser.parse_args(argv)
 
@@ -490,7 +498,7 @@ def main(argv: list[str] | None = None) -> int:
         base = evaluate(conn, client, settings, current, cases)
         print(format_evaluation(base))
         shown, problems = base, []
-        if args.proposal or args.model or args.effort:
+        if args.proposal or args.model or args.effort or args.fresh:
             proposed = current
             if args.proposal:
                 path = Path(args.proposal)
@@ -501,7 +509,7 @@ def main(argv: list[str] | None = None) -> int:
             proposed_settings = replace(
                 settings, model=args.model or settings.model, effort=args.effort or settings.effort
             )
-            shown = evaluate(conn, client, proposed_settings, proposed, cases)
+            shown = evaluate(conn, client, proposed_settings, proposed, cases, fresh=args.fresh)
             print()
             print(format_evaluation(shown))
             problems = compare(base.totals, shown.totals)

@@ -211,20 +211,28 @@ class LlmResult:
     output: dict[str, Any]
     cached: bool
     cost_usd: float | None  # what this call cost when it was made (a cache hit costs nothing now)
-    llm_call_id: int
+    llm_call_id: int | None  # None only for a fresh=True answer, which is not stored
 
 
 def _missing_required(schema: dict[str, Any], output: dict[str, Any]) -> list[str]:
     return [key for key in schema.get("required", []) if key not in output]
 
 
-def ask(conn: psycopg.Connection, client: LlmClient, request: LlmRequest) -> LlmResult:
+def ask(
+    conn: psycopg.Connection, client: LlmClient, request: LlmRequest, fresh: bool = False
+) -> LlmResult:
     """The answer to `request`: from agents.llm_calls when this exact request was answered before,
-    otherwise from the model, stored before it is returned."""
-    row = conn.execute(
-        "select llm_call_id, output, cost_usd from agents.llm_calls where request_hash = %s",
-        (request.request_hash,),
-    ).fetchone()
+    otherwise from the model, stored before it is returned.
+
+    fresh=True asks the model again even when an answer is stored, and stores nothing, so the
+    pipeline keeps using the first answer. Only for measuring how much answers vary between
+    runs (agents.evaluate_prompt --fresh); its cost shows in that report, not in llm_calls."""
+    row = None
+    if not fresh:
+        row = conn.execute(
+            "select llm_call_id, output, cost_usd from agents.llm_calls where request_hash = %s",
+            (request.request_hash,),
+        ).fetchone()
     if row:
         cost = None if row[2] is None else float(row[2])
         return LlmResult(output=row[1], cached=True, cost_usd=cost, llm_call_id=row[0])
@@ -244,6 +252,8 @@ def ask(conn: psycopg.Connection, client: LlmClient, request: LlmRequest) -> Llm
         reply.served_model, reply.input_tokens, reply.output_tokens,
         reply.cache_read_tokens, reply.cache_write_tokens,
     )
+    if fresh:
+        return LlmResult(output=reply.output, cached=False, cost_usd=cost, llm_call_id=None)
     llm_call_id = conn.execute(
         """
         insert into agents.llm_calls (

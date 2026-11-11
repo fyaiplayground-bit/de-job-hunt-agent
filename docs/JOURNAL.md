@@ -626,3 +626,14 @@
   4. **对比发现一个问题：** 备份在容器里失败（容器里没有 Docker）。修好后只重跑"备份"和"收尾"两步（Airflow 的单步重跑），上传成功 83.8 MB；再在 Windows 上恢复这份备份，每张表的行数都对得上
   5. **没有验证：** 定时触发（4.5 再定）
 - **撤回：** `git revert` 这个提交；停掉并删除 Airflow 容器（`docker compose --profile airflow rm -sf airflow-init airflow-apiserver airflow-scheduler airflow-dag-processor`），需要的话 `drop database airflow`；`alter table ops.daily_runs drop column runner`，再从 `public.schema_migrations` 删掉 `017_daily_run_runner.sql`
+
+### 4.5 · 2026-11-10 · 定下来由 Windows 继续每天跑；README 架构图；第 4 阶段面试笔记
+- **做了什么：** 你决定先不让 Airflow 接管：Windows 计划任务继续负责 9:30（加上醒来补跑和登录检查），Airflow 关掉，需要时再开。README 加了架构图（GitHub 上会直接显示成图）、设计原则、关键数字、怎么运行、目录说明。`INTERVIEW_NOTES.md` 加了第 4 阶段
+- **为什么：** DECISIONS #47
+- **文件：** `README.md`、`docs/INTERVIEW_NOTES.md`、`docs/DECISIONS.md`、`docs/JOURNAL.md`、`docs/STATUS.md`
+- **提交：** 见本条所在的提交
+- **验证：**
+  1. 拆成步骤后，Windows 第一次正式运行（运行 13，11/10 电脑醒来 6 分钟后补跑）：7 个步骤全部成功，记录的是 `windows`；新增 502 个职位（DE 类 74 个），AI 拆解 45 个花了 $1.94，打分 45 个，dbt 成功，备份 86.1 MB
+  2. README 里的数字是 11/10 从数据库里查的；架构图要推到 GitHub 后才能看到渲染效果
+- **撤回：** `git revert` 这个提交
+

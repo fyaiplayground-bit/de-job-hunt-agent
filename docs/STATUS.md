@@ -1,6 +1,6 @@
 # Status
 
-**Last updated:** 2026-11-09 · **Phase:** Milestones 1-3 done; Milestone 4: S3 backup live, Airflow DAG running by hand (4.4), switch decision next (4.5)
+**Last updated:** 2026-11-10 · **Phase:** Milestones 1-4 done; next: decide on a cloud server, then Milestone 5 (FL's real profile)
 
 Update this file at the end of every work session: what got done, what's next, what's blocked.
 
@@ -51,10 +51,10 @@ Update this file at the end of every work session: what got done, what's next, w
 - [x] Streamlit dashboard (skill trends, application funnel, #41)
 
 ### Milestone 4 · Week 4 · Production polish
-- [ ] Airflow DAGs calling the pipeline functions (4.3 steps and 4.4 DAG done 2026-11-09, triggered by hand; 4.5 FL decides whether Airflow takes over the 9:30 run; #45, #46)
+- [x] Airflow DAG calling the pipeline steps (4.3, 4.4 on 2026-11-09; run by hand only, the Windows task keeps 9:30: #45-#47)
 - [ ] FastAPI endpoints: set aside until the cloud decision before Milestone 5 (#45)
 - [x] S3 backup after each daily run (#44; first real backup and restore check 2026-11-09)
-- [ ] README with architecture diagram; interview notes
+- [x] README with architecture diagram; M4 interview note (2026-11-10)
 
 ### Milestone 5 · Go live with FL's real profile
 - [ ] FL provides her resume + summaries of GH Archive, Python Practice, Data Engineer career
@@ -77,7 +77,7 @@ Update this file at the end of every work session: what got done, what's next, w
 
 **Also for FL:** (1) 100 jobs in scope on 11/05, 50 over the cap: FL kept the cap at 50 and said to look again once there was more volume. (2) 10 unlabeled review alarms (`pipeline.alarm_report`, `pipeline.labels add`); none reach the LLM.
 
-**Then:** next Windows run (11/10): check the report has the backup section, `ops.daily_run_steps` has every step, the run says `runner = windows`, and the numbers look normal. Note: Airflow run 12 (11/09 evening) already took 183 jobs as new, so 11/10 starts from there. Then 4.5: FL decides whether Airflow takes over the 9:30 run (it would need Airflow left running and Docker Desktop up; the laptop sleeps often). FastAPI waits for the cloud decision before Milestone 5 (#45).
+**Then:** decide with FL whether to move to a small cloud server before Milestone 5 (design first: what moves, monthly cost, EventBridge vs an always-on scheduler, FastAPI if it moves; #45, #47). Otherwise start Milestone 5. Airflow is stopped; start it only on request (NOTES, 常用操作).
 
 Standing facts: fit-scoring rules v3 and vocabulary v3 are live (#42); the next daily run is their first real use. The 87 `jd-analysis@3` briefs stay as they are and are not re-briefed (FL, 2026-11-04); scoring and tailoring work from new jobs only. jd-analysis v4, resume-tailoring v4, resume-reviewer v2 and vocabulary v2 are live (#39). A skill named only in a posting's duties can drop out of the brief (totalwine's semantic layers); FL accepted this for now. The daily AI cap stays at 50 (FL, 2026-11-03). On a busy day the jobs over the cap are not briefed or retried: run 8 had 70 in scope and left 20, chosen by newest posting id rather than quality; the report shows the count, so revisit it once there are more days of volume. The clearance rule is on (fit-scoring rules v2, #37); FL fills in `has_security_clearance` and `can_obtain_security_clearance` at Milestone 5 (the sample has both false). Fit scoring's location check is OFF during the small-company practice phase (final targets California, Washington, Texas for the big-tech phase). The daily run happens by itself at 9:30 LA (#29), catches up about 6 minutes after the laptop wakes, and also starts 5 minutes after login if today hasn't run (#43); check it at session start.
 
@@ -131,3 +131,4 @@ Standing facts: fit-scoring rules v3 and vocabulary v3 are live (#42); the next 
 - 2026-11-09 — FL confirmed the 30-day lifecycle rule on the backup bucket.
 - 2026-11-09 — Step 4.3: the daily run split into saved steps for Airflow, behavior unchanged (#45). FastAPI set aside until the cloud decision.
 - 2026-11-09 — Step 4.4: Airflow 3.3.2 in Docker runs the daily steps as a DAG, triggered by hand; run 12 green, backup fixed for the container and restore-checked (#46).
+- 2026-11-10 — Laptop asleep until 19:06; the catch-up ran at 19:12 (run 13, first Windows run on the saved steps: every step ok, 502 new jobs, 45 briefed for $1.94, backup 86.1 MB). 4.5: the Windows task keeps 9:30, Airflow stays off (#47). README architecture diagram and M4 interview note: Milestone 4 done.

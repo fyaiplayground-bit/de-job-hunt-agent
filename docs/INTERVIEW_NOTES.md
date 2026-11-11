@@ -115,3 +115,25 @@ I designed the system and made every decision recorded in `DECISIONS.md`; I used
 
 - 56 dbt steps (models, seed, data tests) on about 16,800 postings; AI step adds no cost here, since everything is SQL over stored results.
 - Top must-haves in 87 postings so far: SQL 76%, Python 66%, ETL 61%, data modeling 49%. Say the sample size out loud: it's small, and the report prints it for that reason.
+
+## Milestone 4 · Production polish (done 2026-11-10)
+
+### The 30-second version
+
+> "I made the pipeline something I'd trust unattended. The daily run is split into steps that each save their result, so the same functions run in one process from the Windows scheduler or as separate tasks in an Airflow DAG, and a failed step can be retried alone. Every night a dump goes to S3 under a key that can't delete anything, and once a month I restore it into a scratch database and compare row counts, because a backup you haven't restored isn't a backup."
+
+### What an engineer will probe
+
+- **How do Airflow tasks share state?** Each step writes its part of the summary and what later steps need (ingest run ids, new job ids) to `ops.daily_run_steps`. Airflow only passes the run id between tasks (XCom). Keeping state in the database, not in Airflow, means the Windows path and the DAG share one copy of the logic, and a retried fetch keeps the ids of the try that half-worked.
+- **Why BashOperator calling a CLI instead of PythonOperator?** The pipeline has its own environment built from the same `uv.lock` as the laptop. Airflow pins its own packages and dbt pins others; keeping them apart means neither has to agree with the other, and a crash in my code can't take the worker down.
+- **How did you roll it out?** In shadow mode: triggered by hand, writing its report to a separate folder, with a `runner` column on every run and a guard so the two schedulers never run at once. The comparison found a real bug: the backup shelled out to `docker exec`, and there's no Docker inside the Airflow container. I installed the client tools matching the server version (not the newer ones in the image, whose dumps the old tools may not read), reran just the backup step, and restored that dump on the other side.
+- **Why didn't Airflow take over the schedule?** Running it always on costs about 1 GB of memory on a laptop that sleeps, and for one daily pipeline the Windows task does the job. Airflow earns its place with many dependent pipelines, backfills by data date and a team that needs one place to see failures. On AWS, for one daily job, I'd likely use EventBridge to trigger it rather than keep a scheduler running.
+- **What's the backup's blast radius if the key leaks?** The IAM policy allows put, get and list on one bucket, no delete; old backups expire through a lifecycle rule the key can't change. Before each upload the code checks the account id, so a work profile on the same machine can never receive the data.
+- **What's the restore test exactly?** Download the dump, `pg_restore` into a temporary database, compare row counts of the main tables with the live ones taken at dump time, drop the temporary database.
+
+### Numbers worth quoting
+
+- 12 Airflow tasks; a whole day ran in under 3 minutes with the four sources fetched in parallel (briefing 6 new jobs).
+- Daily dump ~84 MB (rebuildable analytics schemas excluded); 30-day expiry on daily copies, monthly copies kept.
+- 658 automated tests, including ones that run the steps one at a time the way Airflow does and check they give the same numbers as one in-process run.
+

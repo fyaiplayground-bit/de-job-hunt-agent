@@ -99,6 +99,20 @@ def test_llm_settings_defaults_and_overrides(monkeypatch):
         llm_settings(env_file=None)
 
 
+def test_jd_analysis_has_its_own_model_falling_back_to_the_general_one(monkeypatch):
+    from pipeline.config import jd_analysis_settings
+
+    for name in ("JD_ANALYSIS_MODEL", "JD_ANALYSIS_EFFORT", "LLM_MODEL", "LLM_EFFORT"):
+        monkeypatch.delenv(name, raising=False)
+    assert jd_analysis_settings(env_file=None) == LlmSettings("claude-opus-5-5", "medium")
+    monkeypatch.setenv("JD_ANALYSIS_MODEL", "claude-haiku-5-5")
+    assert jd_analysis_settings(env_file=None) == LlmSettings("claude-haiku-5-5", "medium")
+    assert llm_settings(env_file=None).model == "claude-opus-5-5"  # tailoring keeps its model
+    monkeypatch.setenv("JD_ANALYSIS_EFFORT", "sometimes")
+    with pytest.raises(ConfigError, match="JD_ANALYSIS_EFFORT"):
+        jd_analysis_settings(env_file=None)
+
+
 # ---------------------------------------------------------------- the real client, faked SDK
 
 

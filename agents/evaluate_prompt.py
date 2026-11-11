@@ -7,8 +7,9 @@
     uv run python -m agents.evaluate_prompt --model claude-haiku-5-5         # other model
     uv run python -m agents.evaluate_prompt --fresh                          # run-to-run noise
 
-The current prompt (at LLM_EFFORT, on LLM_MODEL) and the proposal (at --effort and on --model,
-default the same) brief every golden case; with --model or --effort and no proposal file, the
+The current prompt (at JD_ANALYSIS_EFFORT, on JD_ANALYSIS_MODEL; decision #48) and the proposal
+(at --effort and on --model, default the same) brief every golden case; with --model or --effort
+and no proposal file, the
 current prompt is the proposal, so a cheaper model or effort can be tried. The report compares
 must-haves found, nice-to-haves kept, nice-to-haves wrongly promoted to must-haves, archetype,
 work mode and years. Answers are cached (decision #30): re-running costs nothing, only a new
@@ -34,7 +35,7 @@ from agents.fit_scoring import _split
 from agents.jd_analysis import BRIEF_SCHEMA, Candidate, _display_fields
 from agents.llm import PRICES, AnthropicClient, LlmClient, LlmError, ask, build_request
 from agents.skills import Skill, load_skill, parse_skill
-from pipeline.config import LLM_EFFORTS, REPO_ROOT, LlmSettings, llm_settings
+from pipeline.config import LLM_EFFORTS, REPO_ROOT, LlmSettings, jd_analysis_settings
 from pipeline.safety_gate import GATE_VERSION
 
 GOLDEN_FILE = REPO_ROOT / "tests" / "fixtures" / "jd_golden.toml"
@@ -489,7 +490,7 @@ def main(argv: list[str] | None = None) -> int:
 
     from pipeline.db import connect, migrate
 
-    settings = llm_settings()
+    settings = jd_analysis_settings()
     current = load_skill("jd-analysis")
     cases = load_golden()
     client = AnthropicClient()

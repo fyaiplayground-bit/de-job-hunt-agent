@@ -37,7 +37,7 @@ from agents.profile import (
     load_profile,
 )
 from agents.skills import load_skill
-from pipeline.config import REPO_ROOT, llm_settings, profile_dir
+from pipeline.config import REPO_ROOT, profile_dir
 from pipeline.safety_gate import GATE_VERSION
 
 RULES_FILE = REPO_ROOT / "config" / "fit_scoring.toml"
@@ -375,18 +375,37 @@ class ScoreRun:
     results: list[tuple[int, dict[str, Any], dict[str, Any]]] = field(default_factory=list)
 
 
-def load_briefs(
-    conn: psycopg.Connection, prompt_version: str, model: str
-) -> list[tuple[int, dict[str, Any], str]]:
-    """(posting version, brief, the gate's cleaned text) for every brief of this version."""
+# When a posting has briefs of the same prompt version from several models, the brief of the
+# more capable model is the one scored (decision #48). Models not listed come last.
+BRIEF_MODEL_PREFERENCE = (
+    "claude-opus-5-5", "claude-opus-5", "claude-opus-4-8", "claude-sonnet-5-5", "claude-haiku-5-5",
+)
+
+
+def _briefs_with_model(
+    conn: psycopg.Connection, prompt_version: str, model: str | None = None
+) -> list[tuple[int, dict[str, Any], str, str]]:
+    """(posting version, brief, the gate's cleaned text, model): one brief per posting of this
+    prompt version, from `model` only when given, else from the most capable model that has one."""
     return conn.execute(
-        "select b.posting_version_id, b.brief, coalesce(g.cleaned_text, '')"
+        "select distinct on (b.posting_version_id)"
+        "  b.posting_version_id, b.brief, coalesce(g.cleaned_text, ''), b.model"
         " from agents.jd_briefs b"
         " left join gate.results g on g.posting_version_id = b.posting_version_id"
         "  and g.gate_version = %s"
-        " where b.prompt_version = %s and b.model = %s order by b.posting_version_id",
-        (GATE_VERSION, prompt_version, model),
+        " where b.prompt_version = %s and (%s::text is null or b.model = %s)"
+        " order by b.posting_version_id,"
+        "  coalesce(array_position(%s::text[], b.model), 999), b.created_at desc",
+        (GATE_VERSION, prompt_version, model, model, list(BRIEF_MODEL_PREFERENCE)),
     ).fetchall()
+
+
+def load_briefs(
+    conn: psycopg.Connection, prompt_version: str, model: str | None = None
+) -> list[tuple[int, dict[str, Any], str]]:
+    """(posting version, brief, the gate's cleaned text): one brief per posting of this version,
+    from `model` only when given, else from the most capable model that briefed it."""
+    return [row[:3] for row in _briefs_with_model(conn, prompt_version, model)]
 
 
 def run(
@@ -399,18 +418,18 @@ def run(
     brief_prompt_version: str | None = None,
     brief_model: str | None = None,
 ) -> ScoreRun:
-    """Score every brief of the current jd-analysis prompt version and model (or only the given
-    posting versions) and store the results. Recomputing an existing score changes nothing."""
+    """Score every brief of the current jd-analysis prompt version (or only the given posting
+    versions) and store the results: the most capable model's brief per posting, or only
+    `brief_model`'s when given. Recomputing an existing score changes nothing."""
     folder = profile.folder if profile else profile_dir()
     profile = profile or load_profile(folder)
     rules, vocab, today = rules or load_rules(), vocab or load_vocabulary(), today or date.today()
     prompt_version = brief_prompt_version or load_skill("jd-analysis").prompt_version
-    model = brief_model or llm_settings().model
     fingerprint = profile_fingerprint(folder)
-    rows = load_briefs(conn, prompt_version, model)
+    rows = _briefs_with_model(conn, prompt_version, brief_model)
     wanted = None if only is None else set(only)
     summary = ScoreRun()
-    for posting_version_id, brief, posting_text in rows:
+    for posting_version_id, brief, posting_text, model in rows:
         if wanted is not None and posting_version_id not in wanted:
             continue
         result = score_brief(brief, profile, rules, vocab, today, posting_text).as_json()

@@ -27,7 +27,7 @@ def run_one_at_a_time(db, client, fake=None):
     steps.summarize(db, steps.run_context(db, run_id))
     if fake is not None:
         steps.analyze(db, steps.run_context(db, run_id), lambda: fake, LLM, 50, SCOPE)
-        steps.score(db, steps.run_context(db, run_id), LLM)
+        steps.score(db, steps.run_context(db, run_id))
     return steps.assemble(db, steps.run_context(db, run_id))
 
 
@@ -53,6 +53,7 @@ def test_ai_steps_one_at_a_time(db, greenhouse_jobs, freehire_jobs):
     assert (summary.fit_status, summary.fit_scored) == ("ok", 2)
     report = render_report(summary)
     assert "今天最常要求的必备技能：Python（2）、SQL（2）" in report
+    assert "（模型：claude-opus-5-5）" in report  # which model briefed (decision #48)
     assert "## 今天值得投的" in report
 
 
@@ -106,7 +107,7 @@ def test_a_retried_fetch_keeps_what_its_first_try_stored(db, greenhouse_jobs, fr
 def test_later_steps_refuse_to_run_before_summarize(db):
     ctx = steps.start_run(db, NOON)
     with pytest.raises(ValueError, match="summarize hasn't run"):
-        steps.score(db, ctx, LLM)
+        steps.score(db, ctx)
 
 
 @pytest.mark.db

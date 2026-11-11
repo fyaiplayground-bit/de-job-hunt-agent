@@ -665,3 +665,10 @@
   结论：Opus 每次也会差 5 分左右，但投/跳过的判断没变；Sonnet 翻掉的 3 个都是从"投"变"跳过"，分数大多偏低。另外，就连 Opus 自己，分数也会因为技能怎么拆、怎么起名而上下浮动几分，以后可以改进打分，让它不那么依赖技能的叫法
 - **撤回：** `git revert` 这个提交
 
+### 2.2d · 2026-11-10 · JD 拆解换成 Haiku 5.5（第 5 阶段之前）
+- **做了什么：** 加了只给 JD 拆解用的模型设置 `JD_ANALYSIS_MODEL`（你的 `.env` 里设成了 `claude-haiku-5-5`）；简历改写和审阅继续用 Opus。已经被任何模型拆过的职位不再重拆；同一个职位有几个模型的拆解时，打分、待投清单、规则评估都用更强的那个模型的结果，每个分数记下用的是哪个模型的拆解。每日报告的 AI 那一行写上了模型
+- **为什么：** DECISIONS #48
+- **文件：** `pipeline/config.py`、`agents/fit_scoring.py`、`agents/jd_analysis.py`、`agents/tailor.py`、`agents/evaluate_fit_rules.py`、`agents/evaluate_scoring.py`、`agents/evaluate_prompt.py`、`pipeline/daily.py`、`pipeline/daily_steps.py`、`.env.example`、`tests/test_llm.py`、`tests/test_fit_scoring.py`、`tests/test_jd_analysis.py`、`tests/test_daily_steps.py`、文档
+- **提交：** 见本条所在的提交
+- **验证：** 全部测试通过；新增：模型设置没填时用 `LLM_MODEL`，填了只影响 JD 拆解；同一个职位有 Opus 和 Haiku 两份拆解时用 Opus 的；换模型后已拆过的职位不再重拆；报告里写着模型。**没有验证：** 真实运行要等明天（11/11）9:30
+- **撤回：** 删掉 `.env` 里的 `JD_ANALYSIS_MODEL` 那一行就回到 Opus（不用改代码）；或者 `git revert` 这个提交

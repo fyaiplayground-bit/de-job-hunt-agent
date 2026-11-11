@@ -45,7 +45,7 @@ from agents.fit_scoring import (
 from agents.jd_analysis import load_scope
 from agents.profile import Profile, load_profile
 from agents.skills import load_skill
-from pipeline.config import REPO_ROOT, llm_settings, profile_dir
+from pipeline.config import REPO_ROOT, profile_dir
 from pipeline.db import connect
 from pipeline.safety_gate import GATE_VERSION
 
@@ -328,7 +328,7 @@ def main(argv: list[str] | None = None) -> int:
         versions = args.brief_versions or [prompt_version]
         newest: dict[int, tuple[int, dict[str, Any], str]] = {}
         for version in versions:  # later versions replace earlier ones
-            for row in load_briefs(conn, version, llm_settings().model):
+            for row in load_briefs(conn, version):
                 newest[row[0]] = row
         briefs = list(newest.values())
         postings = de_postings(conn)

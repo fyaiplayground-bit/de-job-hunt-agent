@@ -230,6 +230,11 @@ def test_run_stores_briefs_with_board_facts_and_skips_them_next_time(loaded):
     assert (again.in_scope, again.already_done, again.selected) == (2, 2, 0)
     assert len(client.requests) == 2
 
+    # Decision #48: after a switch to a cheaper model, briefed postings aren't briefed again.
+    cheaper = run(loaded, client, replace(SETTINGS, model="claude-haiku-5-5"), scope=SCOPE)
+    assert (cheaper.already_done, cheaper.selected) == (2, 0)
+    assert len(client.requests) == 2
+
 
 @pytest.mark.db
 def test_dry_run_estimates_without_calling(loaded):

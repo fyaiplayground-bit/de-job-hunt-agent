@@ -38,7 +38,7 @@ from agents.jd_analysis import brief_postings
 from agents.llm import AnthropicClient
 from agents.profile import Profile, load_profile
 from agents.skills import load_skill, parse_skill
-from pipeline.config import REPO_ROOT, llm_settings, profile_dir
+from pipeline.config import REPO_ROOT, jd_analysis_settings, profile_dir
 from pipeline.db import connect
 
 REVIEW_PAGE = REPO_ROOT / "output" / "scoring_review.html"
@@ -165,13 +165,13 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     sys.stdout.reconfigure(encoding="utf-8")
 
-    settings = llm_settings()
+    settings = jd_analysis_settings()
     profile, rules, today = load_profile(profile_dir()), load_rules(), date.today()
     current_vocab, proposed_vocab = load_vocabulary(), load_vocabulary(args.vocabulary)
     proposal = parse_skill(args.jd_proposal.read_text(encoding="utf-8"), str(args.jd_proposal))
     prompt_version = load_skill("jd-analysis").prompt_version
     with connect() as conn:
-        rows = load_briefs(conn, prompt_version, settings.model)
+        rows = load_briefs(conn, prompt_version)
         rebriefed, paid = brief_postings(conn, AnthropicClient(), settings, proposal, args.jobs)
 
     before, after, moved = compare_vocabularies(

@@ -594,7 +594,7 @@ def scored_jobs(
             text,
             score_brief(brief, profile, rules, vocab, today, text).as_json(),
         )
-        for posting_version_id, brief, text in load_briefs(conn, prompt_version, settings.model)
+        for posting_version_id, brief, text in load_briefs(conn, prompt_version)
     ]
     return sorted(jobs, key=lambda job: (-job.fit["score"], job.posting_version_id))
 

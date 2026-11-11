@@ -40,7 +40,7 @@ from pipeline.config import (
     LlmSettings,
     Settings,
     daily_analysis_settings,
-    llm_settings,
+    jd_analysis_settings,
     load_settings,
     profile_dir,
 )
@@ -86,6 +86,7 @@ class DailySummary:
     jd_failed: list[str] = field(default_factory=list)
     jd_top_skills: list[tuple[str, int]] = field(default_factory=list)
     jd_error: str | None = None
+    jd_model: str | None = None  # which model briefed today's jobs (decision #48)
     # Fit scoring of today's briefs against the profile in PROFILE_DIR (decision #35)
     fit_status: str = "off"  # off / ok / error
     fit_profile: str = ""  # whose profile scored them
@@ -195,6 +196,7 @@ def analyze_new(
         summary.jd_error = f"{type(exc).__name__}: {exc}"
         return
     summary.jd_status = "partial" if result.failed else "ok"
+    summary.jd_model = settings.model
     summary.jd_in_scope = result.in_scope
     summary.jd_analyzed = result.analyzed
     summary.jd_from_cache = result.from_cache
@@ -210,17 +212,16 @@ def score_new(
     conn: psycopg.Connection,
     summary: DailySummary,
     new_versions: list[int],
-    settings: LlmSettings,
     profile_folder: Path | None,
     today: date,
 ) -> None:
-    """Score today's briefs (code only, free). A failure is reported, never raised."""
+    """Score today's briefs (code only, free), whichever model wrote them (decision #48). A
+    failure is reported, never raised."""
     try:
         profile = load_profile(profile_folder or profile_dir())
         rules = fit_scoring.load_rules()
         result = fit_scoring.run(
-            conn, profile=profile, rules=rules, only=new_versions, today=today,
-            brief_model=settings.model,
+            conn, profile=profile, rules=rules, only=new_versions, today=today
         )
     except Exception as exc:  # e.g. a broken profile file: keep the rest of the day's work
         summary.fit_status = "error"
@@ -323,9 +324,9 @@ def run_daily(
     steps.gate(conn, ctx)
     steps.summarize(conn, ctx)
     if llm is not None:
-        settings = llm_config or llm_settings()
+        settings = llm_config or jd_analysis_settings()
         if steps.analyze(conn, ctx, llm, settings, daily_max, scope) in ("ok", "partial"):
-            steps.score(conn, ctx, settings, profile_folder)
+            steps.score(conn, ctx, profile_folder)
     if analytics is not None:
         steps.analytics(conn, ctx, analytics, profile_folder)
     if backup is not None:
@@ -341,6 +342,7 @@ def _analysis_lines(s: DailySummary) -> list[str]:
     lines = [
         f"- 范围内的新职位 {s.jd_in_scope} 个，拆解了 {s.jd_analyzed} 个"
         f"（{s.jd_from_cache} 个来自缓存），花费 ${s.jd_cost_usd:.2f}"
+        + (f"（模型：{s.jd_model}）" if s.jd_model else "")
     ]
     if s.jd_skipped_by_limit:
         lines.append(f"- 因为每日上限没拆：{s.jd_skipped_by_limit} 个")

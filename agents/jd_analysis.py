@@ -31,7 +31,7 @@ from agents.llm import (
     cost_usd,
 )
 from agents.skills import Skill, load_skill
-from pipeline.config import REPO_ROOT, LlmSettings, llm_settings
+from pipeline.config import REPO_ROOT, LlmSettings, jd_analysis_settings
 from pipeline.safety_gate import GATE_VERSION
 
 SCOPE_FILE = REPO_ROOT / "config" / "analysis_scope.toml"
@@ -151,7 +151,7 @@ select c.posting_version_id, c.source, c.company, c.title, c.payload, g.cleaned_
        exists (
            select 1 from agents.jd_briefs b
            where b.posting_version_id = c.posting_version_id
-             and b.prompt_version = %(prompt_version)s and b.model = %(model)s
+             and b.prompt_version = %(prompt_version)s
        ) as done
 from chosen c
 join gate.results g
@@ -351,7 +351,7 @@ def main(argv: list[str] | None = None) -> int:
 
     from pipeline.db import connect, migrate
 
-    settings = llm_settings()
+    settings = jd_analysis_settings()
     with connect() as conn:
         migrate(conn)
         if args.command == "show":

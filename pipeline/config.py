@@ -97,6 +97,20 @@ def llm_settings(env_file: str | None = ".env") -> LlmSettings:
     return LlmSettings(model=model, effort=effort)
 
 
+def jd_analysis_settings(env_file: str | None = ".env") -> LlmSettings:
+    """The model and effort that brief job postings: JD_ANALYSIS_MODEL and JD_ANALYSIS_EFFORT,
+    each falling back to LLM_MODEL / LLM_EFFORT when unset (decision #48). The briefing runs on
+    every new posting, so it can use a cheaper model than resume tailoring."""
+    base = llm_settings(env_file)
+    model = os.environ.get("JD_ANALYSIS_MODEL", "").strip() or base.model
+    effort = os.environ.get("JD_ANALYSIS_EFFORT", "").strip().lower() or base.effort
+    if effort not in LLM_EFFORTS:
+        raise ConfigError(
+            f"JD_ANALYSIS_EFFORT must be one of {', '.join(LLM_EFFORTS)}, got {effort!r}."
+        )
+    return LlmSettings(model=model, effort=effort)
+
+
 @dataclass(frozen=True)
 class DailyAnalysisSettings:
     """jd-analysis inside the daily run (decision #33): on/off and how many new postings a day."""

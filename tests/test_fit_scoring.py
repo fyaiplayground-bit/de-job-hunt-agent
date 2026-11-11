@@ -154,18 +154,18 @@ def test_only_the_off_location_check_exists_yet(tmp_path):
 # ---------------------------------------------------------------- stored scores
 
 
-def _store_brief(db, posting_version_id, b):
+def _store_brief(db, posting_version_id, b, model="m"):
     db.execute(
         "insert into agents.llm_calls (request_hash, prompt_name, prompt_version, model,"
         " served_model, effort, input_hash, output, stop_reason, input_tokens, output_tokens)"
-        " values (%s, 'jd-analysis', 'jd-analysis@3', 'm', 'm', 'medium', 'h', '{}', 'end_turn',"
-        " 1, 1) returning llm_call_id", (f"r{posting_version_id}",),
+        " values (%s, 'jd-analysis', 'jd-analysis@3', %s, %s, 'medium', 'h', '{}', 'end_turn',"
+        " 1, 1) returning llm_call_id", (f"r{posting_version_id}{model}", model, model),
     )
     call_id = db.execute("select max(llm_call_id) from agents.llm_calls").fetchone()[0]
     db.execute(
         "insert into agents.jd_briefs (posting_version_id, prompt_version, model, scope_version,"
-        " llm_call_id, brief) values (%s, 'jd-analysis@3', 'm', 2, %s, %s)",
-        (posting_version_id, call_id, json.dumps(b)),
+        " llm_call_id, brief) values (%s, 'jd-analysis@3', %s, 2, %s, %s)",
+        (posting_version_id, model, call_id, json.dumps(b)),
     )
 
 
@@ -211,6 +211,24 @@ def test_run_stores_scores_once_per_profile_and_rules(briefed, tmp_path):
     bank.write_text(bank.read_text(encoding="utf-8") + "\n# edited\n", encoding="utf-8")
     run(db, profile=load_profile(edited), only=[ids[0]], **kwargs)  # new fingerprint: new row
     assert db.execute("select count(*) from agents.fit_scores").fetchone()[0] == 3
+
+
+@pytest.mark.db
+def test_the_more_capable_models_brief_is_scored_and_recorded(briefed):
+    """Decision #48: briefs from several models; the strongest one's brief counts."""
+    from agents.fit_scoring import load_briefs
+
+    db, ids = briefed  # both postings already have a brief from model "m"
+    _store_brief(db, ids[0], brief([item("Kafka")]), model="claude-haiku-5-5")
+    _store_brief(db, ids[0], brief([item("SQL"), item("Python")]), model="claude-opus-5-5")
+    rows = {pv: b for pv, b, _ in load_briefs(db, "jd-analysis@3")}
+    assert [i["skill"] for i in rows[ids[0]]["must_haves"]] == ["SQL", "Python"]  # Opus's
+    assert len(rows) == 2  # one brief per posting
+
+    run(db, profile=PROFILE, rules=RULES, vocab=VOCAB, today=TODAY,
+        brief_prompt_version="jd-analysis@3")
+    models = dict(db.execute("select posting_version_id, brief_model from agents.fit_scores"))
+    assert models == {ids[0]: "claude-opus-5-5", ids[1]: "m"}
 
 
 @pytest.mark.db

@@ -40,7 +40,7 @@ from pipeline.config import (
     LlmSettings,
     daily_analysis_settings,
     is_source_enabled,
-    llm_settings,
+    jd_analysis_settings,
     load_settings,
 )
 from pipeline.db import connect, migrate
@@ -247,14 +247,11 @@ def analyze(
 def score(
     conn: psycopg.Connection,
     ctx: RunContext,
-    settings: LlmSettings,
     profile_folder: Path | None = None,
 ) -> None:
     started = datetime.now(UTC)
     summary = _empty(ctx)
-    daily.score_new(
-        conn, summary, new_version_ids(conn, ctx), settings, profile_folder, ctx.local_date
-    )
+    daily.score_new(conn, summary, new_version_ids(conn, ctx), profile_folder, ctx.local_date)
     save_step(conn, ctx, "score", _summary_fields(summary, "score"), {}, started)
 
 
@@ -401,7 +398,7 @@ def _one_step(
         if not analysis.enabled:
             print("JD analysis is turned off in .env; skipped")
             return SKIPPED
-        status = analyze(conn, ctx, services.llm, llm_settings(), analysis.daily_max)
+        status = analyze(conn, ctx, services.llm, jd_analysis_settings(), analysis.daily_max)
         print(f"briefing: {status}")
     elif args.step == "score":
         briefed = [
@@ -411,7 +408,7 @@ def _one_step(
         if not briefed or briefed[0]["fields"]["jd_status"] not in ("ok", "partial"):
             print("no briefing to score today; skipped")
             return SKIPPED
-        score(conn, ctx, llm_settings())
+        score(conn, ctx)
     elif args.step == "analytics":
         analytics(conn, ctx, services.refresh)
     elif args.step == "backup":

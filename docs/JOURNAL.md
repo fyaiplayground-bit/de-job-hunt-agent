@@ -689,3 +689,10 @@
 - **验证：** 事实库检查只剩 1 个问题：开始年月还没填；`git status` 确认 `private/` 里的文件被忽略、没进提交
 - **还差：** 你的 4 个回答（第 2 条的数据量、职位/城市/开始年月、Tableau、25 张表的行数确认）和勾选做过的数据质量检查；之后第二轮（个人项目、学历、之前的工作）
 
+### 2.3c · 2026-11-13 · 打分规则 v4：DE 排在 AE 前面
+- **做了什么：** 岗位类型调整从 AE +5 / pipeline DE 0 / infra DE −5 改成 AE −15 / pipeline DE +5 / infra DE 0；所有拆解重新打分，dbt 重建
+- **为什么：** DECISIONS #49。你面完一个 AE 岗位后确认目标是 DE；旧规则反而给 AE 加分，前 20 名里 AE 占了 11 个
+- **文件：** `config/fit_scoring.toml`、`config/proposals/fit_scoring.v4.toml`、`tests/test_fit_scoring.py`、`tests/test_daily.py`、`docs/DECISIONS.md`、`docs/JOURNAL.md`、`docs/STATUS.md`
+- **提交：** 见本条所在的提交
+- **验证：** 规则评估（标准答案检查通过，没有职位因为这次改动被跳过）；全部 662 个测试通过（3 个测试里的分数按新规则更新，并新加一个断言：同一个职位算 AE 时降到 48 分，没有"找内推"）；重新打分 425 个：跳过 204、投 182、投 + 找内推 39；前 10 名都是 DE
+- **撤回：** 把 `config/fit_scoring.toml` 改回 v3，再跑 `uv run python -m agents.fit_scoring run`

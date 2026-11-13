@@ -3,7 +3,7 @@
 # data: change them through the loop (propose, show what moves, FL approves, bump version,
 # record in DECISIONS.md), then `uv run python -m agents.fit_scoring run` rescores everything.
 
-version = 3
+version = 4
 
 # score = must_weight x must-have coverage + nice_weight x nice-to-have coverage + archetype
 # adjustment, kept within 0..100. Coverage is the share of skills the profile covers.
@@ -18,9 +18,12 @@ core_weight = 2          # a core must-have counts this many times in must-have 
 exact_phrases = "alternatives_only"
 
 [archetype_adjustment]
-analytics_engineer = 5   # the strongest bridge from BI engineering
-pipeline_de = 0
-infra_de = -5
+# v4 (proposed 2026-11-13): FL's target is data engineering, not analytics engineering. AE roles
+# stay possible (their decision doesn't change) but rank below pipeline DE roles and lose the
+# referral flag unless they score very high. Infra DE no longer penalized: it's still DE.
+analytics_engineer = -15
+pipeline_de = 5
+infra_de = 0
 
 [decision]
 apply_bar = 0.5          # apply when must-have coverage reaches this (decision #8)

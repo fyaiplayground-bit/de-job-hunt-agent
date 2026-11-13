@@ -86,21 +86,25 @@ def test_candidate_years_count_every_role():
 def test_score_formula_and_referral():
     b = brief(
         must=[item("SQL", weight="core"), item("Python"), item("Kafka")],
-        nice=[item("dbt"), item("Scala")], archetype="analytics_engineer",
+        nice=[item("dbt"), item("Scala")], archetype="pipeline_de",
     )
     r = score_brief(b, PROFILE, RULES, VOCAB, TODAY)
     assert r.must_have_coverage == 0.75  # (2 + 1) of (2 + 1 + 1): core counts double
     assert r.nice_coverage == 0.5
-    assert r.score == 68  # 70 x 0.75 + 20 x 0.5 + 5 = 67.5
+    assert r.score == 68  # 70 x 0.75 + 20 x 0.5 + 5 (pipeline DE, rules v4) = 67.5
     assert r.decision == "apply_referral"
     assert r.not_covered == ["Kafka"] and r.nice_missing == ["Scala"]
     assert r.lead_with == ["SQL", "Python"]  # core first
+
+    # Rules v4 (decision #49): the same job as analytics engineering ranks lower, no referral.
+    ae = score_brief({**b, "archetype": "analytics_engineer"}, PROFILE, RULES, VOCAB, TODAY)
+    assert (ae.score, ae.decision) == (48, "apply")  # 62.5 - 15
 
 
 def test_no_nice_to_haves_count_as_well_covered_as_the_must_haves():
     r = score_brief(brief([item("SQL"), item("Kafka")]), PROFILE, RULES, VOCAB, TODAY)
     assert r.nice_coverage == r.must_have_coverage == 0.5
-    assert (r.score, r.decision) == (45, "apply")  # 35 + 10; exactly at the 50% bar
+    assert (r.score, r.decision) == (50, "apply")  # 35 + 10 + 5 (pipeline DE); at the 50% bar
 
 
 def test_below_the_bar_is_skipped_with_the_missing_skills():

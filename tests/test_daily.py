@@ -211,9 +211,9 @@ def test_daily_run_briefs_todays_new_in_scope_jobs(db, greenhouse_jobs, freehire
     # scored against the sample profile: Alex covers Python and SQL, 3 years asked
     assert (summary.fit_status, summary.fit_scored) == ("ok", 2)
     assert summary.fit_profile == "Alex Sample（样本档案）"
-    assert [w["score"] for w in summary.fit_worth] == [90, 90]
+    assert [w["score"] for w in summary.fit_worth] == [95, 95]  # pipeline DE +5 (rules v4)
     assert "## 今天值得投的（按 Alex Sample（样本档案） 打分）" in report
-    assert "- 投 + 找内推 · 90 分 · [" in report
+    assert "- 投 + 找内推 · 95 分 · [" in report
 
     later = datetime(2026, 11, 1, 20, 0, tzinfo=UTC)
     second = run_daily(

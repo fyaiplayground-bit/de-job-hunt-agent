@@ -69,15 +69,15 @@ Update this file at the end of every work session: what got done, what's next, w
 
 **Claude, after a few more days of briefs:** run `agents.fit_scoring unmatched` and grow `config/skill_vocabulary.toml` through the loop.
 
-**Claude, next run:** check that rules v3 scored the new jobs. After FL's next real login, check `output/daily/daily.log`: the login trigger (#43) hasn't fired for real yet.
+**Claude, at a login:** the login trigger (#43) hasn't been seen firing for real yet; check `output/daily/daily.log` after FL's next sign-in on a day the 9:30 run was missed.
 
 **FL's goal for later (2026-11-04):** automate submission as far as possible. Design it with real sites: Claude can fill forms up to the final page, never enters passwords, creates accounts or solves CAPTCHAs, and a person approves every batch. Of today's 5 jobs, 4 are on sites that usually need an account and 1 is an aggregator link.
 
-**Worth raising:** all job data lives only on this laptop (see NOTES, "数据存在哪里"); the S3 backup is in Milestone 4 and needs FL's personal AWS account. Real applications start at Milestone 5, which doesn't technically depend on Milestones 3 and 4, though those are the DE portfolio work; FL may want to reorder.
+**Not built yet:** the outreach agent (DESIGN agents 3 and 7, skill `outreach-drafting` written, no module), and the submission flow FL wants automated as far as allowed (above). Both belong to Milestone 5 or after.
 
 **Also for FL:** (1) 100 jobs in scope on 11/05, 50 over the cap: FL kept the cap at 50 and said to look again once there was more volume. (2) 10 unlabeled review alarms (`pipeline.alarm_report`, `pipeline.labels add`); none reach the LLM.
 
-**Next run (11/11):** first daily briefing on Haiku 5.5 (#48): check the report's AI line names `claude-haiku-5-5`, the cost is cents, and the briefs look sane.
+**Laptop sleep:** a run that starts and then the laptop sleeps freezes until it wakes (run 14 started 11/11 19:08, finished 11/12 20:26, all ok). The scheduled task then counts as still running, so the next day's 9:30 start is skipped; the following run's search window catches up the missed days, so nothing is lost.
 
 **Then:** decide with FL whether to move to a small cloud server before Milestone 5 (design first: what moves, monthly cost, EventBridge vs an always-on scheduler, FastAPI if it moves; #45, #47). Otherwise start Milestone 5. Airflow is stopped; start it only on request (NOTES, 常用操作).
 
@@ -136,3 +136,4 @@ Standing facts: JD briefs run on Claude Haiku 5.5 (`JD_ANALYSIS_MODEL` in `.env`
 - 2026-11-10 — Laptop asleep until 19:06; the catch-up ran at 19:12 (run 13, first Windows run on the saved steps: every step ok, 502 new jobs, 45 briefed for $1.94, backup 86.1 MB). 4.5: the Windows task keeps 9:30, Airflow stays off (#47). README architecture diagram and M4 interview note: Milestone 4 done.
 - 2026-11-10 — AI cost: Haiku and Sonnet tested on the jd-analysis golden set, and Opus's own run-to-run variation measured; JD briefs move to Haiku 5.5 until Milestone 5 (#48), resume work stays on Opus.
 - 2026-11-10 — With FL's OK, backfilled the 164 open in-scope postings that had gone unbriefed over the daily cap, on Haiku 5.5 for $0.20; 325 current briefs scored, dbt rebuilt.
+- 2026-11-12 — Run 14 (11/11) froze while the laptop slept and finished on wake: first daily briefing on Haiku 5.5, 50 briefed for $0.07 (Opus run 13: 45 for $1.94), backup 88.6 MB. No 11/12 run (the task was still running); 11/13 catches up.

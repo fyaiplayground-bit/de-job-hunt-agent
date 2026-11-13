@@ -137,3 +137,4 @@ Standing facts: JD briefs run on Claude Haiku 5.5 (`JD_ANALYSIS_MODEL` in `.env`
 - 2026-11-10 — AI cost: Haiku and Sonnet tested on the jd-analysis golden set, and Opus's own run-to-run variation measured; JD briefs move to Haiku 5.5 until Milestone 5 (#48), resume work stays on Opus.
 - 2026-11-10 — With FL's OK, backfilled the 164 open in-scope postings that had gone unbriefed over the daily cap, on Haiku 5.5 for $0.20; 325 current briefs scored, dbt rebuilt.
 - 2026-11-12 — Run 14 (11/11) froze while the laptop slept and finished on wake: first daily briefing on Haiku 5.5, 50 briefed for $0.07 (Opus run 13: 45 for $1.94), backup 88.6 MB. No 11/12 run (the task was still running); 11/13 catches up.
+- 2026-11-12 — Milestone 5 started: Evidence Bank round 1 (current role, 9 entries) drafted in private/, waiting on FL's last answers; round 2 is projects, education and earlier roles.

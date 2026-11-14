@@ -722,3 +722,14 @@
 - **发现的问题（还没改，要先出方案）：** (1) 压成一页时，会删掉审阅 agent 特意加的那一条（Bison 的代码审查和测试那条）；(2) "SCD Type 2" 里的 2 会被当成需要出处的数字；(3) 有一份还留着 "for every pipeline" 这种说过头的话，审阅只在 3 份里抓到了 2 份
 - **撤回：** `git revert` 这个提交
 
+### 5.5 · 2026-11-14 · 修好简历流程的 3 个问题
+- **做了什么：** (1) "every/all/for each + pipelines/tables 这类"绝对说法，如果引用的经历里没有，就算事实问题，审阅必须改；(2) "Type 1 / Type 2" 不再被当成需要出处的数字；(3) 压成一页时，先删"删掉后丢关键词最少"的那条，平手时先删起草的、保留审阅特意加的。你的通用简历也改回了 "SCD Type 1 and Type 2"
+- **为什么：** DECISIONS #50
+- **文件：** `agents/resume_checks.py`、`agents/profile.py`、`agents/tailor.py`、`tests/test_tailor.py`、`docs/DECISIONS.md`、`docs/JOURNAL.md`
+- **提交：** 见本条所在的提交
+- **验证：**
+  1. 新增测试：绝对说法 7 种写法（会抓的和不该抓的）、SCD 三种写法、压页保留关键词、平手保留审阅加的那条；全部 678 个测试通过
+  2. 用你的真实档案重跑 3 个职位：三份都没有 "every/each pipeline" 了，Sigma 能写 "SCD Type 2"，Bison 的测试那条保住了；三份都是 ready、一页
+  3. 过程中自己踩的两个坑，都补了测试：关键词如果连 Skills 一起算，就永远"不会丢"；第一版"each"规则误伤了 "tests each pipeline change"
+  4. **花费：** 估计 $0.10，实际 $0.76（三份都因为新检查多审一轮，Bison 又多跑了一次）；最后一次重跑全部命中缓存，$0
+- **撤回：** `git revert` 这个提交

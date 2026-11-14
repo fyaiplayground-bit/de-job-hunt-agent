@@ -275,6 +275,41 @@ def test_numbers_glued_to_letters_are_not_claims():
 
 
 @pytest.mark.parametrize(
+    "text", ["Modeled SCD Type 2 dimensions", "Modeled SCD Type 1 and Type 2 dimensions",
+             "Modeled SCD Type 1/2 dimensions"],
+)
+def test_scd_types_are_labels_not_quantities(text):
+    """Decision #50: "Type 2" names a kind of dimension; no metric has to back it."""
+    fine = draft()
+    fine["experience"][0]["bullets"][1] = {"text": text, "evidence": ["qf-star-schema"]}
+    assert check_bullets(fine, BANK) == []
+
+
+@pytest.mark.parametrize(
+    "text, flagged",
+    [
+        ("Added data quality checks to every pipeline", "every pipeline"),
+        ("Tuned all of the tables in Redshift", "all of the tables"),
+        ("Added checks to every production pipeline", "every production pipeline"),
+        ("Added data quality checks for each pipeline", "for each pipeline"),  # reviewer's dodge
+        ("Built a driver that checks each change before merge", None),  # not a scope claim
+        ("Built tooling that tests each pipeline change against real data", None),
+        ("Built tooling that tests every pipeline change before merge", None),
+        ("Added data quality checks to the Glue loads", None),
+        ("Gave all engineers a faster review", None),  # not a scope claim about data
+    ],
+)
+def test_absolute_claims_must_come_from_the_evidence(text, flagged):
+    """Decision #50: "every pipeline" needs evidence that says so."""
+    d = draft()
+    d["experience"][0]["bullets"][0] = {"text": text, "evidence": ["qf-data-quality"]}
+    problems = [p for p in check_bullets(d, BANK) if "absolute claim" in p]
+    assert problems == ([] if flagged is None else [problems[0]])
+    if flagged:
+        assert repr(flagged) in problems[0]
+
+
+@pytest.mark.parametrize(
     "where, text",
     [
         ("summary", "Engineer with deep Kafka experience."),  # the job asks; the bank has none
@@ -549,6 +584,37 @@ def test_trim_cuts_the_end_of_the_longest_list_and_keeps_one_each():
     d = draft()
     assert trim_one_bullet(d).startswith("Designed a star schema")
     assert trim_one_bullet(d) is None  # every entry is down to one bullet
+
+
+def test_trim_keeps_a_bullet_that_alone_says_a_keyword():
+    """Decision #50: the last bullet (e.g. one the reviewer added) stays when only it says a
+    covered must-have; the bullet that says nothing new goes instead."""
+    d = draft()
+    d["experience"][0]["bullets"] = [
+        {"text": "Set up Athena tables over 2 years of clickstream logs in S3",
+         "evidence": ["qf-athena-clickstream"]},
+        *d["experience"][0]["bullets"],
+    ]
+    d["experience"][0]["bullets"][-1]["text"] = "Designed a star schema in SQL"  # only SQL here
+    d["experience"][0]["bullets"][1]["text"] = "Built daily data pipelines in Python"
+    # Python and ETL are also said by the other role, so neither of the first two bullets loses a
+    # keyword; the tie falls back to the later one. The old rule would have cut the SQL bullet.
+    assert trim_one_bullet(d, JOB.brief, JOB.fit) == "Built daily data pipelines in Python"
+    assert trim_one_bullet(d, JOB.brief, JOB.fit).startswith("Set up Athena tables")
+    assert [b["text"] for b in d["experience"][0]["bullets"]] == ["Designed a star schema in SQL"]
+
+
+def test_on_a_tie_trim_keeps_the_bullet_the_reviewer_added():
+    """Decision #50: a bullet the reviewer added for the posting goes after the drafter's own."""
+    d = apply_edit(
+        draft(),
+        edit("add_bullet", new="Moved the BI team's SQL into Git with code review",
+             where="quillfeather-bie", evidence=["qf-git"]),
+        PROFILE,
+    )
+    assert d["experience"][0]["bullets"][-1]["added_by_review"] is True
+    removed = trim_one_bullet(d, JOB.brief, JOB.fit)
+    assert removed != "Moved the BI team's SQL into Git with code review"
 
 
 # ---------------------------------------------------------------- what each LLM sees

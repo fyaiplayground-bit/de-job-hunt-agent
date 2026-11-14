@@ -20,6 +20,17 @@ MAX_BULLET_CHARS = 220  # about two lines on the page
 BANNED_OPENINGS = ("responsible for", "worked on", "helped")
 WORD = re.compile(r"[A-Za-z][A-Za-z0-9+#]*")
 FIRST_PERSON = re.compile(r"\bI\b|\b[Mm]y\b")
+# An absolute claim about scope ("every pipeline", "all of the tables") that the cited evidence
+# has to make too (decision #50): the reviewer caught "for every pipeline" in only 2 of 3 runs.
+# "each" only as a scope ("for each pipeline"), and never "each pipeline change": that's about
+# changes, not about covering every pipeline.
+ABSOLUTE_CLAIM = re.compile(
+    r"\b(?:(?:every|all)\s+(?:of\s+(?:the|our|its)\s+)?|(?:for|to|across|on|in)\s+each\s+)"
+    r"(?:[a-z-]+\s+)?"
+    r"(?:pipelines?|tables?|datasets?|jobs?|models?|dashboards?|loads?|sources?|teams?|reports?)\b"
+    r"(?!\s+(?:changes?|runs?|loads?|updates?|failures?|owners?)\b)",
+    re.IGNORECASE,
+)
 # Advertises a gap (FL, 2026-11-04). Only the headline and summary: a bullet may describe a
 # system "moving to" somewhere.
 TRANSITION = re.compile(
@@ -80,6 +91,7 @@ def check_bullets(draft: dict[str, Any], bank: EvidenceBank) -> list[str]:
             problems.append(f"bullet cites no evidence: {text!r}")
             continue
         allowed: set[str] = set()
+        cited_text = ""
         for evidence_id in bullet["evidence"]:
             entry = entries.get(evidence_id)
             if entry is None:
@@ -88,8 +100,15 @@ def check_bullets(draft: dict[str, Any], bank: EvidenceBank) -> list[str]:
                 problems.append(f"evidence {evidence_id!r} belongs to {entry.where!r}: {text!r}")
             else:
                 allowed |= set().union(*map(_numbers, entry.metrics), set())
+                cited_text += " " + entry.summary
         for number in sorted(_numbers(text) - allowed):
             problems.append(f"the number {number} is not in the cited evidence: {text!r}")
+        for claim in ABSOLUTE_CLAIM.findall(text):
+            if claim.lower() not in cited_text.lower():
+                problems.append(
+                    f"absolute claim {claim!r} is not in the cited evidence; say what it "
+                    f"covers instead: {text!r}"
+                )
     return problems
 
 

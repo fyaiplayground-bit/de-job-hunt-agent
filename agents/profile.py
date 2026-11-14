@@ -57,6 +57,11 @@ YEAR_MONTH = re.compile(r"^\d{4}-(0[1-9]|1[0-2])$")
 YEAR = re.compile(r"^\d{4}$")  # education may give the year alone, as most resumes do
 # A number on the resume: digits not glued to a letter, so "S3" doesn't count as a 3.
 NUMBER = re.compile(r"(?<![A-Za-z\d.])\d+(?:[.,]\d+)*")
+# A label, not an amount, so no metric has to back it: "SCD Type 2", "Type 1 and Type 2",
+# "Type 1/2" (decision #50).
+NOT_A_QUANTITY = re.compile(
+    r"\bType\s+[1-6](?:\s*(?:/|,|and|or)\s*(?:Type\s+)?[1-6])*\b", re.IGNORECASE
+)
 
 
 class ProfileError(ValueError):
@@ -288,6 +293,8 @@ def resume_sections(resume: str) -> dict[str, str]:
 
 
 def _numbers(text: str) -> set[str]:
+    """The amounts a text claims; labels such as "SCD Type 2" don't count."""
+    text = NOT_A_QUANTITY.sub(" ", text)
     return {match.replace(",", "") for match in NUMBER.findall(text)}
 
 

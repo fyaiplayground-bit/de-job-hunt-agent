@@ -38,7 +38,7 @@ from agents.llm import AnthropicClient, LlmClient, LlmError, LlmResult, ask, bui
 from agents.pdf_checks import PdfReport, check_pdf
 from agents.profile import Profile, load_profile, resume_month
 from agents.render_resume import render_pdf
-from agents.resume_checks import Problems, check_draft, draft_bullets
+from agents.resume_checks import Problems, check_draft, draft_bullets, mentions
 from agents.resume_doc import ResumeFormatError, parse_resume
 from agents.skills import Skill, load_skill, parse_skill
 from pipeline.config import REPO_ROOT, LlmSettings, llm_settings, profile_dir
@@ -223,7 +223,8 @@ def apply_edit(draft: dict[str, Any], edit: dict[str, Any], profile: Profile) ->
         if key == "text":
             box["evidence"] = list(dict.fromkeys([*box["evidence"], *edit["evidence"]]))
     elif kind == "add_bullet":
-        bullet = {"text": new, "evidence": list(edit["evidence"])}
+        # Marked, so trimming to one page cuts the drafter's bullets first (decision #50).
+        bullet = {"text": new, "evidence": list(edit["evidence"]), "added_by_review": True}
         if edit["where"] in {role.id for role in profile.bank.roles}:
             section = "experience"
         elif edit["where"] in {project.id for project in profile.bank.projects}:
@@ -251,13 +252,61 @@ def apply_edit(draft: dict[str, Any], edit: dict[str, Any], profile: Profile) ->
     return draft
 
 
-def trim_one_bullet(draft: dict[str, Any]) -> str | None:
-    """Cut the last bullet of the role or project with the most, keeping one each: bullets are
-    ordered by relevance, so that is the least relevant. None when nothing can go."""
+def keywords_in_bullets(
+    draft: dict[str, Any], brief: dict[str, Any], fit: dict[str, Any]
+) -> set[str]:
+    """The job's covered must-haves that some bullet says, by name or in the posting's words."""
+    text = "\n".join(bullet["text"] for _, _, bullet in draft_bullets(draft))
+    items = {item["skill"]: item for item in brief["must_haves"]}
+    said = set()
+    for match in fit["covered"]:
+        phrases = items.get(match["asked"], {}).get("exact_phrases", [])
+        forms = [match["asked"], match["skill"], *phrases]
+        if any(mentions(text, form) for form in forms if form):
+            said.add(match["asked"])
+    return said
+
+
+def trim_one_bullet(
+    draft: dict[str, Any],
+    brief: dict[str, Any] | None = None,
+    fit: dict[str, Any] | None = None,
+) -> str | None:
+    """Cut one bullet, keeping one per role or project. None when nothing can go.
+
+    With the job's brief and fit (decision #50): cut the bullet whose loss takes the fewest of the
+    job's covered must-haves out of the bullets (the Skills line names them all anyway; a bullet
+    gives the keyword its context), so a bullet that alone says a keyword stays. On a tie the
+    drafter's bullets go before one the reviewer added, then the last bullet of the role or
+    project with the most (bullets are ordered by relevance); calls without a job use only that."""
     entries = [e for s in ("experience", "projects") for e in draft[s] if len(e["bullets"]) > 1]
     if not entries:
         return None
-    return max(entries, key=lambda e: len(e["bullets"]))["bullets"].pop()["text"]
+    if brief is None or fit is None:
+        return max(entries, key=lambda e: len(e["bullets"]))["bullets"].pop()["text"]
+
+    said_now = keywords_in_bullets(draft, brief, fit)
+
+    def lost(entry: dict[str, Any], index: int) -> int:
+        bullet = entry["bullets"].pop(index)
+        said = keywords_in_bullets(draft, brief, fit)
+        entry["bullets"].insert(index, bullet)
+        return len(said_now - said)
+
+    candidates = [
+        (
+            lost(entry, i),
+            bool(entry["bullets"][i].get("added_by_review")),  # the reviewer added it on purpose
+            -len(entry["bullets"]),
+            -i,
+            n,
+            i,
+        )
+        for n, entry in enumerate(entries)
+        for i in range(len(entry["bullets"]))
+    ]
+    *_, n, i = min(candidates)
+    return entries[n]["bullets"].pop(i)["text"]
 
 
 def candidate_data(profile: Profile) -> dict[str, Any]:
@@ -476,7 +525,7 @@ def render_and_trim(
         report = check_pdf(pdf, expected_lines=doc.lines())
         if report.pages <= 1:
             break
-        removed = trim_one_bullet(draft)
+        removed = trim_one_bullet(draft, job.brief, job.fit)
         if removed is None:
             break
         trims.append(removed)

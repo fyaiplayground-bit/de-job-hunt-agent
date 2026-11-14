@@ -285,5 +285,24 @@ def check_draft(
 ) -> Problems:
     return Problems(
         facts=tuple(check_facts(draft, resume, profile, brief, fit, vocab)),
-        quality=tuple(check_quality(draft, brief, fit)),
+        quality=tuple(check_quality(draft, brief, fit) + check_projects(draft, profile.bank)),
     )
+
+
+def check_projects(draft: dict[str, Any], bank: EvidenceBank, wanted: int = 2) -> list[str]:
+    """Up to two built projects each get at least one bullet (FL, 2026-11-14): they carry the data
+    engineering done outside the day job, and one alone hides half of it. A course or exercise
+    (only "practiced" evidence) isn't required."""
+    with_evidence = [
+        p for p in bank.projects
+        if any(e.where == p.id and e.level == "project" for e in bank.evidence)
+    ]
+    shown = {entry["where"] for entry in draft["projects"] if entry["bullets"]}
+    need = min(wanted, len(with_evidence))
+    missing = [p.name for p in with_evidence if p.id not in shown]
+    if len(shown) < need and missing:
+        return [
+            f"only {len(shown)} of {need} projects on the resume; add one bullet for: "
+            + ", ".join(missing)
+        ]
+    return []

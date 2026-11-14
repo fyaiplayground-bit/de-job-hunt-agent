@@ -178,9 +178,9 @@ def build_resume(draft: dict[str, Any], profile: Profile) -> str:
         found = bullets("projects", project.id)
         if not found:
             continue
-        status = " (in progress)" if project.status == "in_progress" else ""
+        # No "(in progress)": a resume isn't a status report (FL, 2026-11-14).
         address = f" · {_web_address(project.url)}" if project.url else ""
-        lines += [f"**{project.name}**{status}{address}", "", *found, ""]
+        lines += [f"**{project.name}**{address}", "", *found, ""]
     lines += ["## Skills", "", ", ".join(draft["skills"]), "", "## Education", ""]
     for school in bank.education:
         lines.append(f"**{school.degree}** · {school.school} · {resume_month(school.end)}")

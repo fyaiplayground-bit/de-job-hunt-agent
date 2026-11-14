@@ -18,6 +18,7 @@ from agents.resume_checks import (
     check_facts,
     check_no_invented_skills,
     check_no_unknown_names,
+    check_projects,
     check_quality,
     keyword_coverage,
     mentions,
@@ -188,9 +189,21 @@ def test_build_resume_prints_facts_from_the_bank():
     assert "Mar 2021 - Present" in resume
     assert "**B.A. Economics** · Front Range State University · May 2017" in resume
     assert "Denver, CO · alex.sample@example.com · (303) 555-0142 · example.com/" in resume
-    assert "**Bike-Share Trips Pipeline** (in progress) · example.com/alex-sample/" in resume
+    assert "**Bike-Share Trips Pipeline** · example.com/alex-sample/" in resume  # no status label
     assert "Spark practice" not in resume  # a project without bullets stays off
     assert "example.com/alex-sample/code" in resume.splitlines()[3]  # GitHub in the header
+
+
+def test_both_built_projects_must_be_on_the_page():
+    """FL, 2026-11-14: two built projects both show; a course alone isn't required."""
+    from dataclasses import replace
+
+    assert check_projects(draft(), BANK) == []  # the sample's other project is a course
+    built = replace(BANK.evidence[-1], where="spark-course", level="project")  # pretend it's built
+    bank = replace(BANK, evidence=(*BANK.evidence, built))
+    assert check_projects(draft(), bank) == [
+        "only 1 of 2 projects on the resume; add one bullet for: Spark practice (online course)"
+    ]
 
 
 def test_a_role_without_a_city_has_no_trailing_separator():

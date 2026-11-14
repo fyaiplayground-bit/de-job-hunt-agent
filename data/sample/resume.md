@@ -28,7 +28,7 @@ Jun 2017 - Feb 2021
 
 ## Projects
 
-**Bike-Share Trips Pipeline** (in progress) · example.com/alex-sample/bikeshare-pipeline
+**Bike-Share Trips Pipeline** · example.com/alex-sample/bikeshare-pipeline
 
 - Loads about 3 million public bike-share trips a month from S3 into PostgreSQL; re-runs add no duplicates
 - 9 dbt models with 21 tests, running in Docker

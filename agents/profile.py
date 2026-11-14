@@ -54,6 +54,7 @@ APPLICANT_FIELDS: dict[str, dict[str, type]] = {
 
 MONTHS = ("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
 YEAR_MONTH = re.compile(r"^\d{4}-(0[1-9]|1[0-2])$")
+YEAR = re.compile(r"^\d{4}$")  # education may give the year alone, as most resumes do
 # A number on the resume: digits not glued to a letter, so "S3" doesn't count as a 3.
 NUMBER = re.compile(r"(?<![A-Za-z\d.])\d+(?:[.,]\d+)*")
 
@@ -266,7 +267,9 @@ def load_profile(folder: Path) -> Profile:
 
 
 def resume_month(year_month: str) -> str:
-    """'2021-03' -> 'Mar 2021', the one date format on the resume."""
+    """'2021-03' -> 'Mar 2021', the one date format on the resume; a year alone stays '2018'."""
+    if YEAR.match(year_month):
+        return year_month
     year, month = year_month.split("-")
     return f"{MONTHS[int(month) - 1]} {year}"
 
@@ -303,10 +306,14 @@ def check_evidence_bank(bank: EvidenceBank) -> list[str]:
     dates = [(f"role {r.id}", "start", r.start) for r in bank.roles]
     dates += [(f"role {r.id}", "end", r.end) for r in bank.roles if r.end]
     dates += [(f"project {p.id}", "start", p.start) for p in bank.projects]
-    dates += [(f"education {e.school}", "end", e.end) for e in bank.education]
     for owner, key, value in dates:
         if not YEAR_MONTH.match(value):
             problems.append(f"{owner}: {key} {value!r} should look like 2021-03")
+    for school in bank.education:
+        if not (YEAR_MONTH.match(school.end) or YEAR.match(school.end)):
+            problems.append(
+                f"education {school.school}: end {school.end!r} should look like 2018 or 2018-05"
+            )
     for role in bank.roles:
         if role.end and role.end < role.start:
             problems.append(f"role {role.id}: ends before it starts")

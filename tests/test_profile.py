@@ -108,6 +108,7 @@ def test_skill_level_is_the_strongest_evidence(profile):
 def test_resume_month():
     assert resume_month("2021-03") == "Mar 2021"
     assert resume_month("2017-12") == "Dec 2017"
+    assert resume_month("2018") == "2018"  # a degree may give the year only
 
 
 def test_profile_dir_default_and_override(monkeypatch, tmp_path):
@@ -196,6 +197,19 @@ def test_bad_level_status_and_dates_are_caught(bank_data):
         "evidence qf-glue-redshift: level 'expert' not in ('production', 'project', 'practiced')",
         "skill 'SQL': status 'maybe' is not have/learning",
     ]
+
+
+def test_a_degree_may_give_the_year_alone(bank_data):
+    bank_data["education"][0]["end"] = "2017"
+    assert check_evidence_bank(parse_evidence_bank(bank_data)) == []
+    bank_data["education"][0]["end"] = "Spring 2017"
+    assert check_evidence_bank(parse_evidence_bank(bank_data)) == [
+        "education Front Range State University: end 'Spring 2017' should look like 2018 or 2018-05"
+    ]
+    bank_data["roles"][0]["start"] = "2021"  # roles still need the month
+    assert "role quillfeather-bie: start '2021' should look like 2021-03" in check_evidence_bank(
+        parse_evidence_bank(bank_data)
+    )
 
 
 def test_duplicate_ids_are_caught(bank_data):

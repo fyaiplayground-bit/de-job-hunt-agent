@@ -147,7 +147,7 @@ def build_resume(draft: dict[str, Any], profile: Profile) -> str:
     it has bullets."""
     bank, contact, links = profile.bank, profile.applicant["contact"], profile.applicant["links"]
     top = [f"{contact['city']}, {contact['state']}", contact["email"], contact["phone"]]
-    top += [_web_address(links[key]) for key in ("portfolio", "linkedin") if links[key]]
+    top += [_web_address(links[key]) for key in ("portfolio", "linkedin", "github") if links[key]]
 
     def bullets(section: str, where: str) -> list[str]:
         return [
@@ -169,7 +169,8 @@ def build_resume(draft: dict[str, Any], profile: Profile) -> str:
     ]
     for role in bank.roles:
         end = resume_month(role.end) if role.end else "Present"
-        lines += [f"**{role.title}** · {role.employer} · {role.location}"]
+        place = f" · {role.location}" if role.location else ""  # a role may leave its city out
+        lines += [f"**{role.title}** · {role.employer}{place}"]
         lines += [f"{resume_month(role.start)} - {end}", ""]
         lines += [*bullets("experience", role.id), ""]
     lines += ["## Projects", ""]

@@ -713,3 +713,12 @@
 - **验证：** `agents.profile check private` 通过（简历里每个数字都能在事实库里找到；第一次检查抓到 "SCD Type 1/2" 里的 1 不是事实库里的数字，改了写法）；PDF 检查：一页，内容占到页面 88%，ATS 读出的文字顺序正确；`git status` 确认 `private/` 里的文件都被忽略
 - **还差：** 你确认申请资料里的默认值；之后把每天的运行切换到你的真实档案（`PROFILE_DIR=private`）
 
+### 5.4 · 2026-11-14 · 第一次用真实档案跑"改写 → 审阅 → 修改"（前 3 个职位）
+- **做了什么：** 你同意后，用 `PROFILE_DIR=private` 给按你的档案排名前 3 的职位（都是 95 分的 DE 岗位）各生成一份定制简历，花了 $0.73（估计 $0.60）。三个职位的必备技能全部被你的经历覆盖。审阅 agent 改的大多是"说过头"的地方，比如"every pipeline"改成"production pipelines"，"data integration"改成"data access"。顺手修了两个排版问题：没有城市的工作后面多一个"·"；简历抬头只有 LinkedIn，没有 GitHub
+- **为什么：** 第 5 阶段第一次用真实档案跑通整个流程，也看看审阅会改什么
+- **文件：** `agents/tailor.py`、`tests/test_tailor.py`、`docs/JOURNAL.md`；简历在 `private/output/tailored/`（不上传）
+- **提交：** 见本条所在的提交
+- **验证：** 新增测试：抬头有 GitHub、没有城市的工作不多出"·"；全部 664 个测试通过；改完重新生成 3 份（AI 回答都有缓存，花费 $0），都是一页
+- **发现的问题（还没改，要先出方案）：** (1) 压成一页时，会删掉审阅 agent 特意加的那一条（Bison 的代码审查和测试那条）；(2) "SCD Type 2" 里的 2 会被当成需要出处的数字；(3) 有一份还留着 "for every pipeline" 这种说过头的话，审阅只在 3 份里抓到了 2 份
+- **撤回：** `git revert` 这个提交
+

@@ -190,6 +190,16 @@ def test_build_resume_prints_facts_from_the_bank():
     assert "Denver, CO · alex.sample@example.com · (303) 555-0142 · example.com/" in resume
     assert "**Bike-Share Trips Pipeline** (in progress) · example.com/alex-sample/" in resume
     assert "Spark practice" not in resume  # a project without bullets stays off
+    assert "example.com/alex-sample/code" in resume.splitlines()[3]  # GitHub in the header
+
+
+def test_a_role_without_a_city_has_no_trailing_separator():
+    from dataclasses import replace
+
+    roles = (replace(BANK.roles[0], location=""), *BANK.roles[1:])
+    profile = replace(PROFILE, bank=replace(BANK, roles=roles))
+    resume = build_resume(draft(), profile)
+    assert "**Business Intelligence Engineer** · Quillfeather Outdoor\n" in resume
 
 
 def test_built_resume_parses_and_keeps_every_line():

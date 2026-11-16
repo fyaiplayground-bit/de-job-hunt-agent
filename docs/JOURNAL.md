@@ -741,3 +741,16 @@
 - **提交：** 见本条所在的提交
 - **验证：** 新增测试（样本档案的第二个项目是课程，不强制；如果是真做的项目，就要求补上）；全部 679 个测试通过。那 3 份定制简历没有重新生成：发现这 3 个职位的地点都不合适（华沙、旧金山/纽约坐班、弗吉尼亚），因为打分的地点检查还关着
 
+
+### 5.7 · 2026-11-15 · 打分规则 v5：只跳过美国以外的职位
+- **做了什么：** 打分时多了一条"地点"规则：一个职位的地点（招聘网站写的地点 + AI 从正文读到的地点和远程范围）里，只要有一处在美国或对美国开放，就保留；一处美国都没有、并且至少一处明确在国外，才跳过；看不出在哪的保留。地点名单（国家、州、州缩写、外国城市、美国城市）写在 `config/fit_scoring.toml` 里，不在代码里。另外，检验技能匹配的那组样例改成固定用样本档案检验（它们是按样本标的），不然切到你的真实档案以后，每次改规则都会误报失败
+- **为什么：** DECISIONS #51：第一次用真实档案改简历，排第一的是 Asana 华沙
+- **文件：** `agents/fit_scoring.py`、`agents/evaluate_fit_rules.py`、`config/fit_scoring.toml`、`config/proposals/fit_scoring.v5.toml`、`tests/fixtures/location_cases.toml`、`tests/test_fit_scoring.py`、`tests/test_evaluate_fit_rules.py`、`.claude/skills/fit-scoring/SKILL.md`（v5）、`config/prompt_lock.toml`、`docs/DECISIONS.md`、`docs/JOURNAL.md`
+- **提交：** 见本条所在的提交
+- **验证：**
+  1. 40 个地点样例全部通过（大多来自真实职位，加上几个容易骗过规则的写法）；新增测试覆盖开关、名单缺失、"New Mexico 不是 Mexico"、"Indianapolis 不是 India"、"Paris, TX 是美国"、页面转义
+  2. 用规则检查页对照原文看过：按你的真实档案，13 个职位从"投"变成"跳过"，全在国外；按样本档案 12 个
+  3. 全库 3,279 个 DE 职位只看招聘网站的地点：61 个判成国外，逐个看过没有误判
+  4. 过程中抓到并修好 3 个坑（现在都是样例）："Remote-North & South America" 包括美国；18 个微软职位被写成 "Redmond, Australia"；聚合网站的 "Boston, Philippines"
+  5. 重新打分 425 个：样本档案 skip 216 / apply 174 / referral 35，和预览一致；dbt 56 步通过
+- **撤回：** `git revert` 这个提交，然后 `uv run python -m agents.fit_scoring run` 重新打分

@@ -11,19 +11,24 @@ import pytest
 
 from agents.evaluate_fit_rules import (
     CASES_FILE,
+    LOCATION_CASES_FILE,
     PHRASE_CASES_FILE,
+    SAMPLE_PROFILE_DIR,
     Sample,
     _lost_requirements,
     _move_html,
     compare,
     every_nth,
     golden_problems,
+    location_problems,
     phrase_problems,
     review_page,
+    sort_places,
     sort_postings,
 )
 from agents.fit_scoring import (
     find_clearance,
+    find_location,
     load_rules,
     load_vocabulary,
     match_skill,
@@ -237,3 +242,47 @@ def test_compare_can_use_a_proposed_vocabulary():
     )
     assert moves[0].before["must_have_coverage"] == 0
     assert moves[0].after["must_have_coverage"] == 1
+
+
+# ---------------------------------------------------------------- location (decision #51)
+
+LOCATION_CASES = tomllib.loads(Path(LOCATION_CASES_FILE).read_text(encoding="utf-8"))["cases"]
+LOCATION_OFF = replace(RULES, location_check="off", version=4)
+
+
+@pytest.mark.parametrize("case", LOCATION_CASES, ids=lambda c: " | ".join(c["places"])[:50])
+def test_location_cases(case):
+    assert find_location(case["places"], RULES.location)[0] == case["where"]
+
+
+def test_location_problems_names_a_wrong_case(tmp_path):
+    path = tmp_path / "cases.toml"
+    path.write_text('[[cases]]\nplaces = ["Warsaw, Poland"]\nwhere = "us"\n', encoding="utf-8")
+    assert location_problems(RULES.location, path) == [
+        "want us, got outside_us: ['Warsaw, Poland']"
+    ]
+
+
+def test_a_location_move_shows_the_places_beside_the_posting_and_escapes_them():
+    job = {**brief(), "board_location": "Warsaw <b>", "locations": ["Warsaw, Poland"],
+           "remote_regions": [], "work_mode": "hybrid"}
+    text = "<script>x</script> This role is based in our Warsaw office."
+    _, _, moves = compare([(7, job, text)], PROFILE, LOCATION_OFF, RULES, VOCAB, TODAY)
+    assert moves[0].after["dealbreakers"] == ["location: outside the US ('Warsaw <b>')"]
+    page = _move_html(moves[0])
+    assert "Warsaw &lt;b&gt;" in page and "Warsaw, Poland" in page
+    assert "<mark>Warsaw</mark>" in page
+    assert "<script>" not in page
+
+
+def test_sort_places_sorts_job_board_locations():
+    rows = [(1, "a", "DE", "Toronto, Canada"), (2, "b", "DE", "Austin, TX"), (3, "c", "DE", "")]
+    counts, tiers = sort_places(rows, RULES.location)
+    assert counts == {"outside_us": 1, "us": 1, "unclear": 1}
+    assert tiers["outside_us"][0].words == "Canada"
+
+
+def test_phrase_cases_pass_for_the_sample_they_were_labeled_for():
+    # The evaluator checks them against data/sample even when PROFILE_DIR points elsewhere.
+    sample = load_profile(SAMPLE_PROFILE_DIR)
+    assert phrase_problems(RULES, VOCAB, sample) == []

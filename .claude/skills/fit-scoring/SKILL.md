@@ -1,7 +1,7 @@
 ---
 name: fit-scoring
 description: Score how well FL fits a job (0–100) against her Evidence Bank and decide Apply + referral / Apply / Skip. Use after jd-analysis, before any tailoring work. Runs as code (agents/fit_scoring.py), not as an LLM prompt.
-version: 4
+version: 5
 ---
 
 # Fit Scoring (Agent 2)
@@ -47,7 +47,7 @@ Dealbreakers:
 - **Salary:** the posting's top of range is below the floor in the Applicant Profile.
 - **Sponsorship:** the profile needs sponsorship and the posting won't sponsor.
 - **Security clearance:** the posting's title or text requires a US government clearance the profile doesn't have, or one it can't obtain (`has_security_clearance`, `can_obtain_security_clearance` in the Applicant Profile). Read by code from the wording; a public trust determination doesn't count.
-- **Location:** off during the small-company practice phase (shown, never a reason to skip); the big-tech phase limits it to California, Washington and Texas.
+- **Location:** US only during the test phase (rules v5, decision #51): skip a job only when none of its places (the job board's location, the brief's places and remote regions) is in or open to the US and at least one is clearly elsewhere. Onsite anywhere in the US is fine; a job with no place or an unclear one is kept, and so is a place that contradicts itself ("Redmond, Australia"). The big-tech phase limits it to California, Washington and Texas.
 - **No must-haves in the brief** (a cut-off posting): skip, nothing to judge.
 
 ## BIE → DE angle

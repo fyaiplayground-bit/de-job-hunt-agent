@@ -11,6 +11,8 @@ import pytest
 
 from agents.fit_scoring import (
     candidate_years,
+    find_location,
+    job_places,
     load_rules,
     load_vocabulary,
     match_skill,
@@ -129,7 +131,12 @@ def test_a_brief_without_must_haves_is_skipped():
         ({"salary": {"min": 60, "max": 70, "currency": "USD"}}, None),  # hourly: not compared
         ({"salary": {"min": 100000, "max": None, "currency": "EUR"}}, None),  # other currency
         ({"sponsorship": "not_available"}, None),  # the sample doesn't need sponsorship
-        ({"work_mode": "onsite", "board_location": "Austin, TX"}, None),  # location check off
+        ({"work_mode": "onsite", "board_location": "Austin, TX"}, None),  # onsite in the US: fine
+        ({"work_mode": "hybrid", "board_location": "Warsaw", "locations": ["Warsaw, Poland"]},
+         "location: outside the US ('Warsaw')"),
+        ({"board_location": "Toronto, Canada", "remote_regions": ["US"]}, None),  # open to the US
+        ({"board_location": "Remote (remote)"}, None),  # unclear: kept
+        ({"board_location": ""}, None),  # no place at all: kept
     ],
 )
 def test_dealbreakers(changes, dealbreaker):
@@ -146,13 +153,50 @@ def test_sponsorship_dealbreaker_when_the_profile_needs_it():
     assert r.dealbreakers == ["sponsorship: the posting won't sponsor and the profile needs it"]
 
 
-def test_only_the_off_location_check_exists_yet(tmp_path):
+def test_an_unknown_location_check_is_refused(tmp_path):
     path = tmp_path / "rules.toml"
     text = (REPO_ROOT / "config" / "fit_scoring.toml").read_text(encoding="utf-8")
-    path.write_text(text.replace('location_check = "off"', 'location_check = "states"'),
+    path.write_text(text.replace('location_check = "us_only"', 'location_check = "states"'),
                     encoding="utf-8")
     with pytest.raises(ValueError, match="location_check"):
         load_rules(path)
+
+
+def test_us_only_needs_its_place_lists(tmp_path):
+    path = tmp_path / "rules.toml"
+    text = (REPO_ROOT / "config" / "fit_scoring.toml").read_text(encoding="utf-8")
+    path.write_text(text.replace("[dealbreakers.location]", "[unused_location]"),
+                    encoding="utf-8")
+    with pytest.raises(ValueError, match=r"\[dealbreakers.location\]"):
+        load_rules(path)
+
+
+def test_the_location_check_can_be_turned_off():
+    abroad = brief([item("SQL")], board_location="Warsaw")
+    off = replace(RULES, location_check="off")
+    assert score_brief(abroad, PROFILE, off, VOCAB, TODAY).decision == "apply_referral"
+    assert score_brief(abroad, PROFILE, RULES, VOCAB, TODAY).decision == "skip"
+
+
+def test_job_places_reads_the_board_then_the_brief():
+    b = brief([], board_location=" Stockholm ", locations=["London", ""], remote_regions=["EU"])
+    assert job_places(b) == ["Stockholm", "London", "EU"]
+    assert job_places(brief([], board_location=None)) == []
+
+
+@pytest.mark.parametrize(
+    ("places", "where"),
+    [
+        (["Bangalore (hybrid)", "London", "New York"], "us"),  # any US place keeps the job
+        (["Redmond, Australia"], "unclear"),  # a US city and a foreign country: contradicts
+        (["Paris, TX"], "us"),  # the state code decides before the foreign city
+        (["New Mexico"], "us"),  # not Mexico
+        (["Indianapolis"], "us"),  # not India
+        (["Join us"], "unclear"),  # "us" in lower case is a word, not the country
+    ],
+)
+def test_find_location(places, where):
+    assert find_location(places, RULES.location)[0] == where
 
 
 # ---------------------------------------------------------------- stored scores

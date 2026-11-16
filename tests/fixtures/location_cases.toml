@@ -1,0 +1,170 @@
+# Golden cases for the US-only location check (fit-scoring rules v5, decision #51). Each case is
+# a job's place names (board location first, then the brief's places and remote regions) and
+# where the job is: "us" (keep), "outside_us" (skip) or "unclear" (keep). Most come from real
+# postings in the database; a few test words that could fool the rule. Any miss rejects a
+# proposal (agents.evaluate_fit_rules).
+
+# ---- outside the US: skip
+[[cases]]
+places = ["Warsaw", "Warsaw, Poland"]
+where = "outside_us"
+
+[[cases]]
+places = ["Stockholm (hybrid)", "Stockholm", "London"]
+where = "outside_us"
+
+[[cases]]
+places = ["São Paulo, São Paulo, Brazil", "São Paulo, Brazil"]
+where = "outside_us"
+
+[[cases]]
+places = ["Remote - Canada", "Remote (Canada)", "Canada"]
+where = "outside_us"
+
+[[cases]]
+places = ["Toronto, Canada", "Toronto, ON"]
+where = "outside_us"
+
+[[cases]]
+places = ["Vancouver, BC", "Vancouver"]
+where = "outside_us"
+
+[[cases]]
+places = ["Remote - India"]
+where = "outside_us"
+
+[[cases]]
+places = ["ASSAGO, Lombardia(MI), it (hybrid)", "Assago (MI), Italy"]
+where = "outside_us"
+
+[[cases]]
+places = ["CA-Toronto-York St 24/25"]
+where = "outside_us"
+
+[[cases]]
+places = ["San Jose, Costa Rica", "San Jose, Costa Rica"]
+where = "outside_us"
+
+[[cases]]
+places = ["Remote", "EMEA"]
+where = "outside_us"
+
+[[cases]]
+places = ["London, United Kingdom"]
+where = "outside_us"
+
+[[cases]]
+places = ["Remote", "Latin America"]
+where = "outside_us"
+
+[[cases]]
+places = ["Brisbane, QLD, au (hybrid)"]
+where = "outside_us"
+
+[[cases]]
+places = ["Milano, IT, 20123"]
+where = "outside_us"
+
+# A geocoding mix-up seen on 18 Microsoft postings: Redmond is in Washington. Kept.
+[[cases]]
+places = ["Redmond, Australia (hybrid)"]
+where = "unclear"
+
+# ---- in the US or open to it: keep (onsite anywhere in the US is fine)
+[[cases]]
+places = ["San Francisco, CA; New York, NY", "San Francisco", "New York"]
+where = "us"
+
+[[cases]]
+places = ["Bangalore (hybrid)", "New York", "Singapore", "Bangalore", "London"]
+where = "us"
+
+[[cases]]
+places = ["Remote (remote)", "Remote", "US"]
+where = "us"
+
+[[cases]]
+places = ["Remote (U.S.)"]
+where = "us"
+
+[[cases]]
+places = ["United States (remote)", "Remote"]
+where = "us"
+
+[[cases]]
+places = ["Remote - Canada", "Remote", "North America"]
+where = "us"
+
+[[cases]]
+places = ["Remote-North & South America"]
+where = "us"
+
+[[cases]]
+places = ["McKinney TX"]
+where = "us"
+
+[[cases]]
+places = ["IL - Chicago, 350 N. Orleans St 1300N", "Illinois"]
+where = "us"
+
+[[cases]]
+places = ["100 New Millennium Way, Bldg 2, Durham NC (onsite)"]
+where = "us"
+
+[[cases]]
+places = ["Austin, Travis County"]
+where = "us"
+
+[[cases]]
+places = ["Sunnyvale"]
+where = "us"
+
+[[cases]]
+places = ["MacDill AFB, Florida", "MacDill Air Force Base, Florida"]
+where = "us"
+
+[[cases]]
+places = ["London, KY"]
+where = "us"
+
+[[cases]]
+places = ["Albuquerque, New Mexico"]
+where = "us"
+
+[[cases]]
+places = ["Washington, D.C."]
+where = "us"
+
+[[cases]]
+places = ["Indianapolis, Indiana"]
+where = "us"
+
+# ---- nothing to go on: keep
+[[cases]]
+places = []
+where = "unclear"
+
+[[cases]]
+places = ["Remote (remote)", "Remote"]
+where = "unclear"
+
+[[cases]]
+places = ["LR-AR Corp Headquarters"]
+where = "unclear"
+
+[[cases]]
+places = ["Customer Support Center (hybrid)"]
+where = "unclear"
+
+[[cases]]
+places = ["Join us remotely"]
+where = "unclear"
+
+# An aggregator's mix-up: a US city on a Philippine listing site. Contradicts itself, so kept.
+[[cases]]
+places = ["Boston, Philippines"]
+where = "unclear"
+
+[[cases]]
+places = ["San Jose"]
+where = "unclear"

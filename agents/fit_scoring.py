@@ -57,6 +57,17 @@ class ClearanceRules:
 
 
 @dataclass(frozen=True)
+class LocationRules:
+    """Where a job is, read from its place names (decision #51). Applied to each place in order:
+    `us` (clearly in or open to the US), then `outside_us`, then `us_cities` (a bare US city);
+    a place that hits both of the last two is unclear."""
+
+    us: tuple[re.Pattern[str], ...]
+    outside_us: tuple[re.Pattern[str], ...]
+    us_cities: tuple[re.Pattern[str], ...]
+
+
+@dataclass(frozen=True)
 class Rules:
     version: int
     must_weight: float
@@ -71,6 +82,20 @@ class Rules:
     sponsorship_check: bool
     clearance: ClearanceRules | None = None
     phrase_match: str = "any_part"  # any_part / alternatives_only
+    location: LocationRules | None = None
+
+
+LOCATION_CHECKS = ("off", "us_only")
+
+
+def _load_location(section: dict[str, list[str]] | None) -> LocationRules | None:
+    if section is None:
+        return None
+
+    def compiled(key: str) -> tuple[re.Pattern[str], ...]:
+        return tuple(re.compile(pattern, re.IGNORECASE) for pattern in section[key])
+
+    return LocationRules(compiled("us"), compiled("outside_us"), compiled("us_cities"))
 
 
 def _load_clearance(section: dict[str, list[str]] | None) -> ClearanceRules | None:
@@ -99,11 +124,14 @@ def load_rules(path: Path = RULES_FILE) -> Rules:
         sponsorship_check=bool(data["dealbreakers"]["sponsorship_check"]),
         clearance=_load_clearance(data["dealbreakers"].get("clearance")),
         phrase_match=data.get("skill_matching", {}).get("exact_phrases", "any_part"),
+        location=_load_location(data["dealbreakers"].get("location")),
     )
     if rules.phrase_match not in ("any_part", "alternatives_only"):
         raise ValueError(f"skill_matching.exact_phrases: unknown value {rules.phrase_match!r}")
-    if rules.location_check != "off":
-        raise ValueError("location_check: only 'off' exists so far (the state check comes in M5)")
+    if rules.location_check not in LOCATION_CHECKS:
+        raise ValueError(f"location_check: {rules.location_check!r} isn't one of {LOCATION_CHECKS}")
+    if rules.location_check == "us_only" and rules.location is None:
+        raise ValueError("location_check 'us_only' needs a [dealbreakers.location] section")
     return rules
 
 
@@ -263,6 +291,51 @@ def find_clearance(text: str, rules: ClearanceRules) -> tuple[str, str] | None:
     return ("obtain", " ".join(obtain.split())) if obtain else None
 
 
+def job_places(brief: dict[str, Any]) -> list[str]:
+    """Every place named for a job: the board's location field, then the places and remote
+    regions the brief read from the posting."""
+    places = [brief.get("board_location") or ""]
+    places += list(brief.get("locations") or []) + list(brief.get("remote_regions") or [])
+    return [place.strip() for place in places if place and place.strip()]
+
+
+def place_verdict(place: str, rules: LocationRules) -> tuple[str, str]:
+    """One place: ("us" | "outside_us" | "unclear", the words that decided it). A place naming
+    both a US city and somewhere else ("Boston, Philippines") contradicts itself: unclear."""
+
+    def first(patterns: tuple[re.Pattern[str], ...]) -> str | None:
+        return next((m[0] for p in patterns if (m := p.search(place))), None)
+
+    if hit := first(rules.us):
+        return "us", hit
+    outside, city = first(rules.outside_us), first(rules.us_cities)
+    if outside and city:
+        return "unclear", ""
+    if outside:
+        return "outside_us", outside
+    if city:
+        return "us", city
+    return "unclear", ""
+
+
+def find_location(places: list[str], rules: LocationRules) -> tuple[str, str]:
+    """A job: "us" when any place is in or open to the US, "outside_us" when none is and at
+    least one is clearly elsewhere, else "unclear" (no places, or none recognised)."""
+    tiers = [place_verdict(place, rules)[0] for place in places]
+    for wanted in ("us", "outside_us"):
+        place = next((p for p, tier in zip(places, tiers, strict=True) if tier == wanted), None)
+        if place is not None:
+            return wanted, place
+    return "unclear", ""
+
+
+def _location_dealbreaker(brief: dict[str, Any], rules: Rules) -> str | None:
+    if rules.location_check != "us_only" or rules.location is None:
+        return None
+    tier, place = find_location(job_places(brief), rules.location)
+    return f"location: outside the US ({place!r})" if tier == "outside_us" else None
+
+
 def _clearance_dealbreaker(
     brief: dict[str, Any], posting_text: str, applicant: dict[str, Any], rules: ClearanceRules
 ) -> str | None:
@@ -284,6 +357,9 @@ def _dealbreakers(
     posting_text: str = "",
 ) -> list[str]:
     found = []
+    location = _location_dealbreaker(brief, rules)
+    if location:
+        found.append(location)
     if rules.clearance:
         clearance = _clearance_dealbreaker(brief, posting_text, applicant, rules.clearance)
         if clearance:

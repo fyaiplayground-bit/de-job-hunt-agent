@@ -1,9 +1,14 @@
+# v5 (adopted 2026-11-15, decision #51): a US-only location check for the test phase. FL's call
+# after the first real tailoring run picked Asana in Warsaw: ignore salary and location while
+# testing, except skip jobs outside the US. Onsite anywhere in the US is fine. Only the location
+# changes from v4.
+
 # How a job brief is scored against the candidate profile (decision #35). Code applies these;
 # no LLM is involved, so the same brief, profile and rules always give the same score. Rules as
 # data: change them through the loop (propose, show what moves, FL approves, bump version,
 # record in DECISIONS.md), then `uv run python -m agents.fit_scoring run` rescores everything.
 
-version = 4
+version = 5
 
 # score = must_weight x must-have coverage + nice_weight x nice-to-have coverage + archetype
 # adjustment, kept within 0..100. Coverage is the share of skills the profile covers.
@@ -32,9 +37,11 @@ referral_score = 65      # and look for a referral at or above this score
 [dealbreakers]
 # A posting may ask for this many more years than the profile has and still be worth applying.
 years_tolerance = 1
-# "off" during the small-company practice phase: location is shown, never a reason to skip.
-# The big-tech phase will limit it to California, Washington and Texas (FL, 2026-11-02).
-location_check = "off"
+# "us_only" during the test phase (v5): skip a job only when its places are clearly all outside
+# the US; onsite anywhere in the US is fine, and a job with no place or an unclear one is kept.
+# "off" = location is shown, never a reason to skip. The big-tech phase will limit it to
+# California, Washington and Texas (FL, 2026-11-02).
+location_check = "us_only"
 salary_floor_check = true   # skip when the posting's top of range is below the profile's floor
 sponsorship_check = true    # skip when the profile needs sponsorship and the posting won't give it
 
@@ -78,4 +85,42 @@ hold = [
     '\b(active|current|must have|must hold|must possess|currently possess)\b[^.\n;]{0,30}\b(secret|clearance)\b',
     '\bclearance\s+required\b(?!\s*:)',
     '(?m)^cleared\s',
+]
+
+# Where a job is (v5). Read only from its place names: the job board's location field, and the
+# places and remote regions the brief read from the posting, never the rest of the posting text.
+# Regular expressions, ignoring case except inside (?-i:...). Each place is checked in this order:
+#   1. `us`: clearly in the US or open to it (country, state, state code, "Americas").
+#   2. `outside_us`: clearly somewhere else (country, region, Canadian province, big foreign city).
+#   3. `us_cities`: a well-known US city named without its state ("Seattle", "Bay Area").
+# A place that names both a US city and somewhere else ("Boston, Philippines", an aggregator's
+# mix-up) contradicts itself and counts as unclear. Cities that exist in other countries too
+# ("San Jose" in Costa Rica) are left out of `us_cities`; named alone they're unclear and kept.
+# A job is skipped when none of its places is US and at least one is clearly elsewhere. No place,
+# or only places nobody recognises ("Remote", "Corp Headquarters"), keeps the job.
+[dealbreakers.location]
+us = [
+    '(?-i:\bUSA?\b)',
+    '\bU\.S\.(A\.?)?',
+    '\bUnited States\b',
+    '(?<!Latin )(?<!South )(?<!Central )\bAmericas?\b',
+    '\bNorth\s*(&|and|/)\s*South\s+Americas?\b',
+    '\b(Alabama|Alaska|Arizona|Arkansas|California|Colorado|Connecticut|Delaware|Florida|Georgia|Hawaii|Idaho|Illinois|Indiana|Iowa|Kansas|Kentucky|Louisiana|Maine|Maryland|Massachusetts|Michigan|Minnesota|Mississippi|Missouri|Montana|Nebraska|Nevada|New Hampshire|New Jersey|New Mexico|New York|North Carolina|North Dakota|Ohio|Oklahoma|Oregon|Pennsylvania|Rhode Island|South Carolina|South Dakota|Tennessee|Texas|Utah|Vermont|Virginia|Washington|West Virginia|Wisconsin|Wyoming|District of Columbia|Puerto Rico)\b',
+    # A two-letter state code after a comma, a space or the start, and before the end, a
+    # bracket, a comma or " -": "Austin, TX", "McKinney TX", "IL - Chicago". Not "CA-Toronto".
+    '(?-i:(^|,|\s)\s*(AL|AK|AZ|AR|CA|CO|CT|DE|DC|FL|GA|HI|ID|IL|IN|IA|KS|KY|LA|ME|MD|MA|MI|MN|MS|MO|MT|NE|NV|NH|NJ|NM|NY|NC|ND|OH|OK|OR|PA|RI|SC|SD|TN|TX|UT|VT|VA|WA|WV|WI|WY|PR)(?=\s*($|[,;/()]|\s-|\s\d{5})))',
+    '(?-i:\bD\.C\.)',
+]
+outside_us = [
+    '\b(Canada|Mexico|Brazil|Argentina|Chile|Colombia|Peru|Uruguay|Costa Rica|Guatemala|Panama|Dominican Republic|Jamaica|United Kingdom|England|Scotland|Wales|Northern Ireland|Ireland|Germany|France|Spain|Portugal|Italy|Netherlands|Belgium|Luxembourg|Switzerland|Austria|Poland|Czech Republic|Czechia|Slovakia|Hungary|Romania|Bulgaria|Serbia|Croatia|Slovenia|Greece|Cyprus|Malta|Sweden|Norway|Denmark|Finland|Iceland|Estonia|Latvia|Lithuania|Ukraine|Turkey|T\u00fcrkiye|Israel|United Arab Emirates|UAE|Saudi Arabia|Qatar|Egypt|Morocco|Nigeria|Kenya|South Africa|India|Pakistan|Bangladesh|Sri Lanka|Nepal|Singapore|Malaysia|Indonesia|Philippines|Thailand|Vietnam|China|Hong Kong|Taiwan|Japan|South Korea|Korea|Australia|New Zealand)\b',
+    '(?-i:\bUK\b)',
+    '\b(EMEA|APAC|LATAM|Europe|European Union|Latin America|South America|Central America|Asia|Middle East|Africa)\b',
+    '\b(Ontario|Quebec|Qu\u00e9bec|British Columbia|Alberta|Manitoba|Saskatchewan|Nova Scotia|New Brunswick|Newfoundland)\b',
+    '(?-i:,\s*(ON|QC|BC|AB|MB|SK|NS|NB|NL|PE)\b)',
+    '(?-i:\b(NSW|QLD)\b)',
+    '\b(Toronto|Vancouver|Montreal|Montr\u00e9al|Ottawa|Calgary|Edmonton|London|Dublin|Edinburgh|Manchester|Berlin|Munich|M\u00fcnchen|Hamburg|Frankfurt|Amsterdam|Rotterdam|Paris|Madrid|Barcelona|Lisbon|Milan|Milano|Rome|Zurich|Z\u00fcrich|Geneva|Vienna|Warsaw|Krakow|Krak\u00f3w|Wroclaw|Wroc\u0142aw|Prague|Budapest|Bucharest|Stockholm|Copenhagen|Oslo|Helsinki|Tallinn|Kyiv|Tel Aviv|Dubai|Bangalore|Bengaluru|Hyderabad|Pune|Mumbai|Delhi|Gurgaon|Gurugram|Noida|Chennai|Tokyo|Seoul|Shanghai|Beijing|Shenzhen|Taipei|Sydney|Melbourne|Brisbane|Adelaide|Auckland|S\u00e3o Paulo|Sao Paulo|Mexico City|Guadalajara|Bogot\u00e1|Bogota|Medell\u00edn|Medellin|Buenos Aires|Santiago|Manila)\b',
+]
+us_cities = [
+    '\b(New York City|NYC|San Francisco|Bay Area|Silicon Valley|Seattle|Austin|Boston|Chicago|Los Angeles|Denver|Atlanta|Dallas|Houston|Miami|Philadelphia|Phoenix|Portland|San Diego|Sunnyvale|Mountain View|Palo Alto|Menlo Park|Cupertino|Santa Clara|Redwood City|Oakland|Redmond|Bellevue|Kirkland|Pittsburgh|Detroit|Minneapolis|Nashville|Charlotte|Raleigh|Durham|Salt Lake City|Las Vegas|Baltimore|Arlington|Tampa|Orlando|Columbus|Cincinnati|Cleveland|Indianapolis|St\.? Louis|Kansas City|Milwaukee|Sacramento|Irvine|Newport Beach|Carlsbad)\b',
+    '(?-i:\b(SF|LA)\b)',
 ]

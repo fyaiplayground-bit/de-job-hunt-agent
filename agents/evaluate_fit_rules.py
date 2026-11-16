@@ -10,11 +10,13 @@ Reports three things:
   moves       every current brief scored under the current rules and the proposal, and each job
               whose decision would change
   all postings  how the clearance rule sorts every DE-titled posting in the database, as a wider
-              test than the few jobs briefed so far
+              test than the few jobs briefed so far; with a location check, also where each
+              posting's job-board location places it (decision #51)
 
 Nothing is written to the database or the real rules file. --review writes
 output/fit_rules_review.html (local, not committed): each moved job's full text with the deciding
-words marked, and samples from the wider test, so a person can check the rule against the source.
+words marked (for a location move, its place names side by side with the posting's own words),
+and samples from the wider test, so a person can check the rule against the source.
 """
 
 import argparse
@@ -33,16 +35,20 @@ import psycopg
 from agents.evaluate_prompt import _highlight
 from agents.fit_scoring import (
     ClearanceRules,
+    LocationRules,
     Rules,
     Vocabulary,
     find_clearance,
+    find_location,
+    job_places,
     load_briefs,
     load_rules,
     load_vocabulary,
     match_skill,
+    place_verdict,
     score_brief,
 )
-from agents.jd_analysis import load_scope
+from agents.jd_analysis import _display_fields, load_scope
 from agents.profile import Profile, load_profile
 from agents.skills import load_skill
 from pipeline.config import REPO_ROOT, profile_dir
@@ -51,10 +57,18 @@ from pipeline.safety_gate import GATE_VERSION
 
 CASES_FILE = REPO_ROOT / "tests" / "fixtures" / "clearance_cases.toml"
 PHRASE_CASES_FILE = REPO_ROOT / "tests" / "fixtures" / "phrase_match_cases.toml"
+LOCATION_CASES_FILE = REPO_ROOT / "tests" / "fixtures" / "location_cases.toml"
+SAMPLE_PROFILE_DIR = REPO_ROOT / "data" / "sample"
 REVIEW_PAGE = REPO_ROOT / "output" / "fit_rules_review.html"
 # Any wording about clearance, even wording the rule treats as no requirement.
 MENTION = re.compile(r"clearance|TS\s*/\s*SCI|top[- ]secret|polygraph|\bcleared\b", re.IGNORECASE)
 SAMPLE_SIZE = {"hold": 25, "obtain": 25, "mention": 40}
+PLACE_SAMPLE_SIZE = {"outside_us": 60, "unclear": 40}
+WORK_MODE_WORDS = {"remote", "hybrid", "onsite", "on-site"}
+PLACE_LABEL = {
+    "outside_us": "明确在美国以外（跳过）",
+    "unclear": "看不出在哪（保留）",
+}
 TIER_LABEL = {
     "hold": "必须已经持有（跳过）",
     "obtain": "必须能够取得（跳过，除非档案写明可以取得）",
@@ -70,6 +84,16 @@ def golden_problems(rules: ClearanceRules, path: Path = CASES_FILE) -> list[str]
         got = hit[0] if hit else "none"
         if got != case["tier"]:
             problems.append(f"want {case['tier']}, got {got}: {case['text']!r}")
+    return problems
+
+
+def location_problems(rules: LocationRules, path: Path = LOCATION_CASES_FILE) -> list[str]:
+    """Labeled place lists that land in the wrong place; [] means every case passes."""
+    problems = []
+    for case in tomllib.loads(path.read_text(encoding="utf-8"))["cases"]:
+        got, _ = find_location(case["places"], rules)
+        if got != case["where"]:
+            problems.append(f"want {case['where']}, got {got}: {case['places']!r}")
     return problems
 
 
@@ -207,7 +231,47 @@ def _phrase_move_html(move: Move) -> str:
     )
 
 
+def _place_words(place: str) -> list[str]:
+    """The parts of a place name worth finding in the posting: "Warsaw, Poland" -> both;
+    "Remote - India" -> India (work-mode words say nothing about where)."""
+    parts = (w.strip() for w in re.split(r"[^\w\s.'-]+|\s-\s", place))
+    return [w for w in parts if len(w) > 2 and w.lower() not in WORK_MODE_WORDS]
+
+
+def _location_move_html(move: Move) -> str:
+    """A job moved by the location check: its place names next to the posting's own words."""
+    brief = move.brief
+    place = re.search(r"\((['\"])(.*)\1\)$", move.after["dealbreakers"][0])
+    decided = place[2] if place else ""
+    rows = "".join(
+        f"<tr><th>{label}</th><td>{html.escape(value) or '（空）'}</td></tr>"
+        for label, value in (
+            ("招聘网站写的地点", brief.get("board_location") or ""),
+            ("AI 从正文读到的地点", " | ".join(brief.get("locations") or [])),
+            ("AI 读到的远程范围", " | ".join(brief.get("remote_regions") or [])),
+            ("工作方式", brief.get("work_mode") or ""),
+            ("起决定作用的地点", decided),
+        )
+    )
+    found = next((w for w in _place_words(decided) if _locate(move.text, w)), "")
+    excerpt = (
+        f"<p>正文里提到这个地点的地方：</p><pre>…{_marked(move.text, found, around=300)}…</pre>"
+        if found
+        else "<p>正文里没有写这个地点（地点只来自招聘网站的字段）。</p>"
+    )
+    url = brief.get("url", "")
+    link = f' · <a href="{html.escape(url)}">原帖</a>' if url.startswith("http") else ""
+    return (
+        f"<article><h3>#{move.posting_version_id} {html.escape(brief.get('company', ''))} — "
+        f"{html.escape(brief.get('title', ''))}{link}</h3>"
+        f"<p>{_decision_label(move.before)} → <b>{_decision_label(move.after)}</b></p>"
+        f"<table class=places>{rows}</table>{excerpt}</article>"
+    )
+
+
 def _move_html(move: Move) -> str:
+    if move.after["dealbreakers"] and move.after["dealbreakers"][0].startswith("location:"):
+        return _location_move_html(move)
     if not move.after["dealbreakers"] or _lost_requirements(move):
         return _phrase_move_html(move)
     words = (
@@ -235,6 +299,7 @@ def review_page(
     tiers: dict[str, list[Sample]],
     current: Rules,
     proposed: Rules,
+    places: tuple[Counter, dict[str, list[Sample]]] | None = None,
 ) -> str:
     moved = "".join(_move_html(move) for move in moves) or "<p>没有职位的决定发生变化。</p>"
     groups = ""
@@ -256,6 +321,28 @@ def review_page(
             f"<h2>更大范围的测试：数据库里所有 DE 类职位（一共 {sum(counts.values())} 个）</h2>"
             f"<p>其中 {counts['none']} 个根本没提 clearance，这些不受影响。</p>{groups}"
         )
+    if places is not None:
+        place_counts, place_tiers = places
+        place_groups = ""
+        for tier, label in PLACE_LABEL.items():
+            chosen = every_nth(place_tiers[tier], PLACE_SAMPLE_SIZE[tier])
+            rows = "".join(
+                f"<tr><td>#{s.posting_version_id}<br>{html.escape(s.company)}</td>"
+                f"<td>{html.escape(s.title)}</td><td>{_marked(s.text, s.words)}</td></tr>"
+                for s in chosen
+            )
+            place_groups += (
+                f"<h3>{label}：一共 {place_counts[tier]} 个，这里抽 {len(chosen)} 个</h3>"
+                f"<table><tr><th>职位</th><th>标题</th><th>招聘网站写的地点（标出的是起决定作用的词）"
+                f"</th></tr>{rows}</table>"
+            )
+        wider += (
+            f"<h2>更大范围的测试：数据库里所有 DE 类职位，按招聘网站写的地点分（一共 "
+            f"{sum(place_counts.values())} 个）</h2><p>其中 {place_counts['us']} 个在美国，保留。"
+            "这里只看招聘网站的地点字段，不看 AI 从正文读到的地点，"
+            "所以“看不出在哪”的会比真实打分时多。</p>"
+            + place_groups
+        )
     return f"""<!doctype html>
 <html lang="zh"><head><meta charset="utf-8"><title>打分规则检查</title>
 <style>
@@ -270,6 +357,7 @@ def review_page(
   td, th {{ border: 1px solid #ccc; padding: 4px 8px; vertical-align: top; text-align: left;
             overflow-wrap: anywhere; }}
   th:nth-child(1) {{ width: 20%; }} th:nth-child(2) {{ width: 24%; }}
+  table.places th {{ width: 22%; background: #f6f6f6; }}
 </style></head><body>
 <h1>打分规则 v{current.version} → v{proposed.version}：会改变什么</h1>
 <p>决定的数量：{dict(before)} → {dict(after)}。这只是预览，还没有改动任何东西。</p>
@@ -295,6 +383,40 @@ def de_postings(conn: psycopg.Connection) -> list[tuple[int, str, str, str]]:
     ).fetchall()
 
 
+def de_posting_places(conn: psycopg.Connection) -> list[tuple[int, str, str, str]]:
+    """Every deduped DE-titled posting with the location its job board gives."""
+    rows = conn.execute(
+        "select p.posting_version_id, p.source, p.company,"
+        " coalesce(p.payload->>'title', p.payload->>'text', '') as title, p.payload"
+        " from dedupe.jobs j"
+        " join raw.job_postings p on p.posting_version_id = j.chosen_posting_version_id"
+        " where coalesce(p.payload->>'title', p.payload->>'text', '') ~* %s"
+        " order by p.posting_version_id",
+        (load_scope().title_include,),
+    ).fetchall()
+    out = []
+    for posting_version_id, source, company, title, payload in rows:
+        name, location, _ = _display_fields(source, company, payload)
+        out.append((posting_version_id, name, title, location))
+    return out
+
+
+def sort_places(
+    rows: list[tuple[int, str, str, str]], rules: LocationRules
+) -> tuple[Counter, dict[str, list[Sample]]]:
+    """Where each posting's job-board location places it, with the deciding words."""
+    counts: Counter = Counter()
+    tiers: dict[str, list[Sample]] = {"us": [], "outside_us": [], "unclear": []}
+    for posting_version_id, company, title, location in rows:
+        tier, _ = find_location([location] if location.strip() else [], rules)
+        words = ""
+        if tier != "unclear":
+            words = place_verdict(location, rules)[1]
+        counts[tier] += 1
+        tiers[tier].append(Sample(posting_version_id, company, title, words, location))
+    return counts, tiers
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="python -m agents.evaluate_fit_rules")
     parser.add_argument("proposal", type=Path)
@@ -314,7 +436,10 @@ def main(argv: list[str] | None = None) -> int:
     vocabulary = load_vocabulary()
     proposed_vocab = load_vocabulary(args.vocabulary) if args.vocabulary else vocabulary
     profile = load_profile(profile_dir())
-    problems += phrase_problems(proposed, proposed_vocab, profile)
+    # The phrase cases are labeled for the fictional sample, whichever profile is being scored.
+    problems += phrase_problems(proposed, proposed_vocab, load_profile(SAMPLE_PROFILE_DIR))
+    if proposed.location:
+        problems += location_problems(proposed.location)
     print(
         f"rules v{current.version} -> v{proposed.version}, "
         f"vocabulary v{vocabulary.version} -> v{proposed_vocab.version}"
@@ -332,6 +457,7 @@ def main(argv: list[str] | None = None) -> int:
                 newest[row[0]] = row
         briefs = list(newest.values())
         postings = de_postings(conn)
+        places = de_posting_places(conn) if proposed.location else []
     before, after, moves = compare(
         briefs,
         profile,
@@ -351,13 +477,21 @@ def main(argv: list[str] | None = None) -> int:
             f"(lost {', '.join(_lost_requirements(move)) or 'nothing'}; "
             f"{'; '.join(move.after['dealbreakers'])})"
         )
+    sorted_places = None
+    if proposed.location:
+        where = Counter(find_location(job_places(b), proposed.location)[0] for _, b, _ in briefs)
+        print(f"briefs by place: {dict(where)}")
+        sorted_places = sort_places(places, proposed.location)
+        print(f"all DE-titled postings by job-board location ({len(places)}): "
+              f"{dict(sorted_places[0])}")
     if proposed.clearance:
         counts, tiers = sort_postings(postings, proposed.clearance)
         print(f"all DE-titled postings ({len(postings)}): {dict(counts)}")
         if args.review:
             REVIEW_PAGE.parent.mkdir(exist_ok=True)
             REVIEW_PAGE.write_text(
-                review_page(moves, before, after, counts, tiers, current, proposed),
+                review_page(moves, before, after, counts, tiers, current, proposed,
+                            sorted_places),
                 encoding="utf-8",
             )
             print(f"review page: {REVIEW_PAGE}")

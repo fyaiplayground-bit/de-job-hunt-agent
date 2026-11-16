@@ -86,6 +86,7 @@ class QueueRules:
     sites: dict[str, tuple[str, ...]]
     never_guess: tuple[re.Pattern[str], ...]
     fields: tuple[tuple[re.Pattern[str], str, str], ...]
+    exclude_companies: frozenset[str] = frozenset()  # company keys never queued
 
 
 def load_queue_rules(path: Path = RULES_FILE) -> QueueRules:
@@ -100,6 +101,9 @@ def load_queue_rules(path: Path = RULES_FILE) -> QueueRules:
         fields=tuple(
             (re.compile(f["pattern"], re.IGNORECASE), f["field"], f["label"])
             for f in answers["fields"]
+        ),
+        exclude_companies=frozenset(
+            company_key(name) for name in data.get("exclude", {}).get("companies", [])
         ),
     )
 
@@ -161,6 +165,9 @@ def pick_batch(
         job_key, title_key = job_keys(job.brief)
         company = company_key(job.brief["company"])
         if job.posting_version_id in seen_posting_ids:
+            continue
+        if company in rules.exclude_companies:
+            skipped.append((job, "你排除了这家公司"))
             continue
         if job_key in job_seen or title_key in title_seen:
             skipped.append((job, "和已经排进队列的职位是同一个"))
@@ -476,6 +483,9 @@ def main(argv: list[str] | None = None) -> int:
     build.add_argument(
         "--dry-run", action="store_true", help="only show what it would pick: no AI, no writes"
     )
+    build.add_argument(
+        "--rules", type=Path, help="with --dry-run: a proposed config/queue.toml to pick by"
+    )
     for name, helptext in (
         ("approve", "approve these numbers; writes the submit pack"),
         ("pass", "leave these numbers out"),
@@ -493,6 +503,11 @@ def main(argv: list[str] | None = None) -> int:
     batch_date = args.date or _today()
     settings, folder = llm_settings(), profile_dir()
     profile, rules = load_profile(folder), load_queue_rules()
+    if getattr(args, "rules", None):
+        if not args.dry_run:
+            print("REFUSED --rules is for --dry-run only: adopt a proposal before building with it")
+            return 1
+        rules = load_queue_rules(args.rules)
     with connect() as conn:
         migrate(conn)
         skipped: list[tuple[Job, str]] = []
@@ -503,7 +518,10 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"the {batch_date} batch already exists; a build would add nothing")
                 return 0
             batch = candidates(conn, profile, settings, batch_date, rules)
-            print(f"dry run for {batch_date}, profile {folder}: nothing tailored, stored or paid")
+            print(
+                f"dry run for {batch_date}, profile {folder}, queue rules v{rules.version}: "
+                "nothing tailored, stored or paid"
+            )
             for line in preview_lines(batch, rules):
                 print(line)
             return 0

@@ -1,10 +1,22 @@
+# v2 (adopted 2026-11-15, decision #52): an exclude list. FL passed on SynergisticIT after the
+# first real dry run: a junior title mixing three roles, an aggregator link, and a training and
+# placement firm rather than the employer. Only the exclude list changes from v1.
+
 # The approval queue (decision #40). Code applies these; no LLM is involved. Rules as data: change
 # them through the loop (propose, show what moves, FL approves, bump version, record in DECISIONS).
 
-version = 1
+version = 2
 
 daily_jobs = 5     # jobs to prepare in a batch: enough to run the whole flow (FL, 2026-11-04)
 per_company = 1    # at most this many jobs from one company in a batch: more reads as a mass mailing
+
+# Companies never queued, whatever they score (FL's call, one by one). Matched like the queue
+# matches companies: lower case, punctuation and words like "Inc" or "LLC" ignored. The job still
+# shows in the daily report; it just never takes a place in a batch. Each one says why.
+[exclude]
+companies = [
+    "SynergisticIT",  # training and placement firm, not the employer (FL, 2026-11-15)
+]
 
 # How an application site works, by the end of its web address. Sorted by what it means for FL:
 # no_account sites can be filled straight away; account sites need FL to register and log in

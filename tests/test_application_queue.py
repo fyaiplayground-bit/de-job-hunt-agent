@@ -137,6 +137,32 @@ def test_jobs_past_the_batch_size_are_not_called_duplicates():
     assert pick(jobs).skipped == []
 
 
+def test_an_excluded_company_is_never_picked_and_says_why():
+    rules = replace(RULES, exclude_companies=frozenset({company_key("SynergisticIT")}))
+    excluded = job(1, score=95, company="SynergisticIT, Inc.")
+    batch = pick([excluded, job(2, score=60, company="Acme")], rules)
+    assert ids(batch) == [2]
+    assert [(j.posting_version_id, why) for j, why in batch.skipped] == [(1, "你排除了这家公司")]
+
+
+def test_the_exclude_list_is_read_like_the_queue_reads_companies(tmp_path):
+    path = tmp_path / "queue.toml"
+    text = (REPO_ROOT / "config" / "queue.toml").read_text(encoding="utf-8")
+    start, end = text.index("[exclude]"), text.index("[sites]")
+    exclude = '[exclude]\ncompanies = ["Acme LLC", "SynergisticIT, Inc."]\n\n'
+    path.write_text(text[:start] + exclude + text[end:], encoding="utf-8")
+    assert load_queue_rules(path).exclude_companies == {"acme", "synergisticit"}
+    assert RULES.exclude_companies == {"synergisticit"}  # the adopted list (#52)
+
+
+def test_rules_without_an_exclude_list_exclude_nothing(tmp_path):
+    path = tmp_path / "queue.toml"
+    text = (REPO_ROOT / "config" / "proposals" / "queue.v2.toml").read_text(encoding="utf-8")
+    start, end = text.index("[exclude]"), text.index("[sites]")
+    path.write_text(text[:start] + text[end:], encoding="utf-8")
+    assert load_queue_rules(path).exclude_companies == frozenset()
+
+
 def test_a_dry_run_lists_the_pick_and_what_was_left_out():
     first = job(1, score=90, company="Acme", host="boards.greenhouse.io")
     first.fit.update(work_mode="onsite", location="New York, NY")

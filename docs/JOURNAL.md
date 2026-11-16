@@ -764,3 +764,12 @@
 - **顺手修的：** 切换以后有一个测试读到了 `.env` 里的真实档案（测试输出里出现了你的名字）。现在测试一律用样本档案，不管 `.env` 怎么写（`tests/conftest.py`）
 - **注意：** 11/15 的每日运行 17:40 就开始了，比切换早，所以那份报告还是按样本档案算的；11/16 起才是你的档案
 - **撤回：** 删掉 `.env` 里 `PROFILE_DIR=private` 那一行，再跑 `uv run python -m agents.fit_scoring run`；代码部分 `git revert` 这个提交
+
+### 5.9 · 2026-11-15 · 申请队列可以排除公司（规则 v2）
+- **做了什么：** `config/queue.toml` 多了一份"排除的公司"名单，现在只有 SynergisticIT，后面写着原因。被排除的公司永远不进队列，预演里写"你排除了这家公司"；它的职位仍然出现在每日报告里。预演可以用 `--rules` 试一份提案；真正建队列只认已经采用的规则文件
+- **为什么：** DECISIONS #52：第一次预演里 SynergisticIT 排第 4（junior、三种职位混在一起、聚合网站链接、培训派遣公司）
+- **文件：** `agents/application_queue.py`、`config/queue.toml`、`config/proposals/queue.v2.toml`、`tests/test_application_queue.py`、`docs/DECISIONS.md`、`docs/JOURNAL.md`、`docs/STATUS.md`
+- **提交：** 见本条所在的提交
+- **验证：** 新增 3 个测试（排除并写明原因、名字按队列的方式比对、没有名单时什么都不排除）；全部测试通过；用正式规则预演：Sigma Computing、The Bison Group、Kaleidoscope Innovation、Disney、EdgeQ Technologies（81 分），SynergisticIT 写明被排除
+- **还没做：** 你选了先不建这一批，所以没有改写简历，没花钱
+- **撤回：** `git revert` 这个提交

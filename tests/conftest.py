@@ -2,6 +2,7 @@
 
 import copy
 import json
+import os
 from dataclasses import replace
 from pathlib import Path
 
@@ -14,6 +15,11 @@ from pipeline.db import connect, migrate
 
 FIXTURES = Path(__file__).parent / "fixtures"
 TEST_DB = "jobhunt_test"
+
+# Tests run against the fictional sample profile, whatever the local .env says: since Milestone 5
+# it points PROFILE_DIR at FL's real profile, which must never show up in test runs or output.
+# .env is read without overriding, so this wins.
+os.environ["PROFILE_DIR"] = "data/sample"
 
 
 @pytest.fixture

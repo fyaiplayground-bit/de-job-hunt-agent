@@ -1,6 +1,7 @@
 """The approval queue (decision #40): today's best jobs, each with a checked resume, waiting for FL.
 
     uv run python -m agents.application_queue build            # pick and prepare today's batch
+    uv run python -m agents.application_queue build --dry-run  # only show what it would pick (free)
     uv run python -m agents.application_queue approve 1 3 5    # these numbers, today's batch
     uv run python -m agents.application_queue pass 2 --reason "not the right industry"
     uv run python -m agents.application_queue applied 1        # after it really went out
@@ -326,6 +327,37 @@ def still_open(conn: psycopg.Connection, jobs: list[Job], today: date, days: int
     return [job for job in jobs if job.posting_version_id in open_ids]
 
 
+def candidates(
+    conn: psycopg.Connection,
+    profile: Profile,
+    settings: LlmSettings,
+    batch_date: date,
+    rules: QueueRules,
+) -> Batch:
+    """The jobs a batch for this date would take: scored now, still open, picked by the rules."""
+    jobs = scored_jobs(conn, profile, load_rules(), load_vocabulary(), settings, batch_date)
+    jobs = still_open(conn, jobs, batch_date, load_scope().open_within_days)
+    return pick_batch(jobs, rules, *_seen(conn))
+
+
+def preview_lines(batch: Batch, rules: QueueRules) -> list[str]:
+    """What a build would pick, for a dry run: nothing is tailored, stored or paid for."""
+    lines = []
+    for number, job in enumerate(batch.chosen, start=1):
+        fit, brief = job.fit, job.brief
+        lines.append(
+            f"{number}. {fit['score']:3d} {fit['decision']:14} #{job.posting_version_id} "
+            f"{brief['company']} | {brief['title']} | {fit['work_mode']} · {fit['location']} "
+            f"[{site_kind(brief.get('url', ''), rules)}]"
+        )
+    for job, reason in batch.skipped:
+        lines.append(
+            f"   left out: {job.fit['score']:3d} #{job.posting_version_id} "
+            f"{job.brief['company']} | {job.brief['title']}: {reason}"
+        )
+    return lines
+
+
 def build_batch(
     conn: psycopg.Connection,
     client: LlmClient,
@@ -348,9 +380,7 @@ def build_batch(
     if batch_rows(conn, batch_date):
         return [], [], []
     vocab = load_vocabulary()
-    jobs = scored_jobs(conn, profile, load_rules(), vocab, settings, batch_date)
-    jobs = still_open(conn, jobs, batch_date, load_scope().open_within_days)
-    batch = pick_batch(jobs, rules, *_seen(conn))
+    batch = candidates(conn, profile, settings, batch_date, rules)
     drafter, reviewer = load_skill("resume-tailoring"), load_skill("resume-reviewer")
     fingerprint = profile_fingerprint(folder)
     results: list[Tailored] = []
@@ -443,6 +473,9 @@ def main(argv: list[str] | None = None) -> int:
     commands = parser.add_subparsers(dest="command", required=True)
     build = commands.add_parser("build", help="pick and prepare a batch")
     build.add_argument("--n", type=int, help="jobs in this batch, instead of config/queue.toml")
+    build.add_argument(
+        "--dry-run", action="store_true", help="only show what it would pick: no AI, no writes"
+    )
     for name, helptext in (
         ("approve", "approve these numbers; writes the submit pack"),
         ("pass", "leave these numbers out"),
@@ -463,6 +496,17 @@ def main(argv: list[str] | None = None) -> int:
     with connect() as conn:
         migrate(conn)
         skipped: list[tuple[Job, str]] = []
+        if args.command == "build" and args.dry_run:
+            if args.n is not None:
+                rules = QueueRules(**{**rules.__dict__, "daily_jobs": args.n})
+            if batch_rows(conn, batch_date):
+                print(f"the {batch_date} batch already exists; a build would add nothing")
+                return 0
+            batch = candidates(conn, profile, settings, batch_date, rules)
+            print(f"dry run for {batch_date}, profile {folder}: nothing tailored, stored or paid")
+            for line in preview_lines(batch, rules):
+                print(line)
+            return 0
         if args.command == "build":
             results, skipped, failed = build_batch(
                 conn, AnthropicClient(), profile, folder, settings, batch_date, rules, args.n

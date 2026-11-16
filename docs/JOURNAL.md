@@ -754,3 +754,13 @@
   4. 过程中抓到并修好 3 个坑（现在都是样例）："Remote-North & South America" 包括美国；18 个微软职位被写成 "Redmond, Australia"；聚合网站的 "Boston, Philippines"
   5. 重新打分 425 个：样本档案 skip 216 / apply 174 / referral 35，和预览一致；dbt 56 步通过
 - **撤回：** `git revert` 这个提交，然后 `uv run python -m agents.fit_scoring run` 重新打分
+
+### 5.8 · 2026-11-15 · 每日运行切到你的真实档案；队列可以先"预演"
+- **做了什么：** 你同意后，在本地 `.env` 里加了 `PROFILE_DIR=private`（`.env` 不上传）。从下一次每日运行开始，打分、"今天值得投的"、技能覆盖率和申请队列都按你的真实档案来算。给 `application_queue build` 加了 `--dry-run`：只显示这一批会选哪 5 个职位、哪些因为重复或同一家公司被排除，不调用 AI、不写数据库、不花钱
+- **为什么：** 改简历每个职位大约 $0.25，先看选了谁，你同意了再花钱
+- **文件：** `agents/application_queue.py`、`tests/test_application_queue.py`、`tests/conftest.py`、`docs/STATUS.md`、`docs/JOURNAL.md`（`.env` 只在本地）
+- **提交：** 见本条所在的提交
+- **验证：** `agents.profile check` 通过；按你的档案重新打分 453 个（投 179、投 + 找内推 63、跳过 211）；dbt 56 步通过；预演选出 5 个 95 分的职位；以前给样本档案排过队的 5 个职位都已经关闭，不影响你的队列；新增测试，全部测试通过
+- **顺手修的：** 切换以后有一个测试读到了 `.env` 里的真实档案（测试输出里出现了你的名字）。现在测试一律用样本档案，不管 `.env` 怎么写（`tests/conftest.py`）
+- **注意：** 11/15 的每日运行 17:40 就开始了，比切换早，所以那份报告还是按样本档案算的；11/16 起才是你的档案
+- **撤回：** 删掉 `.env` 里 `PROFILE_DIR=private` 那一行，再跑 `uv run python -m agents.fit_scoring run`；代码部分 `git revert` 这个提交

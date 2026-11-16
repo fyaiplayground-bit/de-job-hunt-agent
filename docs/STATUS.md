@@ -1,6 +1,6 @@
 # Status
 
-**Last updated:** 2026-11-10 · **Phase:** Milestones 1-4 done; next: decide on a cloud server, then Milestone 5 (FL's real profile)
+**Last updated:** 2026-11-15 · **Phase:** Milestone 5: the daily run scores FL's real profile; the first real approval batch waits for FL's OK
 
 Update this file at the end of every work session: what got done, what's next, what's blocked.
 
@@ -9,7 +9,7 @@ Update this file at the end of every work session: what got done, what's next, w
 - Design confirmed (see `docs/DESIGN.md`, `docs/DECISIONS.md`).
 - Repo is on GitHub (public): https://github.com/fyaiplayground-bit/de-job-hunt-agent.
 - **Milestone 1 complete (2026-10-31):** daily ingestion from Greenhouse, Lever and freehire into Postgres (raw, idempotent), safety gate with deterministic triage and the rules loop, cross-source dedupe, scheduled daily run with report. M1 interview note in `docs/INTERVIEW_NOTES.md`.
-- FL's real resume and Evidence Bank come last (Milestone 5). Until then everything is built and tested against the fictional sample profile in `data/sample/` (decisions #16, #28); `PROFILE_DIR` switches it to `private/`.
+- FL's real resume and Evidence Bank are in `private/` (Milestone 5). Since 2026-11-15 the local `.env` sets `PROFILE_DIR=private`, so scoring, the report and the queue use her real profile; tests still use the fictional sample in `data/sample/` (decisions #16, #28).
 
 ## Waiting on FL
 
@@ -57,13 +57,16 @@ Update this file at the end of every work session: what got done, what's next, w
 - [x] README with architecture diagram; M4 interview note (2026-11-10)
 
 ### Milestone 5 · Go live with FL's real profile
-- [ ] FL provides her resume + summaries of GH Archive, Python Practice, Data Engineer career
-- [ ] Build the real Evidence Bank and Applicant Profile in `private/` (same format as the sample)
+- [x] FL provides her resume + summaries of GH Archive, Python Practice, Data Engineer career
+- [x] Build the real Evidence Bank and Applicant Profile in `private/` (same format as the sample; 2026-11-12 to 11-14)
 - [ ] Answer the open questions; fill `private/target_companies.md`
-- [ ] Point the config from `data/sample/` to `private/`; review the first real tailored resumes
+- [x] Point the config from `data/sample/` to `private/` (2026-11-15); first real tailored resumes reviewed (3 jobs, 2026-11-14)
+- [x] Fit-scoring rules v5: skip only jobs outside the US during the test phase (#51)
 - [ ] Start the daily submit queue (small companies first)
 
 ## Next action
+
+**FL, now:** OK the first real approval batch. The dry run (`agents.application_queue build --dry-run`, free) picks 5 jobs at 95: Sigma Computing (NYC onsite), The Bison Group (Springfield VA), Kaleidoscope Innovation (Irvine CA), SynergisticIT (junior, aggregator), Disney (Glendale CA). Building costs about $0.25 a job (Sigma and Bison partly cached). FL may want to pass on SynergisticIT first.
 
 **FL any time:** send jobs found on LinkedIn (company + title); Claude runs `pipeline.find_job` and reports; `--stats` gives coverage.
 
@@ -81,7 +84,7 @@ Update this file at the end of every work session: what got done, what's next, w
 
 **Then:** decide with FL whether to move to a small cloud server before Milestone 5 (design first: what moves, monthly cost, EventBridge vs an always-on scheduler, FastAPI if it moves; #45, #47). Otherwise start Milestone 5. Airflow is stopped; start it only on request (NOTES, 常用操作).
 
-Standing facts: JD briefs run on Claude Haiku 5.5 (`JD_ANALYSIS_MODEL` in `.env`) and resume work on Opus 5.5 until Milestone 5 (#48); remove that line to go back to Opus. Fit-scoring rules v4 (DE ranked above AE, #49) and vocabulary v3 are live (#42); the next daily run is their first real use. The 87 `jd-analysis@3` briefs stay as they are and are not re-briefed (FL, 2026-11-04); scoring and tailoring work from new jobs only. jd-analysis v4, resume-tailoring v4, resume-reviewer v2 and vocabulary v2 are live (#39). A skill named only in a posting's duties can drop out of the brief (totalwine's semantic layers); FL accepted this for now. The daily AI cap stays at 50 (FL, 2026-11-03). On a busy day the jobs over the cap are not briefed or retried: run 8 had 70 in scope and left 20, chosen by newest posting id rather than quality; the report shows the count, so revisit it once there are more days of volume. The clearance rule is on (fit-scoring rules v2, #37); FL fills in `has_security_clearance` and `can_obtain_security_clearance` at Milestone 5 (the sample has both false). Fit scoring's location check is OFF during the small-company practice phase (final targets California, Washington, Texas for the big-tech phase). The daily run happens by itself at 9:30 LA (#29), catches up about 6 minutes after the laptop wakes, and also starts 5 minutes after login if today hasn't run (#43); check it at session start.
+Standing facts: JD briefs run on Claude Haiku 5.5 (`JD_ANALYSIS_MODEL` in `.env`) and resume work on Opus 5.5 until Milestone 5 (#48); remove that line to go back to Opus. Fit-scoring rules v4 (DE ranked above AE, #49) and vocabulary v3 are live (#42); the next daily run is their first real use. The 87 `jd-analysis@3` briefs stay as they are and are not re-briefed (FL, 2026-11-04); scoring and tailoring work from new jobs only. jd-analysis v4, resume-tailoring v4, resume-reviewer v2 and vocabulary v2 are live (#39). A skill named only in a posting's duties can drop out of the brief (totalwine's semantic layers); FL accepted this for now. The daily AI cap stays at 50 (FL, 2026-11-03). On a busy day the jobs over the cap are not briefed or retried: run 8 had 70 in scope and left 20, chosen by newest posting id rather than quality; the report shows the count, so revisit it once there are more days of volume. The clearance rule is on (fit-scoring rules v2, #37); FL fills in `has_security_clearance` and `can_obtain_security_clearance` at Milestone 5 (the sample has both false). Fit scoring skips only jobs outside the US during the test phase (rules v5, #51); salary is ignored for now (the profile's floor is a test value), and the big-tech phase will limit location to California, Washington, Texas. The daily run happens by itself at 9:30 LA (#29), catches up about 6 minutes after the laptop wakes, and also starts 5 minutes after login if today hasn't run (#43); check it at session start.
 
 ## Session log
 
@@ -143,3 +146,4 @@ Standing facts: JD briefs run on Claude Haiku 5.5 (`JD_ANALYSIS_MODEL` in `.env`
 - 2026-11-14 — Evidence Bank round 2: earlier roles, education and both projects added (private/; check passes). Degrees may give the year only. Next: Applicant Profile answers, then the first real resume.
 - 2026-11-14 — First real resume: Applicant Profile (contact real, other answers provisional) and a general DE resume in private/, one page, all checks pass. Next: FL confirms the provisional answers, then switch PROFILE_DIR to private.
 - 2026-11-14 — First tailoring run on the real profile (top 3 jobs) exposed that the location check is off: two of the three were outside the US or onsite elsewhere. FL's call for the test phase: ignore salary and location except skip jobs outside the US. Next (new session): propose fit-scoring rules v5 with a US-only location check through the rules loop, then, with FL's OK, switch PROFILE_DIR to private and dry-run the first real approval queue.
+- 2026-11-15 — Fit-scoring rules v5 adopted with FL's OK (#51): skip only jobs outside the US; 40 golden place cases; 13 jobs abroad moved to skip for FL's profile. `.env` now sets `PROFILE_DIR=private` (FL's OK): 453 briefs rescored (apply 179, referral 63, skip 211), dbt rebuilt. New `application_queue build --dry-run` shows the first real batch for free; building it waits for FL. Run 16 (11/15) started 17:40, before the switch, so its report still uses the sample; no 11/14 run. 737 tests pass.

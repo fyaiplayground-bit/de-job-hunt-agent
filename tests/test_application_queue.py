@@ -18,6 +18,7 @@ from agents.application_queue import (
     job_keys,
     load_queue_rules,
     pick_batch,
+    preview_lines,
     set_status,
     site_kind,
     write_pack,
@@ -134,6 +135,19 @@ def test_earlier_batches_count():
 def test_jobs_past_the_batch_size_are_not_called_duplicates():
     jobs = [job(i, company=f"Co{i}", host=f"c{i}.example.com", title=f"T{i}") for i in range(8)]
     assert pick(jobs).skipped == []
+
+
+def test_a_dry_run_lists_the_pick_and_what_was_left_out():
+    first = job(1, score=90, company="Acme", host="boards.greenhouse.io")
+    first.fit.update(work_mode="onsite", location="New York, NY")
+    same_company = job(2, score=80, company="Acme", title="Analytics Engineer")
+    same_company.fit.update(work_mode="remote", location="US")
+    lines = preview_lines(pick([first, same_company]), RULES)
+    assert lines[0] == (
+        "1.  90 apply          #1 Acme | Data Engineer | onsite · New York, NY [no_account]"
+    )
+    assert lines[1].startswith("   left out:  80 #2 Acme | Analytics Engineer:")
+    assert len(lines) == 2
 
 
 @pytest.mark.parametrize(

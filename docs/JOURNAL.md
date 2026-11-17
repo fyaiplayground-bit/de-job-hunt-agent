@@ -780,12 +780,12 @@
 - **文件：** `CLAUDE.md`、`docs/DESIGN.md`、`docs/DECISIONS.md`、`docs/JOURNAL.md`、`docs/STATUS.md`（代码没改；私人申请资料不提交）
 - **提交：** 见本条所在的提交
 - **验证：** Greenhouse 确认页 "Thank you for applying"；队列状态 applied
-- **发现的问题：** 队列判断"同一个职位"用的是"职位名 + 网站域名"，Greenhouse 上所有公司共用一个域名，所以别家同名的 "Data Engineer"（比如 EdgeQ）会被当成重复挡掉。还没修，等你同意修法
+- **发现的问题：** 队列判断"同一个职位"用的是"职位名 + 网站域名"，Greenhouse 上所有公司共用一个域名，所以别家同名的 "Data Engineer" 会被当成重复挡掉（当时举的 EdgeQ 例子不对，见 5.11）。在 5.11 修好
 - **撤回：** `git revert` 这个提交（已经投出去的申请撤不回）
 
 ### 5.11 · 2026-11-16 · 队列判断"同一个职位"不再被共享网站误伤（规则 v3）
 - **做了什么：** 判断"同一个职位"的第二种比法（同名职位 + 同一个网站）改成比"这家公司自己的招聘页"。Greenhouse、Lever 这类网站看网址里的公司名（`job-boards.greenhouse.io/sigmacomputing`）；LinkedIn、Adzuna 这类聚合网站网址里没有公司名，就只按"公司 + 职位名"比。以前排过队的职位也按新规则重新算
-- **为什么：** DECISIONS #54：Sigma 的 "Data Engineer" 把 EdgeQ 的挡掉了，而且以后 Greenhouse 上所有叫 "Data Engineer" 的都会被挡
+- **为什么：** DECISIONS #54：共享网站（Greenhouse、Wellfound、LinkedIn）上，一家公司的职位会把别家同名职位挡掉，排进队列以后还会一直挡（Sigma 进队列后，Greenhouse 上所有 "Data Engineer" 都会被挡）。更正：发现 bug 时举的 EdgeQ 其实是 EdgeQ 自己另一个帖子的真重复，不是被 Sigma 挡的
 - **文件：** `agents/application_queue.py`、`config/queue.toml`、`config/proposals/queue.v3.toml`、`tests/test_application_queue.py`、`docs/DECISIONS.md`、`docs/JOURNAL.md`、`docs/STATUS.md`
 - **提交：** 见本条所在的提交
 - **验证：** 新增测试（共享网站上两家公司同名职位算两个、同一家公司两种拼法仍算一个、聚合网站、按新规则重算以前的队列，共 15 个用例）；全部 755 个测试通过；明天的预演：v2 误挡的 Keebo、Willow、BrainStation、Alo Yoga、Carrot 不再被挡，剩下标"同一个"的都是真重复。没花钱

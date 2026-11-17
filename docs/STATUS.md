@@ -1,6 +1,6 @@
 # Status
 
-**Last updated:** 2026-11-15 · **Phase:** Milestone 5: the daily run scores FL's real profile; the first real approval batch waits for FL's OK
+**Last updated:** 2026-11-16 · **Phase:** Milestone 5: first real application sent (Sigma Computing); submitting one job at a time from Claude Code
 
 Update this file at the end of every work session: what got done, what's next, what's blocked.
 
@@ -42,7 +42,7 @@ Update this file at the end of every work session: what got done, what's next, w
 - [x] fit-scoring as code (2.3: vocabulary matching, 70/20 score, dealbreakers, daily "worth applying"; #35) and coverage checks (#34)
 - [x] PDF compile-and-inspect; ATS text-layer check (2.4, `agents/pdf_checks.py`, `agents.render_resume`; #36)
 - [x] Tailor → reviewer → revise loop (2.5, #38)
-- [x] Approval queue output for the claude.ai Project to submit from (2.6, #40)
+- [x] Approval queue output with a submit pack (2.6, #40); submitted from Claude Code since #53
 - [x] End-to-end test: real JDs from the pipeline + the sample profile → tailored PDFs (5-job trial 2026-11-03; FL still to read them)
 
 ### Milestone 3 · Week 3 · Modeling + reporting
@@ -62,11 +62,13 @@ Update this file at the end of every work session: what got done, what's next, w
 - [ ] Answer the open questions; fill `private/target_companies.md`
 - [x] Point the config from `data/sample/` to `private/` (2026-11-15); first real tailored resumes reviewed (3 jobs, 2026-11-14)
 - [x] Fit-scoring rules v5: skip only jobs outside the US during the test phase (#51)
-- [ ] Start the daily submit queue (small companies first)
+- [ ] Start the daily submit queue (small companies first): first application sent 2026-11-16 (Sigma, #53)
 
 ## Next action
 
-**FL, when ready:** OK building the first real approval batch. The free dry run (`agents.application_queue build --dry-run`) picks Sigma Computing (NYC onsite), The Bison Group (Springfield VA), Kaleidoscope Innovation (Irvine CA), Disney (Glendale CA) and EdgeQ Technologies (81, NYC remote); SynergisticIT is excluded (queue rules v2, #52). Building costs about $0.25 a job, at most about $1.25 (Sigma and Bison partly cached). FL adopted the exclude list on 2026-11-15 and chose not to build yet. The pick changes as new jobs are scored, so dry-run again right before building.
+**Claude, next:** fix the queue's duplicate check: its second key is title + site host, and every Greenhouse company shares one host, so another company's "Data Engineer" counts as the same job (EdgeQ was left out on 2026-11-16, and once Sigma is queued every Greenhouse "Data Engineer" would be). Propose the fix to FL first.
+
+**FL, when ready:** the next job. Dry-run, build one or a few (about $0.2 each), approve, Claude fills the form, FL attaches the PDF and clicks Submit (#53).
 
 **FL any time:** send jobs found on LinkedIn (company + title); Claude runs `pipeline.find_job` and reports; `--stats` gives coverage.
 
@@ -74,7 +76,7 @@ Update this file at the end of every work session: what got done, what's next, w
 
 **Claude, at a login:** the login trigger (#43) hasn't been seen firing for real yet; check `output/daily/daily.log` after FL's next sign-in on a day the 9:30 run was missed.
 
-**FL's goal for later (2026-11-04):** automate submission as far as possible. Design it with real sites: Claude can fill forms up to the final page, never enters passwords, creates accounts or solves CAPTCHAs, and a person approves every batch. Of today's 5 jobs, 4 are on sites that usually need an account and 1 is an aggregator link.
+**FL's goal for later (2026-11-04):** automate submission as far as possible (first step taken 2026-11-16, #53). Design it with real sites: Claude can fill forms up to the final page, never enters passwords, creates accounts or solves CAPTCHAs, and a person approves every batch. Of today's 5 jobs, 4 are on sites that usually need an account and 1 is an aggregator link.
 
 **Not built yet:** the outreach agent (DESIGN agents 3 and 7, skill `outreach-drafting` written, no module), and the submission flow FL wants automated as far as allowed (above). Both belong to Milestone 5 or after.
 
@@ -148,3 +150,4 @@ Standing facts: JD briefs run on Claude Haiku 5.5 (`JD_ANALYSIS_MODEL` in `.env`
 - 2026-11-14 — First tailoring run on the real profile (top 3 jobs) exposed that the location check is off: two of the three were outside the US or onsite elsewhere. FL's call for the test phase: ignore salary and location except skip jobs outside the US. Next (new session): propose fit-scoring rules v5 with a US-only location check through the rules loop, then, with FL's OK, switch PROFILE_DIR to private and dry-run the first real approval queue.
 - 2026-11-15 — Fit-scoring rules v5 adopted with FL's OK (#51): skip only jobs outside the US; 40 golden place cases; 13 jobs abroad moved to skip for FL's profile. `.env` now sets `PROFILE_DIR=private` (FL's OK): 453 briefs rescored (apply 179, referral 63, skip 211), dbt rebuilt. New `application_queue build --dry-run` shows the first real batch for free; building it waits for FL. Run 16 (11/15) started 17:40, before the switch, so its report still uses the sample; no 11/14 run. 737 tests pass.
 - 2026-11-15 — Queue rules v2 adopted (#52): an exclude list for companies, starting with SynergisticIT; `build --dry-run --rules PROPOSAL` previews a proposal. The dry run now picks Sigma, Bison Group, Kaleidoscope, Disney and EdgeQ. FL chose not to build the batch yet: nothing tailored, $0.
+- 2026-11-16 — First real application: Sigma Computing (Greenhouse, no account). Built for $0.17, FL approved, Claude filled the form in the app's built-in browser (Claude in Chrome not connected), FL attached the PDF and submitted; confirmation seen, marked applied. FL's form answers stored in the private profile. Submission now runs from Claude Code (#53). Found: the queue's title + host duplicate key blocks same-titled jobs at other Greenhouse companies.

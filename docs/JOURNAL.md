@@ -773,3 +773,12 @@
 - **验证：** 新增 3 个测试（排除并写明原因、名字按队列的方式比对、没有名单时什么都不排除）；全部测试通过；用正式规则预演：Sigma Computing、The Bison Group、Kaleidoscope Innovation、Disney、EdgeQ Technologies（81 分），SynergisticIT 写明被排除
 - **还没做：** 你选了先不建这一批，所以没有改写简历，没花钱
 - **撤回：** `git revert` 这个提交
+
+### 5.10 · 2026-11-16 · 第一份真实申请：Sigma Computing
+- **做了什么：** 预演选出 Sigma → 只建这 1 个（$0.17）→ 你看过简历、批准 → 我在 App 自带的浏览器里填表 → 你上传 PDF、点隐私确认、点 Submit → 确认页显示已收到 → `application_queue applied 1`。申请资料里补了你确认的答案（坐班和搬家一律愿意、签证状态那一栏）
+- **为什么：** DECISIONS #53：从 Claude Code 投，你的步骤最少，不用学 claude.ai
+- **文件：** `CLAUDE.md`、`docs/DESIGN.md`、`docs/DECISIONS.md`、`docs/JOURNAL.md`、`docs/STATUS.md`（代码没改；私人申请资料不提交）
+- **提交：** 见本条所在的提交
+- **验证：** Greenhouse 确认页 "Thank you for applying"；队列状态 applied
+- **发现的问题：** 队列判断"同一个职位"用的是"职位名 + 网站域名"，Greenhouse 上所有公司共用一个域名，所以别家同名的 "Data Engineer"（比如 EdgeQ）会被当成重复挡掉。还没修，等你同意修法
+- **撤回：** `git revert` 这个提交（已经投出去的申请撤不回）

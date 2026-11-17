@@ -61,7 +61,7 @@ First use: gate triage (`clean` / `benign` / `review` / `block`), rules in `conf
 | 3 | Researcher | Company stack, news, likely team members, talking points (public info only) | (inside `outreach-drafting`) |
 | 4 | Resume Tailor | One-page PDF in the JD's words, F-pattern layout, drafter → reviewer → revise | `resume-tailoring` |
 | 5 | Critic | Parse check, keyword coverage, evidence check, 7-second test, layout, hygiene | `ats-critic` |
-| 6 | Submitter | Claude in Chrome from the claude.ai Project; fill to review page; FL approves | (not in repo) |
+| 6 | Submitter | Claude Code fills the form in the app's browser from the submit pack; FL attaches the PDF and clicks Submit (#53) | (not in repo) |
 | 7 | Networker | 2–3 people per job + draft notes; recruiter reply drafts | `outreach-drafting` |
 | 8 | Tracker | Stage per job, follow-up dates, weekly funnel, interview prep pack | (dbt marts + Project) |
 | 9 | Coverage Reporter | Do have + learning skills cover most target jobs? | `coverage-report` |

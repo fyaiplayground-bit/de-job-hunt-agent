@@ -9,7 +9,7 @@ A data-engineering pipeline that feeds a team of job-hunting agents.
 - **Pipeline (the core, and FL's DE portfolio piece):** ingest job postings daily → store raw → clean and dedupe → extract skills → model with dbt → orchestrate with Airflow → show in a dashboard.
 - **Agents (on top of the pipeline):** analyze each JD, score fit, research the company, tailor the resume into a one-page PDF, critique it like an ATS and a recruiter, draft outreach, and report daily skill coverage.
 - **API:** FastAPI wrapper so every agent is callable as an endpoint.
-- **Submission:** this repo builds an approval queue. Filling and submitting forms happens through Claude in Chrome from the "Job Hunting" claude.ai Project, and only after FL approves each batch.
+- **Submission:** this repo builds an approval queue. After FL approves a job, Claude fills its form from this Claude Code session (the desktop app's built-in browser, or Claude in Chrome when connected); FL attaches the resume where the browser can't, and FL clicks Submit (decision #53).
 
 Full design: `docs/DESIGN.md`. Every decision and why: `docs/DECISIONS.md`.
 

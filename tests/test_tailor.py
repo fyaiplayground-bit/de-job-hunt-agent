@@ -611,9 +611,10 @@ def test_trim_keeps_a_bullet_that_alone_says_a_keyword():
     d["experience"][0]["bullets"][-1]["text"] = "Designed a star schema in SQL"  # only SQL here
     d["experience"][0]["bullets"][1]["text"] = "Built daily data pipelines in Python"
     # Python and ETL are also said by the other role, so neither of the first two bullets loses a
-    # keyword; the tie falls back to the later one. The old rule would have cut the SQL bullet.
-    assert trim_one_bullet(d, JOB.brief, JOB.fit) == "Built daily data pipelines in Python"
+    # keyword; on that tie the one saying fewer of the job's keywords goes first (#56). The old
+    # rule would have cut the SQL bullet.
     assert trim_one_bullet(d, JOB.brief, JOB.fit).startswith("Set up Athena tables")
+    assert trim_one_bullet(d, JOB.brief, JOB.fit) == "Built daily data pipelines in Python"
     assert [b["text"] for b in d["experience"][0]["bullets"]] == ["Designed a star schema in SQL"]
 
 
@@ -635,8 +636,28 @@ def test_trim_keeps_the_last_job_bullet_for_a_keyword_a_project_also_says():
     )
     # Under #50 alone the pipelines bullet went first: the project says both of its keywords.
     assert trim_one_bullet(d, JOB.brief, JOB.fit) == nothing_new["text"]
-    assert trim_one_bullet(d, JOB.brief, JOB.fit) == "Built data pipelines in Python on PostgreSQL"
+    assert trim_one_bullet(d, JOB.brief, JOB.fit).startswith("Built 9 dbt models")  # no keyword
     assert pipelines in d["experience"][0]["bullets"]
+
+
+def test_on_a_tie_trim_keeps_the_bullet_with_more_keywords_then_the_one_with_a_number():
+    """Decision #56, FL on Disney's resume: "about 2 billion rows a day" is a plus for a
+    petabyte-scale job, so among bullets whose loss costs no keyword, the one saying fewer of
+    the job's keywords goes first, then the one without a number."""
+    d = draft()
+    d["experience"][0]["bullets"] = [
+        {"text": "Built daily data pipelines in Python processing about 2 billion rows",
+         "evidence": ["qf-glue-redshift"]},
+        {"text": "Built daily data pipelines in Python for the BI team",
+         "evidence": ["qf-glue-redshift"]},
+        {"text": "Designed a star schema in SQL with 4 fact and 12 dimension tables",
+         "evidence": ["qf-star-schema"]},
+        {"text": "Set up Athena tables in S3", "evidence": ["qf-athena-clickstream"]},
+    ]
+    assert trim_one_bullet(d, JOB.brief, JOB.fit) == "Set up Athena tables in S3"  # no keyword
+    # Both pipelines bullets say the same keywords: the one without a number goes.
+    assert trim_one_bullet(d, JOB.brief, JOB.fit).endswith("for the BI team")
+    assert d["experience"][0]["bullets"][0]["text"].endswith("about 2 billion rows")
 
 
 def test_on_a_tie_trim_keeps_the_bullet_the_reviewer_added():

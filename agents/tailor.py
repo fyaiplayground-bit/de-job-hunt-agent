@@ -36,7 +36,7 @@ from agents.fit_scoring import (
 from agents.jd_analysis import _object, brief_postings
 from agents.llm import AnthropicClient, LlmClient, LlmError, LlmResult, ask, build_request
 from agents.pdf_checks import PdfReport, check_pdf
-from agents.profile import Profile, load_profile, resume_month
+from agents.profile import NOT_A_QUANTITY, NUMBER, Profile, load_profile, resume_month
 from agents.render_resume import render_pdf
 from agents.resume_checks import Problems, check_draft, draft_bullets, mentions
 from agents.resume_doc import ResumeFormatError, parse_resume
@@ -263,6 +263,10 @@ def keywords_in_bullets(
     text = "\n".join(
         bullet["text"] for section, _, bullet in draft_bullets(draft) if section in sections
     )
+    return keywords_in_text(text, brief, fit)
+
+
+def keywords_in_text(text: str, brief: dict[str, Any], fit: dict[str, Any]) -> set[str]:
     items = {item["skill"]: item for item in brief["must_haves"]}
     said = set()
     for match in fit["covered"]:
@@ -285,9 +289,11 @@ def trim_one_bullet(
     gives the keyword its context), so a bullet that alone says a keyword stays. A keyword is
     counted twice over: once for the page and once for work experience (decision #55), so the last
     job bullet that says it stays even when a project says it too; a recruiter weighs paid work
-    over a side project. On a tie the drafter's bullets go before one the reviewer added, then the
-    last bullet of the role or project with the most (bullets are ordered by relevance); calls
-    without a job use only that."""
+    over a side project. On a tie the drafter's bullets go before one the reviewer added; then a
+    bullet that says fewer of the job's keywords, then one without a number (scale and results
+    are what FL wants kept: "2 billion rows a day" for a petabyte-scale job, decision #56); then the
+    last bullet of the role or project with the most (bullets are ordered by relevance). Calls
+    without a job use only that last rule."""
     entries = [e for s in ("experience", "projects") for e in draft[s] if len(e["bullets"]) > 1]
     if not entries:
         return None
@@ -305,10 +311,15 @@ def trim_one_bullet(
         entry["bullets"].insert(index, bullet)
         return len(said_now - said) + len(said_at_work - at_work)
 
+    def has_number(text: str) -> bool:
+        return bool(NUMBER.search(NOT_A_QUANTITY.sub("", text)))
+
     candidates = [
         (
             lost(entry, i),
             bool(entry["bullets"][i].get("added_by_review")),  # the reviewer added it on purpose
+            len(keywords_in_text(entry["bullets"][i]["text"], brief, fit)),
+            has_number(entry["bullets"][i]["text"]),
             -len(entry["bullets"]),
             -i,
             n,

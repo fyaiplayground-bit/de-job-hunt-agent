@@ -617,6 +617,28 @@ def test_trim_keeps_a_bullet_that_alone_says_a_keyword():
     assert [b["text"] for b in d["experience"][0]["bullets"]] == ["Designed a star schema in SQL"]
 
 
+def test_trim_keeps_the_last_job_bullet_for_a_keyword_a_project_also_says():
+    """Decision #55, from Disney's resume (2026-11-16): the Amazon PySpark bullets were cut because
+    a side project also said PySpark. A keyword said only at work now counts as lost when its last
+    work bullet goes, so a bullet that adds nothing goes first, then the project's copy."""
+    pipelines = {"text": "Built daily data pipelines in Python loading 6 source systems",
+                 "evidence": ["qf-glue-redshift"]}
+    nothing_new = {"text": "Set up Athena tables over 2 years of clickstream logs in S3",
+                   "evidence": ["qf-athena-clickstream"]}
+    star = {"text": "Designed a star schema in SQL with 4 fact and 12 dimension tables",
+            "evidence": ["qf-star-schema"]}
+    d = draft()
+    d["experience"][0]["bullets"] = [star, nothing_new, pipelines]  # pipelines last: cut first
+    d["experience"][1]["bullets"][0]["text"] = "Ran nightly jobs covering 14 warehouses"
+    d["projects"][0]["bullets"].append(
+        {"text": "Built data pipelines in Python on PostgreSQL", "evidence": ["bs-dbt-models"]}
+    )
+    # Under #50 alone the pipelines bullet went first: the project says both of its keywords.
+    assert trim_one_bullet(d, JOB.brief, JOB.fit) == nothing_new["text"]
+    assert trim_one_bullet(d, JOB.brief, JOB.fit) == "Built data pipelines in Python on PostgreSQL"
+    assert pipelines in d["experience"][0]["bullets"]
+
+
 def test_on_a_tie_trim_keeps_the_bullet_the_reviewer_added():
     """Decision #50: a bullet the reviewer added for the posting goes after the drafter's own."""
     d = apply_edit(

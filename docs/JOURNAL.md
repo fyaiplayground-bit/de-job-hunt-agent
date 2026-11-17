@@ -790,3 +790,11 @@
 - **提交：** 见本条所在的提交
 - **验证：** 新增测试（共享网站上两家公司同名职位算两个、同一家公司两种拼法仍算一个、聚合网站、按新规则重算以前的队列，共 15 个用例）；全部 755 个测试通过；明天的预演：v2 误挡的 Keebo、Willow、BrainStation、Alo Yoga、Carrot 不再被挡，剩下标"同一个"的都是真重复。没花钱
 - **撤回：** `git revert` 这个提交
+
+### 5.12 · 2026-11-16 · 第二份申请准备：Bison 不投，Disney 简历压一页的规则修好
+- **做了什么：** 用 11-17 这个日期建了一批 2 个（11-16 那批已经有 Sigma，一个日期只能建一批），花了 $0.44。Bison 标成"不投"：申请页上写着要 TS/SCI 安全许可加测谎，我们存的描述是 freehire 截短的，正好把这一段截掉了。Disney 的简历压一页时把 Amazon 的 PySpark 两条都删了，所以改了删哪条的规则（DECISIONS #55），然后从缓存重建，$0
+- **文件：** `agents/tailor.py`、`tests/test_tailor.py`、`docs/DECISIONS.md`、`docs/JOURNAL.md`、`docs/STATUS.md`
+- **提交：** 见本条所在的提交
+- **验证：** 新增 1 个测试（按旧规则会先删工作里那条）；全部 756 个测试通过；Disney 重建后 Amazon 保留 PySpark + Airflow 那条；Sigma 用新规则重算，删的和原来完全一样
+- **发现的问题：** freehire 的截短描述会漏掉安全许可要求；AI 在备注里猜到了，但规则只看 clearance 字段。还没修
+- **撤回：** `git revert` 这个提交

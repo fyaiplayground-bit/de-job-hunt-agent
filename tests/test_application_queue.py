@@ -15,6 +15,7 @@ from agents.application_queue import (
     batch_rows,
     build_batch,
     company_key,
+    company_site,
     job_keys,
     load_queue_rules,
     pick_batch,
@@ -122,9 +123,71 @@ def test_a_different_title_at_a_different_company_on_one_site_is_two_jobs():
     assert ids(batch) == [1, 2]
 
 
+def test_one_title_at_two_companies_on_a_shared_board_is_two_jobs():
+    # The real case from 2026-11-16: under queue rules v2, Sigma's "Data Engineer" on Greenhouse
+    # hid EdgeQ's, because every Greenhouse company shares one host.
+    batch = pick(
+        [
+            job(1, company="Sigma Computing", host="job-boards.greenhouse.io/sigmacomputing"),
+            job(2, company="EdgeQ Technologies", host="job-boards.greenhouse.io/edgeq"),
+        ]
+    )
+    assert ids(batch) == [1, 2]
+
+
+def test_one_company_spelled_two_ways_on_its_shared_board_is_one_job():
+    batch = pick(
+        [
+            job(1, score=70, company="Acme Health", host="jobs.lever.co/acme"),
+            job(2, score=60, company="AH", host="jobs.lever.co/acme"),
+        ]
+    )
+    assert ids(batch) == [1]
+    assert "同一个" in batch.skipped[0][1]
+
+
+def test_one_title_at_two_companies_through_an_aggregator_is_two_jobs():
+    host, title = "www.linkedin.com/jobs/view", "Sr. Data Engineer"
+    batch = pick([job(1, company="Carrot", title=title, host=host),
+                  job(2, company="Re:Build", title=title, host=host)])
+    assert ids(batch) == [1, 2]
+
+
+@pytest.mark.parametrize(
+    "url, site",
+    [
+        (
+            "https://job-boards.greenhouse.io/SigmaComputing/jobs/7",
+            "job-boards.greenhouse.io/sigmacomputing",
+        ),
+        ("https://jobs.lever.co/acme/abc-123?utm_source=x", "jobs.lever.co/acme"),
+        ("https://myjobs.adp.com/kmwcareers/cx/job/5", "myjobs.adp.com/kmwcareers"),
+        ("https://job-boards.greenhouse.io/", ""),  # no board named
+        ("https://www.adzuna.com/details/59", ""),
+        ("https://www.linkedin.com/jobs/view/44/", ""),
+        ("https://phg.tbe.taleo.net/phg02/ats/careers/requisition.jsp?org=X", ""),
+        ("https://acme.wd1.myworkdayjobs.com/Careers/job/1", "acme.wd1.myworkdayjobs.com"),
+        ("https://fa-etnf.oraclecloud.com/hcmUI/CX/job/7033", "fa-etnf.oraclecloud.com"),
+        ("", ""),
+    ],
+)
+def test_company_site(url, site):
+    assert company_site(url, RULES) == site
+
+
+def test_without_a_company_site_only_company_and_title_count():
+    job_key, title_key = job_keys(
+        {"company": "Carrot", "title": "Sr. Data Engineer", "url": "https://builtin.com/job/x/1"},
+        RULES,
+    )
+    assert (job_key, title_key) == ("carrot|sr data engineer", "")
+    assert ids(pick([job(2, company="Other", title="Sr. Data Engineer", host="builtin.com")],
+                    title_keys_seen=[title_key])) == [2]
+
+
 def test_earlier_batches_count():
     first = job(1)
-    job_key, title_key = job_keys(first.brief)
+    job_key, title_key = job_keys(first.brief, RULES)
     assert ids(pick([first], ids=[1])) == []
     other = job(2, company="Acme Inc.", host="other.example.com")  # same job, a new posting
     assert ids(pick([other], job_keys_seen=[job_key])) == []
@@ -488,6 +551,26 @@ def test_tomorrows_batch_takes_new_jobs_only(queued_postings, tmp_path):
     tomorrow_ids = {r["posting_version_id"] for r in batch_rows(db, tomorrow)}
     assert tomorrow_ids
     assert not tomorrow_ids & today_ids
+
+
+@pytest.mark.db
+def test_earlier_batches_are_matched_with_the_current_rules(queued_postings, tmp_path):
+    # A key stored under older rules must not hide a job the current rules call different: keys
+    # are worked out again from each queued item's snapshot.
+    db = queued_postings
+    run_build(db, tmp_path, size=1)
+    queued = batch_rows(db, TODAY)[0]["posting_version_id"]
+    other = db.execute(
+        "select posting_version_id, brief->>'title' from agents.jd_briefs"
+        " where posting_version_id <> %s order by 1 limit 1",
+        (queued,),
+    ).fetchone()
+    stale = f"{' '.join(other[1].lower().split())}|jobs.lever.co"  # what v2 would have stored
+    db.execute("update agents.queue_items set title_key = %s", (stale,))
+    tomorrow = date(2026, 11, 5)
+    client = FakeClient(answer=answer)
+    build_batch(db, client, PROFILE, SAMPLE, SETTINGS, tomorrow, RULES, 1, tmp_path)
+    assert [r["posting_version_id"] for r in batch_rows(db, tomorrow)] == [other[0]]
 
 
 @pytest.mark.db

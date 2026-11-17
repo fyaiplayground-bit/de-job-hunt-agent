@@ -9,8 +9,8 @@
 Code picks the jobs: best score first, one job per company, never the same job twice, even when
 two boards spell the company differently. Approving writes a submit pack: the PDF plus answers read
 from the Applicant Profile. Questions code can't answer are listed for FL, never guessed. This
-module fills in no form and submits nothing; that happens from the claude.ai Project, after FL
-says so a second time (decision #10). A batch built from the fictional sample profile can be
+module fills in no form and submits nothing: Claude fills the form from Claude Code and FL clicks
+Submit (decision #53). A batch built from the fictional sample profile can be
 approved so the flow can be tried, but it can never be marked applied.
 """
 
@@ -87,6 +87,10 @@ class QueueRules:
     never_guess: tuple[re.Pattern[str], ...]
     fields: tuple[tuple[re.Pattern[str], str, str], ...]
     exclude_companies: frozenset[str] = frozenset()  # company keys never queued
+    # Hosts many companies share. On the first kind the first part of the path names the
+    # company's board; on the second nothing in the address does (queue rules v3).
+    company_in_path: tuple[str, ...] = ()
+    many_companies: tuple[str, ...] = ()
 
 
 def load_queue_rules(path: Path = RULES_FILE) -> QueueRules:
@@ -105,6 +109,8 @@ def load_queue_rules(path: Path = RULES_FILE) -> QueueRules:
         exclude_companies=frozenset(
             company_key(name) for name in data.get("exclude", {}).get("companies", [])
         ),
+        company_in_path=tuple(data.get("same_site", {}).get("company_in_path", [])),
+        many_companies=tuple(data.get("same_site", {}).get("many_companies", [])),
     )
 
 
@@ -125,18 +131,38 @@ def application_host(url: str) -> str:
     return (urlparse(url).hostname or "").lower()
 
 
-def job_keys(brief: dict[str, Any]) -> tuple[str, str]:
-    """(same company + title, same title + site): either one matching means the same job. The
-    second catches a company spelled two ways, such as a hospital and its initials."""
+def _on(host: str, ends: tuple[str, ...]) -> bool:
+    return any(host == end or host.endswith(f".{end}") for end in ends)
+
+
+def company_site(url: str, rules: QueueRules) -> str:
+    """The one company's application site an address belongs to, or "" when the address can't
+    tell companies apart. A company's own host is its site; on a shared board such as Greenhouse
+    the site is the host plus the company's board name: "job-boards.greenhouse.io/sigmacomputing".
+    """
+    parts = urlparse(url)
+    host = (parts.hostname or "").lower()
+    if not host or _on(host, rules.many_companies):
+        return ""
+    if _on(host, rules.company_in_path):
+        board = parts.path.strip("/").split("/")[0].lower()
+        return f"{host}/{board}" if board else ""
+    return host
+
+
+def job_keys(brief: dict[str, Any], rules: QueueRules) -> tuple[str, str]:
+    """(same company + title, same title + same company site): either one matching means the same
+    job. The second catches a company spelled two ways, such as a hospital and its initials; it is
+    "" (never matches) when the address doesn't name one company."""
     title = _title_words(brief["title"])
-    host = application_host(brief.get("url", ""))
-    return f"{company_key(brief['company'])}|{title}", f"{title}|{host}"
+    site = company_site(brief.get("url", ""), rules)
+    return f"{company_key(brief['company'])}|{title}", f"{title}|{site}" if site else ""
 
 
 def site_kind(url: str, rules: QueueRules) -> str:
     host = application_host(url)
     for kind, ends in rules.sites.items():
-        if any(host == end or host.endswith(f".{end}") for end in ends):
+        if _on(host, ends):
             return kind
     return "unknown"
 
@@ -162,14 +188,14 @@ def pick_batch(
     job_seen, title_seen = set(seen_job_keys), set(seen_title_keys)
     worth = [job for job in jobs if job.fit["decision"] != "skip"]
     for job in sorted(worth, key=lambda j: (-j.fit["score"], j.posting_version_id)):
-        job_key, title_key = job_keys(job.brief)
+        job_key, title_key = job_keys(job.brief, rules)
         company = company_key(job.brief["company"])
         if job.posting_version_id in seen_posting_ids:
             continue
         if company in rules.exclude_companies:
             skipped.append((job, "你排除了这家公司"))
             continue
-        if job_key in job_seen or title_key in title_seen:
+        if job_key in job_seen or (title_key and title_key in title_seen):
             skipped.append((job, "和已经排进队列的职位是同一个"))
             job_seen.add(job_key)
             title_seen.add(title_key)
@@ -277,7 +303,7 @@ def queue_job(
     rules: QueueRules,
 ) -> None:
     brief = tailored.job.brief
-    job_key, title_key = job_keys(brief)
+    job_key, title_key = job_keys(brief, rules)
     snapshot = make_snapshot(tailored, rules, tailored.pdf.parent)
     posting_version_id = tailored.job.posting_version_id
     with conn.transaction():
@@ -304,11 +330,13 @@ def queue_job(
         )
 
 
-def _seen(conn: psycopg.Connection) -> tuple[set[int], set[str], set[str]]:
-    rows = conn.execute(
-        "select posting_version_id, job_key, title_key from agents.queue_items"
-    ).fetchall()
-    return {r[0] for r in rows}, {r[1] for r in rows}, {r[2] for r in rows}
+def _seen(conn: psycopg.Connection, rules: QueueRules) -> tuple[set[int], set[str], set[str]]:
+    """What earlier batches queued. Keys are worked out again from each item's snapshot with the
+    current rules, so a rules change also applies to jobs queued before it (the stored key
+    columns record what the rules said at the time)."""
+    rows = conn.execute("select posting_version_id, snapshot from agents.queue_items").fetchall()
+    keys = [job_keys(snapshot, rules) for _, snapshot in rows]
+    return {r[0] for r in rows}, {k[0] for k in keys}, {k[1] for k in keys if k[1]}
 
 
 def batch_rows(conn: psycopg.Connection, batch_date: date) -> list[dict[str, Any]]:
@@ -344,7 +372,7 @@ def candidates(
     """The jobs a batch for this date would take: scored now, still open, picked by the rules."""
     jobs = scored_jobs(conn, profile, load_rules(), load_vocabulary(), settings, batch_date)
     jobs = still_open(conn, jobs, batch_date, load_scope().open_within_days)
-    return pick_batch(jobs, rules, *_seen(conn))
+    return pick_batch(jobs, rules, *_seen(conn, rules))
 
 
 def preview_lines(batch: Batch, rules: QueueRules) -> list[str]:

@@ -66,9 +66,7 @@ Update this file at the end of every work session: what got done, what's next, w
 
 ## Next action
 
-**Claude, next:** fix the queue's duplicate check: its second key is title + site host, and every Greenhouse company shares one host, so another company's "Data Engineer" counts as the same job (EdgeQ was left out on 2026-11-16, and once Sigma is queued every Greenhouse "Data Engineer" would be). Propose the fix to FL first.
-
-**FL, when ready:** the next job. Dry-run, build one or a few (about $0.2 each), approve, Claude fills the form, FL attaches the PDF and clicks Submit (#53).
+**FL, when ready:** the next job. Dry-run, build one or a few (about $0.2 each), approve, Claude fills the form, FL attaches the PDF and clicks Submit (#53). Tomorrow's dry run (queue rules v3) picks The Bison Group (account site), Disney, Rhythm Energy, EdgeQ and Chime.
 
 **FL any time:** send jobs found on LinkedIn (company + title); Claude runs `pipeline.find_job` and reports; `--stats` gives coverage.
 
@@ -151,3 +149,4 @@ Standing facts: JD briefs run on Claude Haiku 5.5 (`JD_ANALYSIS_MODEL` in `.env`
 - 2026-11-15 — Fit-scoring rules v5 adopted with FL's OK (#51): skip only jobs outside the US; 40 golden place cases; 13 jobs abroad moved to skip for FL's profile. `.env` now sets `PROFILE_DIR=private` (FL's OK): 453 briefs rescored (apply 179, referral 63, skip 211), dbt rebuilt. New `application_queue build --dry-run` shows the first real batch for free; building it waits for FL. Run 16 (11/15) started 17:40, before the switch, so its report still uses the sample; no 11/14 run. 737 tests pass.
 - 2026-11-15 — Queue rules v2 adopted (#52): an exclude list for companies, starting with SynergisticIT; `build --dry-run --rules PROPOSAL` previews a proposal. The dry run now picks Sigma, Bison Group, Kaleidoscope, Disney and EdgeQ. FL chose not to build the batch yet: nothing tailored, $0.
 - 2026-11-16 — First real application: Sigma Computing (Greenhouse, no account). Built for $0.17, FL approved, Claude filled the form in the app's built-in browser (Claude in Chrome not connected), FL attached the PDF and submitted; confirmation seen, marked applied. FL's form answers stored in the private profile. Submission now runs from Claude Code (#53). Found: the queue's title + host duplicate key blocks same-titled jobs at other Greenhouse companies.
+- 2026-11-16 — Queue rules v3 adopted with FL's OK (#54): the duplicate check compares the company's own application site (Greenhouse board, Lever board...), not the shared host; earlier batches are matched again with the current rules. EdgeQ, Keebo, Willow, BrainStation, Alo Yoga and Carrot no longer hidden. 755 tests pass. $0.

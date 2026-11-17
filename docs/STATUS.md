@@ -66,7 +66,9 @@ Update this file at the end of every work session: what got done, what's next, w
 
 ## Next action
 
-**FL, when ready:** the next job. Dry-run, build one or a few (about $0.2 each), approve, Claude fills the form, FL attaches the PDF and clicks Submit (#53). Tomorrow's dry run (queue rules v3) picks The Bison Group (account site), Disney, Rhythm Energy, EdgeQ and Chime.
+**FL, when ready:** the next job. Dry-run, build one or a few (about $0.2 each), approve, Claude fills the form, FL attaches the PDF and clicks Submit (#53). In progress: Disney Sr Data Engineer (2026-11-17 batch, #2): resume rebuilt under #55, waiting for FL's approval and her street address for the form. Batches are one per date, so the next build needs `--date 2026-11-18` or later. Chime (Greenhouse, no account) is the next easy one.
+
+**Claude, to propose:** clearance requirements cut off by freehire's shortened descriptions slip past the clearance rule (The Bison Group, TS/SCI, passed 2026-11-16); jd-analysis notes the likely clearance in `hidden_signals` but fit scoring reads only `clearance`. Options: fetch the full posting for jobs headed to the queue, or count a hidden clearance signal. Through the loop.
 
 **FL any time:** send jobs found on LinkedIn (company + title); Claude runs `pipeline.find_job` and reports; `--stats` gives coverage.
 
@@ -150,3 +152,4 @@ Standing facts: JD briefs run on Claude Haiku 5.5 (`JD_ANALYSIS_MODEL` in `.env`
 - 2026-11-15 — Queue rules v2 adopted (#52): an exclude list for companies, starting with SynergisticIT; `build --dry-run --rules PROPOSAL` previews a proposal. The dry run now picks Sigma, Bison Group, Kaleidoscope, Disney and EdgeQ. FL chose not to build the batch yet: nothing tailored, $0.
 - 2026-11-16 — First real application: Sigma Computing (Greenhouse, no account). Built for $0.17, FL approved, Claude filled the form in the app's built-in browser (Claude in Chrome not connected), FL attached the PDF and submitted; confirmation seen, marked applied. FL's form answers stored in the private profile. Submission now runs from Claude Code (#53). Found: the queue's title + host duplicate key blocks same-titled jobs at other companies on shared hosts (fixed in #54).
 - 2026-11-16 — Queue rules v3 adopted with FL's OK (#54): the duplicate check compares the company's own application site (Greenhouse board, Lever board...), not the shared host; earlier batches are matched again with the current rules. Keebo, Willow, BrainStation, Alo Yoga and Carrot no longer hidden (EdgeQ was a real duplicate, not a victim). 755 tests pass. $0.
+- 2026-11-16 — Second application under way: built Bison + Disney for $0.44 (11-17 batch); Bison passed (TS/SCI only on the live page). Disney's one-page trim had cut both current-role PySpark bullets; trim rule fixed with FL's OK (#55): the last work bullet for a keyword stays. Disney rebuilt from cache for $0; Sigma trims as before. 756 tests pass.

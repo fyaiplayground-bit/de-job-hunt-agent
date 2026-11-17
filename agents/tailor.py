@@ -253,10 +253,16 @@ def apply_edit(draft: dict[str, Any], edit: dict[str, Any], profile: Profile) ->
 
 
 def keywords_in_bullets(
-    draft: dict[str, Any], brief: dict[str, Any], fit: dict[str, Any]
+    draft: dict[str, Any],
+    brief: dict[str, Any],
+    fit: dict[str, Any],
+    sections: tuple[str, ...] = ("experience", "projects"),
 ) -> set[str]:
-    """The job's covered must-haves that some bullet says, by name or in the posting's words."""
-    text = "\n".join(bullet["text"] for _, _, bullet in draft_bullets(draft))
+    """The job's covered must-haves that some bullet in these sections says, by name or in the
+    posting's words."""
+    text = "\n".join(
+        bullet["text"] for section, _, bullet in draft_bullets(draft) if section in sections
+    )
     items = {item["skill"]: item for item in brief["must_haves"]}
     said = set()
     for match in fit["covered"]:
@@ -276,22 +282,28 @@ def trim_one_bullet(
 
     With the job's brief and fit (decision #50): cut the bullet whose loss takes the fewest of the
     job's covered must-haves out of the bullets (the Skills line names them all anyway; a bullet
-    gives the keyword its context), so a bullet that alone says a keyword stays. On a tie the
-    drafter's bullets go before one the reviewer added, then the last bullet of the role or
-    project with the most (bullets are ordered by relevance); calls without a job use only that."""
+    gives the keyword its context), so a bullet that alone says a keyword stays. A keyword is
+    counted twice over: once for the page and once for work experience (decision #55), so the last
+    job bullet that says it stays even when a project says it too; a recruiter weighs paid work
+    over a side project. On a tie the drafter's bullets go before one the reviewer added, then the
+    last bullet of the role or project with the most (bullets are ordered by relevance); calls
+    without a job use only that."""
     entries = [e for s in ("experience", "projects") for e in draft[s] if len(e["bullets"]) > 1]
     if not entries:
         return None
     if brief is None or fit is None:
         return max(entries, key=lambda e: len(e["bullets"]))["bullets"].pop()["text"]
 
+    work = ("experience",)
     said_now = keywords_in_bullets(draft, brief, fit)
+    said_at_work = keywords_in_bullets(draft, brief, fit, work)
 
     def lost(entry: dict[str, Any], index: int) -> int:
         bullet = entry["bullets"].pop(index)
         said = keywords_in_bullets(draft, brief, fit)
+        at_work = keywords_in_bullets(draft, brief, fit, work)
         entry["bullets"].insert(index, bullet)
-        return len(said_now - said)
+        return len(said_now - said) + len(said_at_work - at_work)
 
     candidates = [
         (

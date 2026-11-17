@@ -66,7 +66,7 @@ Update this file at the end of every work session: what got done, what's next, w
 
 ## Next action
 
-**FL, when ready:** the next job. Dry-run, build one or a few (about $0.2 each), approve, Claude fills the form, FL attaches the PDF and clicks Submit (#53). In progress: Disney Sr Data Engineer (2026-11-17 batch, #2): resume rebuilt under #56 and approved by FL; waiting for her street address for the form. Batches are one per date, so the next build needs `--date 2026-11-18` or later. Chime (Greenhouse, no account) is the next easy one.
+**FL, when ready:** the next job. Dry-run, build one or a few (about $0.2 each), approve, Claude fills the form, FL attaches the PDF and clicks Submit (#53). Sent so far: Sigma Computing (2026-11-16 batch #1) and Disney Sr Data Engineer (2026-11-17 batch #2). Batches are one per date, so the next build needs `--date 2026-11-18` or later. Chime (Greenhouse, no account) is the next easy one.
 
 **Claude, to propose:** clearance requirements cut off by freehire's shortened descriptions slip past the clearance rule (The Bison Group, TS/SCI, passed 2026-11-16); jd-analysis notes the likely clearance in `hidden_signals` but fit scoring reads only `clearance`. Options: fetch the full posting for jobs headed to the queue, or count a hidden clearance signal. Through the loop.
 
@@ -154,3 +154,4 @@ Standing facts: JD briefs run on Claude Haiku 5.5 (`JD_ANALYSIS_MODEL` in `.env`
 - 2026-11-16 — Queue rules v3 adopted with FL's OK (#54): the duplicate check compares the company's own application site (Greenhouse board, Lever board...), not the shared host; earlier batches are matched again with the current rules. Keebo, Willow, BrainStation, Alo Yoga and Carrot no longer hidden (EdgeQ was a real duplicate, not a victim). 755 tests pass. $0.
 - 2026-11-16 — Second application under way: built Bison + Disney for $0.44 (11-17 batch); Bison passed (TS/SCI only on the live page). Disney's one-page trim had cut both Amazon PySpark bullets; trim rule fixed with FL's OK (#55): the last work bullet for a keyword stays. Disney rebuilt from cache for $0; Sigma trims as before. 756 tests pass.
 - 2026-11-16 — Trim tie rule (#56, FL's OK): fewer job keywords goes first, then no number. Disney rebuilt for $0 with the 2-billion-rows bullet kept; FL approved it. 757 tests pass.
+- 2026-11-16 — Second real application: Disney Sr Data Engineer, filled in the built-in browser over 4 pages (no account; resume upload re-fills fields, so check after uploading), FL submitted, confirmation seen, marked applied.

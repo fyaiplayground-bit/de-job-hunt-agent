@@ -10,8 +10,11 @@ from uuid import uuid4
 import pytest
 
 from agents.application_queue import (
+    NEXT_STATUS,
+    TRACK_STATUSES,
     QueueError,
     answer_questions,
+    application_rows,
     batch_rows,
     build_batch,
     company_key,
@@ -624,6 +627,54 @@ def test_a_real_profile_goes_through_to_applied(queued_postings, tmp_path):
         set_status(db, TODAY, [1], "applied")  # approval comes first
     set_status(db, TODAY, [1], "approved")
     assert set_status(db, TODAY, [1], "applied")[0]["status"] == "applied"
+
+
+@pytest.mark.db
+def test_after_applying_the_news_is_tracked_in_order(queued_postings, tmp_path):
+    """Decision #57: interviews in order (a stage may be skipped), then an outcome; a ghosted
+    application can come back; the list shows the latest status and never the sample's jobs."""
+    db = queued_postings
+    real = replace(PROFILE, bank=replace(PROFILE.bank, sample=False))
+    build_batch(db, FakeClient(answer=answer), real, SAMPLE, SETTINGS, TODAY, RULES, 1, tmp_path)
+    set_status(db, TODAY, [1], "approved")
+    with pytest.raises(QueueError, match="can't become recruiter_screen"):
+        set_status(db, TODAY, [1], "recruiter_screen")  # not sent yet
+    set_status(db, TODAY, [1], "applied")
+    set_status(db, TODAY, [1], "ghosted")
+    set_status(db, TODAY, [1], "tech_screen")  # came back, recruiter screen skipped
+    with pytest.raises(QueueError, match="can't become recruiter_screen"):
+        set_status(db, TODAY, [1], "recruiter_screen")  # no going back a stage
+    set_status(db, TODAY, [1], "rejected", "after the tech screen")
+    with pytest.raises(QueueError, match="can't become offer"):
+        set_status(db, TODAY, [1], "offer")
+    rows = application_rows(db)
+    assert [(r["status"], r["reason"]) for r in rows] == [("rejected", "after the tech screen")]
+
+
+@pytest.mark.db
+def test_withdrawn_is_a_status_the_database_accepts(queued_postings, tmp_path):
+    db = queued_postings
+    real = replace(PROFILE, bank=replace(PROFILE.bank, sample=False))
+    build_batch(db, FakeClient(answer=answer), real, SAMPLE, SETTINGS, TODAY, RULES, 1, tmp_path)
+    set_status(db, TODAY, [1], "approved")
+    assert set_status(db, TODAY, [1], "withdrawn")[0]["status"] == "withdrawn"
+
+
+@pytest.mark.db
+def test_the_list_leaves_out_the_sample_profiles_jobs(queued_postings, tmp_path):
+    run_build(queued_postings, tmp_path)
+    assert application_rows(queued_postings) == []
+
+
+def test_every_tracked_status_has_a_path_from_applied():
+    reachable, frontier = {"applied"}, ["applied"]
+    while frontier:
+        current = frontier.pop()
+        for status, before in NEXT_STATUS.items():
+            if current in before and status not in reachable:
+                reachable.add(status)
+                frontier.append(status)
+    assert set(TRACK_STATUSES) <= reachable
 
 
 def test_fit_helpers_still_import():

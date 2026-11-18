@@ -5,6 +5,8 @@
     uv run python -m agents.application_queue approve 1 3 5    # these numbers, today's batch
     uv run python -m agents.application_queue pass 2 --reason "not the right industry"
     uv run python -m agents.application_queue applied 1        # after it really went out
+    uv run python -m agents.application_queue track 1 --to recruiter_screen --date 2026-11-16
+    uv run python -m agents.application_queue list             # real applications, latest status
 
 Code picks the jobs: best score first, one job per company, never the same job twice, even when
 two boards spell the company differently. Approving writes a submit pack: the PDF plus answers read
@@ -66,12 +68,23 @@ COMPANY_NOISE = {
     "solutions",
     "careers",
 }
-# Which status may follow which. Anything else is refused.
+# Which status may follow which. Anything else is refused. After "applied", FL's news is recorded
+# with `track` (decision #57): interviews in order (a stage may be skipped), then an outcome. A job
+# marked ghosted can still come back to life with an interview.
+INTERVIEWS = ("recruiter_screen", "tech_screen", "onsite")
 NEXT_STATUS = {
     "approved": {"awaiting_approval"},
     "passed": {"awaiting_approval", "approved"},
     "applied": {"approved"},
+    "recruiter_screen": {"applied", "ghosted"},
+    "tech_screen": {"applied", "ghosted", "recruiter_screen"},
+    "onsite": {"applied", "ghosted", "recruiter_screen", "tech_screen"},
+    "offer": {"applied", "ghosted", *INTERVIEWS},
+    "rejected": {"applied", "ghosted", *INTERVIEWS},
+    "ghosted": {"applied", *INTERVIEWS},
+    "withdrawn": {"approved", "applied", "ghosted", *INTERVIEWS, "offer"},
 }
+TRACK_STATUSES = (*INTERVIEWS, "offer", "rejected", "ghosted", "withdrawn")
 
 
 class QueueError(ValueError):
@@ -349,6 +362,17 @@ def batch_rows(conn: psycopg.Connection, batch_date: date) -> list[dict[str, Any
     return [dict(zip(keys, row, strict=True)) for row in rows]
 
 
+def application_rows(conn: psycopg.Connection) -> list[dict[str, Any]]:
+    """Every job from FL's real profile that reached the queue, newest batch first, with its
+    latest status: what `list` prints and the dashboard's Applications tab shows."""
+    rows = conn.execute(
+        "select batch_date, batch_number, status, status_at, reason, snapshot"
+        " from agents.applications where not sample order by batch_date desc, batch_number"
+    ).fetchall()
+    keys = ("batch_date", "number", "status", "status_at", "reason", "snapshot")
+    return [dict(zip(keys, row, strict=True)) for row in rows]
+
+
 def still_open(conn: psycopg.Connection, jobs: list[Job], today: date, days: int) -> list[Job]:
     """Only jobs seen on their board lately: a closed job can't be applied to."""
     rows = conn.execute(
@@ -518,10 +542,14 @@ def main(argv: list[str] | None = None) -> int:
         ("approve", "approve these numbers; writes the submit pack"),
         ("pass", "leave these numbers out"),
         ("applied", "these numbers really went out"),
+        ("track", "what happened after applying: --to recruiter_screen, offer, rejected, ..."),
     ):
         command = commands.add_parser(name, help=helptext)
         command.add_argument("numbers", nargs="+", type=int)
         command.add_argument("--reason")
+        if name == "track":
+            command.add_argument("--to", required=True, choices=TRACK_STATUSES)
+    commands.add_parser("list", help="every real application with its latest status")
     for command in commands.choices.values():
         command.add_argument("--date", type=date.fromisoformat, help="default: today")
         command.add_argument("--out", type=Path, default=QUEUE_DIR)
@@ -539,6 +567,18 @@ def main(argv: list[str] | None = None) -> int:
     with connect() as conn:
         migrate(conn)
         skipped: list[tuple[Job, str]] = []
+        if args.command == "list":
+            from pipeline.daily import report_timezone
+
+            for row in application_rows(conn):
+                snap = row["snapshot"]
+                since = row["status_at"].astimezone(report_timezone())
+                print(
+                    f"{row['batch_date']} #{row['number']} {row['status']:17} "
+                    f"since {since:%Y-%m-%d} {snap['company']} | {snap['title']}"
+                    + (f" ({row['reason']})" if row["reason"] else "")
+                )
+            return 0
         if args.command == "build" and args.dry_run:
             if args.n is not None:
                 rules = QueueRules(**{**rules.__dict__, "daily_jobs": args.n})
@@ -562,7 +602,9 @@ def main(argv: list[str] | None = None) -> int:
             paid = sum(t.paid_now_usd for t in results)
             print(f"{len(results)} new in the {batch_date} batch; paid ${paid:.2f}")
         else:
-            status = {"approve": "approved", "pass": "passed", "applied": "applied"}[args.command]
+            status = {"approve": "approved", "pass": "passed", "applied": "applied"}.get(
+                args.command, getattr(args, "to", None)
+            )
             try:
                 set_status(conn, batch_date, args.numbers, status, args.reason)
             except QueueError as exc:

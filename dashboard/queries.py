@@ -11,6 +11,9 @@ QUERIES = {
     "funnel": "select * from analytics_marts.mart_funnel order by stage_order",
     "pipeline": "select * from analytics_marts.mart_pipeline_daily order by local_date",
     "costs": "select * from analytics_marts.mart_ai_costs order by local_date, prompt_name",
+    "applications": (
+        "select * from analytics_marts.mart_applications order by batch_date desc, batch_number"
+    ),
 }
 SAMPLE_QUERY = "select bool_or(sample) from agents.queue_items"
 PROFILE_QUERY = "select count(*) from agents.profile_skills"

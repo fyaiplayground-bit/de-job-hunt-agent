@@ -835,3 +835,12 @@
 - **提交：** 见本条所在的提交
 - **验证：** 新增 4 个测试（续跑时跳过已做的步骤、新职位照样被拆解；崩溃报告写的是真实数字；只续跑当天的 Windows 运行；前几天的旧记录被关掉）；全部 765 个测试通过；真实入口 `pipeline.daily --if-not-run-today` 正常跳过今天
 - **撤回：** `git revert` 这个提交
+
+### 5.17 · 2026-11-17 · 第三份申请：Rhythm Energy（Wellfound，要注册账号）；点名建职位
+- **做了什么：** `build --only 91232` 只建 Rhythm 一个（$0.23，简历保留了"每天 20 亿行"）→ 你批准 → Wellfound 的注册和申请在同一页：你填了大部分、设了密码，我写了"为什么想来这家公司"那一段（数字都来自事实库），你上传 PDF 并提交 → `applied 1 --date 2026-11-18`
+- **学到的：** Wellfound 注册和第一份申请是一起完成的，以后投 Wellfound 上的公司直接用这个账号；工资栏要看清有没有多打 0；提交以后 Wellfound 会让你填一份网站自己的资料，可以不填
+- **为什么加 `--only`：** DECISIONS #60
+- **文件：** `agents/application_queue.py`、`tests/test_application_queue.py`、`docs/DECISIONS.md`、`docs/JOURNAL.md`、`docs/STATUS.md`
+- **提交：** 见本条所在的提交
+- **验证：** 新增 2 个测试（只建点名的那个；点名的职位已经排过队或不存在时写明原因）；队列测试全部通过；预演 `--only 91232` 只选出 Rhythm
+- **撤回：** `git revert` 这个提交（已经投出去的申请撤不回）

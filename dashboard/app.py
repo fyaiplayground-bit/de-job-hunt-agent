@@ -1,4 +1,5 @@
-"""The dashboard (decision #41): skill demand, coverage, the application funnel and pipeline health.
+"""The dashboard (decision #41): applications sent and where each stands (#57), skill demand,
+coverage, the application funnel and pipeline health.
 
     uv run streamlit run dashboard/app.py
 
@@ -190,14 +191,19 @@ def coverage_tab(tables: dict[str, pd.DataFrame]) -> None:
 
 def funnel_tab(tables: dict[str, pd.DataFrame], is_sample: bool) -> None:
     funnel = tables["funnel"].copy()
-    funnel["jobs"] = funnel["jobs_real"] + funnel["jobs_sample"]
     st.subheader("From found to offer")
     if is_sample:
+        funnel["jobs"] = funnel["jobs_real"] + funnel["jobs_sample"]
         st.caption(
             "Queued and Approved are sample-profile practice runs. "
             "Code refuses to mark a fictional resume as applied."
         )
-    shown = funnel[funnel["stage_order"] <= 7]
+    else:
+        funnel["jobs"] = funnel["jobs_real"]
+        if funnel["jobs_sample"].sum() > 0:
+            st.caption("Real jobs only; the table also counts the sample-profile practice runs.")
+    last = funnel[funnel["jobs"] > 0]["stage_order"].max()
+    shown = funnel[funnel["stage_order"] <= max(7, last)]  # interview stages once one is reached
     tooltip = [alt.Tooltip("stage:N", title="Stage"), alt.Tooltip("jobs:Q", title="Jobs")]
     chart = horizontal_bars(shown, "stage", "jobs", "Jobs", tooltip)
     st.altair_chart(chart, width="stretch")
@@ -208,6 +214,80 @@ def funnel_tab(tables: dict[str, pd.DataFrame], is_sample: bool) -> None:
             ),
             hide_index=True,
         )
+
+
+STATUS_TEXT = {
+    "awaiting_approval": "Waiting for approval",
+    "approved": "Approved, not sent",
+    "passed": "Passed",
+    "applied": "Applied, no reply yet",
+    "recruiter_screen": "Recruiter screen",
+    "tech_screen": "Tech screen",
+    "onsite": "Onsite",
+    "offer": "Offer",
+    "rejected": "Rejected",
+    "ghosted": "Ghosted",
+    "withdrawn": "Withdrawn",
+}
+INTERVIEW_STATUSES = ("recruiter_screen", "tech_screen", "onsite")
+
+
+def status_text(row: pd.Series) -> str:
+    """The status as words; an application silent too long says so (decision #57)."""
+    if row["silent"]:
+        return f"No reply in {int(row['days_in_status'])} days"
+    return STATUS_TEXT.get(row["status"], row["status"])
+
+
+def applications_tab(tables: dict[str, pd.DataFrame]) -> None:
+    apps = tables["applications"].copy()
+    sent = apps[apps["applied_at"].notna()].copy()
+    st.subheader("Applications")
+    if sent.empty:
+        st.info("Nothing sent yet. Applications appear here once they are marked applied.")
+    else:
+        columns = st.columns(5)
+        columns[0].metric("Sent", len(sent))
+        columns[1].metric("Interviewing", int(sent["status"].isin(INTERVIEW_STATUSES).sum()))
+        columns[2].metric("Offers", int((sent["status"] == "offer").sum()))
+        columns[3].metric("Rejected", int((sent["status"] == "rejected").sum()))
+        columns[4].metric("No reply 21+ days", int(sent["silent"].sum()))
+        sent["status_text"] = sent.apply(status_text, axis=1)
+        st.dataframe(
+            sent[
+                ["applied_on", "company", "title", "score", "status_text", "days_in_status",
+                 "location", "url"]
+            ],
+            column_config={
+                "applied_on": "Applied",
+                "company": "Company",
+                "title": "Job",
+                "score": st.column_config.NumberColumn("Fit", format="%d"),
+                "status_text": "Status",
+                "days_in_status": st.column_config.NumberColumn("Days in status", format="%d"),
+                "location": "Location",
+                "url": st.column_config.LinkColumn("Posting", display_text="open"),
+            },
+            hide_index=True,
+            width="stretch",
+        )
+        st.caption(
+            "Status changes are recorded with `agents.application_queue track`; "
+            "no reply after 21 days is worked out from the dates, not recorded."
+        )
+    not_sent = apps[apps["applied_at"].isna()].copy()
+    if not not_sent.empty:
+        with st.expander(f"Queued but not sent ({len(not_sent)})"):
+            not_sent["status_text"] = not_sent["status"].map(STATUS_TEXT)
+            st.dataframe(
+                not_sent[["batch_date", "company", "title", "score", "status_text", "reason"]],
+                column_config={
+                    "batch_date": "Batch", "company": "Company", "title": "Job",
+                    "score": "Fit", "status_text": "Status", "reason": "Why",
+                },
+                hide_index=True,
+                width="stretch",
+            )
 
 
 def pipeline_tab(tables: dict[str, pd.DataFrame]) -> None:
@@ -271,9 +351,16 @@ def main() -> None:
             f"`uv run python -m pipeline.analytics` been run?\n\n{exc}"
         )
         return
-    is_sample = int(tables["funnel"].set_index("stage").loc["Queued", "jobs_sample"]) > 0
+    queued = tables["funnel"].set_index("stage").loc["Queued"]
+    # Only sample-profile practice batches so far: since the real profile went live (Milestone 5),
+    # its queue holds real jobs and the scores are FL's.
+    is_sample = int(queued["jobs_sample"]) > 0 and int(queued["jobs_real"]) == 0
     overview(tables, is_sample)
-    skills, coverage, funnel, pipeline = st.tabs(["Skills", "Coverage", "Funnel", "Pipeline"])
+    applications, skills, coverage, funnel, pipeline = st.tabs(
+        ["Applications", "Skills", "Coverage", "Funnel", "Pipeline"]
+    )
+    with applications:
+        applications_tab(tables)
     with skills:
         skills_tab(tables)
     with coverage:

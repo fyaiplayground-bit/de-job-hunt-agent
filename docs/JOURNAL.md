@@ -818,3 +818,12 @@
 - **提交：** 见本条所在的提交
 - **验证：** 迪士尼确认页 "We have all of the information we need"；队列状态 applied
 - **撤回：** `git revert` 这个提交（已经投出去的申请撤不回）
+
+### 5.15 · 2026-11-17 · 申请追踪：投出去以后的状态，和看板上的 Applications 页
+- **做了什么：** 投递命令多了 `track`（记 HR 电话面、技术面、onsite、offer、被拒、没回音、撤回）和 `list`（列出所有真实申请和最新状态）。dbt 新建 `mart_applications`，看板第一页改成 Applications：发了几份、几个在面试、几个 offer、几个被拒、几个 21 天没回音，每份一行，能点开原帖。看板顶上那句"分数是给虚构样本资料打的"去掉了（现在是你的真实资料），漏斗图只算真实职位
+- **为什么：** DECISIONS #57：你问投过的有没有记录、能不能用看板追踪
+- **文件：** `agents/application_queue.py`、`db/migrations/018_application_withdrawn.sql`、`dbt/dbt_project.yml`、`dbt/models/staging/stg_queue_items.sql`、`dbt/models/marts/mart_applications.sql`、`dbt/models/marts/schema.yml`、`dashboard/app.py`、`dashboard/queries.py`、`tests/test_application_queue.py`、`tests/test_analytics.py`、`docs/DECISIONS.md`、`docs/JOURNAL.md`、`docs/STATUS.md`
+- **提交：** 见本条所在的提交
+- **验证：** 新增 4 个测试（状态只能往前走、没回音的还能回来、列表不含样本资料的职位、每个状态都走得到）；全部 761 个测试通过；dbt 61 步通过；在浏览器里打开看板：Sigma、Disney 都在，投递日期按洛杉矶时间是 11-16
+- **怎么用：** 收到消息就在聊天里告诉我，比如"Disney 约了电话面"，我来记
+- **撤回：** `git revert` 这个提交（迁移 018 只是放宽了允许的状态，留着也没关系）

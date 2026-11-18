@@ -31,6 +31,18 @@ models:
     columns:
       - name: stage_order
         tests: [unique, not_null]
+  - name: mart_applications
+    description: Each real application with its latest status and whether it has gone silent.
+    columns:
+      - name: posting_version_id
+        tests: [unique, not_null]
+      - name: status
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [awaiting_approval, approved, passed, applied, recruiter_screen,
+                         tech_screen, onsite, offer, rejected, ghosted, withdrawn]
   - name: mart_pipeline_daily
     description: One row per day the pipeline ran.
     columns:

@@ -1,6 +1,6 @@
 # Status
 
-**Last updated:** 2026-11-16 · **Phase:** Milestone 5: first real application sent (Sigma Computing); submitting one job at a time from Claude Code
+**Last updated:** 2026-11-17 · **Phase:** Milestone 5: two applications sent (Sigma, Disney) and tracked on the dashboard's Applications tab (#57)
 
 Update this file at the end of every work session: what got done, what's next, what's blocked.
 
@@ -67,6 +67,10 @@ Update this file at the end of every work session: what got done, what's next, w
 ## Next action
 
 **FL, when ready:** the next job. Dry-run, build one or a few (about $0.2 each), approve, Claude fills the form, FL attaches the PDF and clicks Submit (#53). Sent so far: Sigma Computing (2026-11-16 batch #1) and Disney Sr Data Engineer (2026-11-17 batch #2). Batches are one per date, so the next build needs `--date 2026-11-18` or later. Chime (Greenhouse, no account) is the next easy one.
+
+**FL any time:** news on an application (screen, rejection, offer...): Claude records it with `application_queue track N --to STATUS --date BATCH` (#57); the dashboard's Applications tab shows where each stands.
+
+**Claude, to propose:** the daily run doesn't survive a database restart mid-run (2026-11-17: Docker restarted Postgres at 20:19, nine minutes into run 18). The crash path then wrote a report saying "0 sources, 0 new jobs" although fetch, gate and summarize had saved 818 new jobs, and finish_run failed on the dead connection, leaving the run marked running for 3 hours. Fixed by hand: run 18 resumed from its saved steps (analyze on), report ok, $0.05. Proposal: reconnect before recording the failure, assemble the report from the saved steps, and let the next run resume an unfinished one.
 
 **Claude, to propose:** clearance requirements cut off by freehire's shortened descriptions slip past the clearance rule (The Bison Group, TS/SCI, passed 2026-11-16); jd-analysis notes the likely clearance in `hidden_signals` but fit scoring reads only `clearance`. Options: fetch the full posting for jobs headed to the queue, or count a hidden clearance signal. Through the loop.
 
@@ -155,3 +159,4 @@ Standing facts: JD briefs run on Claude Haiku 5.5 (`JD_ANALYSIS_MODEL` in `.env`
 - 2026-11-16 — Second application under way: built Bison + Disney for $0.44 (11-17 batch); Bison passed (TS/SCI only on the live page). Disney's one-page trim had cut both current-role PySpark bullets; trim rule fixed with FL's OK (#55): the last work bullet for a keyword stays. Disney rebuilt from cache for $0; Sigma trims as before. 756 tests pass.
 - 2026-11-16 — Trim tie rule (#56, FL's OK): fewer job keywords goes first, then no number. Disney rebuilt for $0 with the 2-billion-rows bullet kept; FL approved it. 757 tests pass.
 - 2026-11-16 — Second real application: Disney Sr Data Engineer, filled in the built-in browser over 4 pages (no account; resume upload re-fills fields, so check after uploading), FL submitted, confirmation seen, marked applied.
+- 2026-11-17 — Run 18 (started 20:10 after login) crashed when Docker restarted Postgres mid-run; resumed by hand from its saved steps: 818 new jobs, 135 DE, 35 briefed for $0.05. Application tracking built with FL's OK (#57): `track` and `list` commands, `mart_applications`, an Applications tab on the dashboard. 761 tests pass.

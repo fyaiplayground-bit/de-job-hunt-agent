@@ -25,6 +25,8 @@ vars:
   min_brief_version: 3
   # A trend needs this many briefed jobs in each of the two weeks compared.
   min_trend_jobs: 20
+  # An application with no news this many days after it went out counts as silent (decision #57).
+  silent_after_days: 21
   # The same pattern as DE_TITLE in pipeline/daily.py; a test keeps them equal.
   de_title_pattern: 'data engineer|analytics engineer|data platform|etl\b|data infrastructure|data pipeline'
 

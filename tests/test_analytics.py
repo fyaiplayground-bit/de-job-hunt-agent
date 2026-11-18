@@ -272,6 +272,8 @@ def test_dashboard_runs_without_errors(built):
     assert not app.exception
     assert not app.error
     assert app.title[0].value == "Job Hunt Pipeline"
-    assert [tab.label for tab in app.tabs] == ["Skills", "Coverage", "Funnel", "Pipeline"]
+    assert [tab.label for tab in app.tabs] == [
+        "Applications", "Skills", "Coverage", "Funnel", "Pipeline"
+    ]
     labels = [metric.label for metric in app.metric]
     assert "Worth applying" in labels

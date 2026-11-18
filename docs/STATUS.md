@@ -66,7 +66,7 @@ Update this file at the end of every work session: what got done, what's next, w
 
 ## Next action
 
-**FL, when ready:** the next job. Dry-run, build one or a few (about $0.2 each), approve, Claude fills the form, FL attaches the PDF and clicks Submit (#53). Sent so far: Sigma Computing (2026-11-16 batch #1) and Disney Sr Data Engineer (2026-11-17 batch #2). Batches are one per date, so the next build needs `--date 2026-11-18` or later. Chime (Greenhouse, no account) is the next easy one.
+**FL, when ready:** the next job. Dry-run, build one or a few (about $0.2 each), approve, Claude fills the form, FL attaches the PDF and clicks Submit (#53). Sent so far: Sigma Computing (2026-11-16 #1), Disney Sr Data Engineer (2026-11-17 #2), Rhythm Energy on Wellfound (2026-11-18 #1; FL now has a Wellfound account). Batches are one per date, so the next build needs `--date 2026-11-19` or later; `build --only ID` builds just the job FL names (#60). The current dry run also lists a job at FL's current employer (an internal transfer, not an outside application) and the NSA (clearance, the gap below). Chime (Greenhouse, no account) is the next easy one.
 
 **FL any time:** news on an application (screen, rejection, offer...): Claude records it with `application_queue track N --to STATUS --date BATCH` (#57); the dashboard's Applications tab shows where each stands.
 
@@ -160,3 +160,4 @@ Standing facts: JD briefs run on Claude Haiku 5.5 (`JD_ANALYSIS_MODEL` in `.env`
 - 2026-11-17 — Run 18 (started 20:10 after login) crashed when Docker restarted Postgres mid-run; resumed by hand from its saved steps: 818 new jobs, 135 DE, 35 briefed for $0.05. Application tracking built with FL's OK (#57): `track` and `list` commands, `mart_applications`, an Applications tab on the dashboard. 761 tests pass.
 - 2026-11-17 — Daily run crash-safety with FL's OK (#58): reconnect and report from saved steps after a crash; the next run the same day resumes it; earlier days' stuck runs closed. 765 tests pass.
 - 2026-11-17 — FL dropped FastAPI and the cloud move (#59): submitting needs the computer, and the daily run starts when it is on.
+- 2026-11-17 — Third application: Rhythm Energy on Wellfound (first account site; FL signed up and submitted). `build --only` added (#60).

@@ -17,10 +17,12 @@ from agents.application_queue import (
     application_rows,
     batch_rows,
     build_batch,
+    candidates,
     company_key,
     company_site,
     job_keys,
     load_queue_rules,
+    not_picked,
     pick_batch,
     preview_lines,
     set_status,
@@ -649,6 +651,32 @@ def test_after_applying_the_news_is_tracked_in_order(queued_postings, tmp_path):
         set_status(db, TODAY, [1], "offer")
     rows = application_rows(db)
     assert [(r["status"], r["reason"]) for r in rows] == [("rejected", "after the tech screen")]
+
+
+@pytest.mark.db
+def test_only_builds_just_the_named_job(queued_postings, tmp_path):
+    """Decision #60: FL names a job lower down the list (Rhythm Energy, 2026-11-17)."""
+    db = queued_postings
+    ids_ = [r[0] for r in db.execute("select posting_version_id from agents.jd_briefs order by 1")]
+    named = frozenset({ids_[-1]})
+    results, _, failed = build_batch(
+        db, FakeClient(answer=answer), PROFILE, SAMPLE, SETTINGS, TODAY, RULES, 1, tmp_path,
+        only=named,
+    )
+    assert failed == []
+    assert [r["posting_version_id"] for r in batch_rows(db, TODAY)] == [ids_[-1]]
+
+
+@pytest.mark.db
+def test_a_named_job_that_cannot_be_queued_is_reported(queued_postings, tmp_path):
+    db = queued_postings
+    run_build(db, tmp_path, size=1)
+    queued = batch_rows(db, TODAY)[0]["posting_version_id"]
+    batch = candidates(
+        db, PROFILE, SETTINGS, date(2026, 11, 5), RULES, frozenset({queued, 999_999})
+    )
+    assert batch.chosen == []
+    assert not_picked(batch, frozenset({queued, 999_999})) == [queued, 999_999]
 
 
 @pytest.mark.db

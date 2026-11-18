@@ -2,6 +2,7 @@
 
     uv run python -m agents.application_queue build            # pick and prepare today's batch
     uv run python -m agents.application_queue build --dry-run  # only show what it would pick (free)
+    uv run python -m agents.application_queue build --only 91232   # just the job FL named
     uv run python -m agents.application_queue approve 1 3 5    # these numbers, today's batch
     uv run python -m agents.application_queue pass 2 --reason "not the right industry"
     uv run python -m agents.application_queue applied 1        # after it really went out
@@ -392,11 +393,24 @@ def candidates(
     settings: LlmSettings,
     batch_date: date,
     rules: QueueRules,
+    only: frozenset[int] = frozenset(),
 ) -> Batch:
-    """The jobs a batch for this date would take: scored now, still open, picked by the rules."""
+    """The jobs a batch for this date would take: scored now, still open, picked by the rules.
+    With `only`, just those posting versions are considered (decision #60): FL names the job,
+    and every other rule (worth applying, still open, never twice, excluded companies) holds."""
     jobs = scored_jobs(conn, profile, load_rules(), load_vocabulary(), settings, batch_date)
+    if only:
+        jobs = [job for job in jobs if job.posting_version_id in only]
     jobs = still_open(conn, jobs, batch_date, load_scope().open_within_days)
     return pick_batch(jobs, rules, *_seen(conn, rules))
+
+
+def not_picked(batch: Batch, only: frozenset[int]) -> list[int]:
+    """Named jobs that are neither in the batch nor left out with a reason: not scored worth
+    applying, no longer open, or already queued in an earlier batch."""
+    seen = {job.posting_version_id for job in batch.chosen}
+    seen |= {job.posting_version_id for job, _ in batch.skipped}
+    return sorted(only - seen)
 
 
 def preview_lines(batch: Batch, rules: QueueRules) -> list[str]:
@@ -427,6 +441,7 @@ def build_batch(
     rules: QueueRules | None = None,
     size: int | None = None,
     out: Path = OUT_DIR,
+    only: frozenset[int] = frozenset(),
 ) -> tuple[list[Tailored], list[tuple[Job, str]], list[str]]:
     """Prepare a batch for this date: pick, tailor, queue. A date that already has a batch gets no
     new jobs, so a second run changes nothing and costs nothing. A job the LLM can't finish is
@@ -439,7 +454,7 @@ def build_batch(
     if batch_rows(conn, batch_date):
         return [], [], []
     vocab = load_vocabulary()
-    batch = candidates(conn, profile, settings, batch_date, rules)
+    batch = candidates(conn, profile, settings, batch_date, rules, only)
     drafter, reviewer = load_skill("resume-tailoring"), load_skill("resume-reviewer")
     fingerprint = profile_fingerprint(folder)
     results: list[Tailored] = []
@@ -538,6 +553,10 @@ def main(argv: list[str] | None = None) -> int:
     build.add_argument(
         "--rules", type=Path, help="with --dry-run: a proposed config/queue.toml to pick by"
     )
+    build.add_argument(
+        "--only", type=int, nargs="+", metavar="POSTING_VERSION_ID",
+        help="just these jobs, the ones FL named; the other rules still apply",
+    )
     for name, helptext in (
         ("approve", "approve these numbers; writes the submit pack"),
         ("pass", "leave these numbers out"),
@@ -579,23 +598,34 @@ def main(argv: list[str] | None = None) -> int:
                     + (f" ({row['reason']})" if row["reason"] else "")
                 )
             return 0
-        if args.command == "build" and args.dry_run:
-            if args.n is not None:
-                rules = QueueRules(**{**rules.__dict__, "daily_jobs": args.n})
+        only = frozenset(getattr(args, "only", None) or ())
+        size = getattr(args, "n", None) or (len(only) if only else None)
+        if args.command == "build" and (args.dry_run or only):
             if batch_rows(conn, batch_date):
                 print(f"the {batch_date} batch already exists; a build would add nothing")
                 return 0
-            batch = candidates(conn, profile, settings, batch_date, rules)
-            print(
-                f"dry run for {batch_date}, profile {folder}, queue rules v{rules.version}: "
-                "nothing tailored, stored or paid"
-            )
-            for line in preview_lines(batch, rules):
-                print(line)
-            return 0
+            picked_rules = QueueRules(**{**rules.__dict__, "daily_jobs": size or rules.daily_jobs})
+            batch = candidates(conn, profile, settings, batch_date, picked_rules, only)
+            missing = not_picked(batch, only)
+            for posting_id in missing:
+                print(
+                    f"REFUSED #{posting_id}: not scored worth applying, no longer open, "
+                    "or already queued"
+                )
+            if args.dry_run:
+                print(
+                    f"dry run for {batch_date}, profile {folder}, queue rules v{rules.version}: "
+                    "nothing tailored, stored or paid"
+                )
+                for line in preview_lines(batch, picked_rules):
+                    print(line)
+                return 0
+            if not batch.chosen:
+                return 1
         if args.command == "build":
             results, skipped, failed = build_batch(
-                conn, AnthropicClient(), profile, folder, settings, batch_date, rules, args.n
+                conn, AnthropicClient(), profile, folder, settings, batch_date, rules, size,
+                only=only,
             )
             for line in failed:
                 print(f"FAILED {line}")

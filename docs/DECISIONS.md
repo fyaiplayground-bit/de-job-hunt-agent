@@ -329,3 +329,8 @@ Format: number · date · decision · why · alternatives considered.
 - **Why:** FL (2026-11-17): submitting needs the computer anyway, and when it is on, the daily run starts by itself (login trigger, #43, plus same-day resume, #58). An always-on server or an API adds cost and a second place to run things without saving her a step; FastAPI would mostly be a portfolio line.
 - **Supersedes:** the "API" part of the original design and the open cloud question in #45 and #47.
 - **Alternatives:** a small cloud server with FastAPI (about $10-30 a month, phone access to the dashboard, the run independent of the laptop); FastAPI on the laptop only (no user for it).
+
+### #60 · 2026-11-17 · Build just the job FL names (`build --only`)
+- **Decision:** `application_queue build --only POSTING_VERSION_ID ...` (and with `--dry-run`) considers only the named jobs. Every other rule still holds: the job must be scored worth applying, still open, not queued before and not from an excluded company; a named job that fails one is reported ("REFUSED #id ...") instead of being built. Without `--only` the batch is picked from the top score down as before.
+- **Why:** FL (2026-11-17) wanted to try a site that needs an account; the best one, Rhythm Energy on Wellfound (82), was fourth, behind a job at FL's current employer (an internal transfer, not an outside application), a junior Disney role and a staffing firm's listing. Without naming it, the only way was to build all four (about $0.8).
+- **Alternatives:** building the whole batch and passing on the rest (pays for resumes nobody sends); excluding the jobs above it (an exclude list is for companies FL never wants, not for one day's choice).

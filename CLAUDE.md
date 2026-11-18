@@ -8,7 +8,7 @@ A data-engineering pipeline that feeds a team of job-hunting agents.
 
 - **Pipeline (the core, and FL's DE portfolio piece):** ingest job postings daily → store raw → clean and dedupe → extract skills → model with dbt → orchestrate with Airflow → show in a dashboard.
 - **Agents (on top of the pipeline):** analyze each JD, score fit, research the company, tailor the resume into a one-page PDF, critique it like an ATS and a recruiter, draft outreach, and report daily skill coverage.
-- **API:** FastAPI wrapper so every agent is callable as an endpoint.
+- **API:** a FastAPI wrapper was planned; dropped for now (decision #59): everything runs on FL's laptop.
 - **Submission:** this repo builds an approval queue. After FL approves a job, Claude fills its form from this Claude Code session (the desktop app's built-in browser, or Claude in Chrome when connected); FL attaches the resume where the browser can't, and FL clicks Submit (decision #53).
 
 Full design: `docs/DESIGN.md`. Every decision and why: `docs/DECISIONS.md`.
@@ -58,7 +58,7 @@ Context gets lost between sessions, and long sessions get compacted. The files i
 | Orchestration | Plain Python functions first; Airflow DAGs later call the same functions |
 | Agents | Claude API via the Anthropic Python SDK; rules live in `.claude/skills/*/SKILL.md` |
 | Resume output | One-page PDF from a Typst template with bundled fonts (`templates/`); layout check + ATS text-layer check (`agents/pdf_checks.py`) |
-| API | FastAPI |
+| API | none for now (FastAPI dropped, decision #59) |
 | Dashboard | Streamlit |
 
 ## Repo layout (target)
@@ -76,7 +76,6 @@ de-job-hunt-agent/
 ├── dags/                 # Airflow DAGs
 ├── dbt/                  # staging, skills, marts models
 ├── agents/               # one module per agent
-├── api/                  # FastAPI app
 ├── dashboard/            # Streamlit
 ├── templates/            # resume template(s)
 ├── tests/

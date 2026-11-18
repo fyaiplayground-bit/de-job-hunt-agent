@@ -252,6 +252,75 @@ def test_a_run_that_crashed_hours_ago_no_longer_blocks(db):
 
 
 @pytest.mark.db
+def test_a_resumed_run_skips_the_steps_it_saved(db, greenhouse_jobs, freehire_jobs):
+    """Decision #58, from run 18 (2026-11-17): Postgres restarted after summarize. The next run
+    of the day picks up from there: no second fetch, and today's new jobs still get briefed."""
+    ctx = steps.start_run(db, NOON)
+    client = daily_client(greenhouse_jobs, freehire_jobs)
+    steps.fetch(db, ctx, client, targets=TARGETS, sleep=lambda _: None)
+    steps.gate(db, ctx)
+    steps.summarize(db, ctx)
+    fake = FakeClient(BRIEF)
+    summary = run_daily(
+        db,
+        None,  # a fetch would fail on this client: it must be skipped
+        now=lambda: NOON,
+        llm=lambda: fake,
+        llm_config=LLM,
+        scope=SCOPE,
+        backup=lambda conn, summary, today: setattr(summary, "backup_status", "ok"),
+        run_id=ctx.daily_run_id,
+    )
+    assert summary.new_jobs == 4  # what the first try's fetch found
+    assert (summary.jd_status, summary.jd_analyzed, summary.fit_scored) == ("ok", 2, 2)
+    assert summary.backup_status == "ok"
+
+
+@pytest.mark.db
+def test_a_crash_reports_what_the_saved_steps_found(db, greenhouse_jobs, freehire_jobs):
+    """Run 18's report said "0 sources, 0 new jobs" although 818 new jobs were stored."""
+    ctx = steps.start_run(db, NOON)
+    steps.fetch(
+        db, ctx, daily_client(greenhouse_jobs, freehire_jobs), targets=TARGETS,
+        sleep=lambda _: None,
+    )
+    steps.gate(db, ctx)
+    steps.summarize(db, ctx)
+    summary = steps.crash_summary(db, ctx, "OperationalError: the connection is closed")
+    assert (summary.status, summary.new_jobs, len(summary.targets)) == ("error", 4, 3)
+    report = render_report(summary)
+    assert "the connection is closed" in report
+    assert "新增 4 个职位" in report
+
+
+@pytest.mark.db
+def test_only_todays_unfinished_windows_run_is_resumed(db):
+    ctx = steps.start_run(db, NOON)
+    today = ctx.local_date
+    assert steps.resumable_run(db, today) == ctx.daily_run_id  # still marked running
+    db.execute("update ops.daily_runs set status = 'error'")
+    assert steps.resumable_run(db, today) == ctx.daily_run_id  # finished with an error
+    db.execute("update ops.daily_runs set status = 'partial'")
+    assert steps.resumable_run(db, today) is None  # done, a source failing is not a crash
+    db.execute(
+        "update ops.daily_runs set status = 'running', runner = 'airflow', started_at = now()"
+    )
+    assert steps.resumable_run(db, today) is None  # Airflow resumes its own tasks
+    assert steps.run_in_progress(db, runner="airflow") == ctx.daily_run_id
+    assert steps.run_in_progress(db, runner="windows") is None
+
+
+@pytest.mark.db
+def test_an_earlier_days_run_left_running_is_closed(db):
+    ctx = steps.start_run(db, NOON)
+    later = ctx.local_date.replace(day=ctx.local_date.day + 1)
+    assert steps.close_abandoned(db, ctx.local_date) == []  # today's may still be resumed
+    assert steps.close_abandoned(db, later) == [ctx.daily_run_id]
+    assert db.execute("select status from ops.daily_runs").fetchone()[0] == "error"
+    assert steps.resumable_run(db, later) is None
+
+
+@pytest.mark.db
 def test_windows_runs_are_marked_windows(db):
     ctx = steps.start_run(db, NOON)
     runner = db.execute(

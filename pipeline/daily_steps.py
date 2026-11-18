@@ -76,14 +76,54 @@ class RunContext:
     window_days: int
 
 
-def run_in_progress(conn: psycopg.Connection) -> int | None:
-    """The id of a run started in the last few hours that hasn't finished, if any."""
+def run_in_progress(conn: psycopg.Connection, runner: str | None = None) -> int | None:
+    """The id of a run started in the last few hours that hasn't finished, if any; only that
+    runner's runs when one is named."""
     row = conn.execute(
         "select daily_run_id from ops.daily_runs where status = 'running'"
-        " and started_at > now() - make_interval(hours => %s) order by daily_run_id desc limit 1",
-        (RUN_TIMEOUT_HOURS,),
+        " and started_at > now() - make_interval(hours => %s)"
+        " and (%s::text is null or runner = %s::text) order by daily_run_id desc limit 1",
+        (RUN_TIMEOUT_HOURS, runner, runner),
     ).fetchone()
     return row[0] if row else None
+
+
+def resumable_run(conn: psycopg.Connection, local_date: date) -> int | None:
+    """Today's latest Windows run if it stopped before finishing (decision #58): still marked
+    running because the process died, or finished with an error. The caller holds the Windows
+    lock, so no Windows run is still going; the next run picks it up from its saved steps."""
+    row = conn.execute(
+        "select daily_run_id, status from ops.daily_runs where runner = 'windows'"
+        " and local_date = %s order by daily_run_id desc limit 1",
+        (local_date,),
+    ).fetchone()
+    return row[0] if row and row[1] in ("running", "error") else None
+
+
+def close_abandoned(conn: psycopg.Connection, local_date: date) -> list[int]:
+    """Earlier days' Windows runs still marked running: their process is gone, so say so."""
+    rows = conn.execute(
+        "update ops.daily_runs set status = 'error', finished_at = now(),"
+        " error = 'stopped before finishing; not resumed (a later day started)'"
+        " where runner = 'windows' and status = 'running' and local_date < %s"
+        " returning daily_run_id",
+        (local_date,),
+    ).fetchall()
+    return [row[0] for row in rows]
+
+
+def completed_steps(conn: psycopg.Connection, ctx: RunContext) -> dict[str, dict[str, Any]]:
+    """The steps this run has already done, by name: a resumed run skips them."""
+    return {row["step"]: row for row in _saved(conn, ctx.daily_run_id) if row["status"] == "ok"}
+
+
+def crash_summary(conn: psycopg.Connection, ctx: RunContext, error: str) -> daily.DailySummary:
+    """The report for a run that stopped part-way: what its saved steps found, plus the error,
+    instead of an empty summary that reads as "0 sources, 0 new jobs" (decision #58)."""
+    summary = assemble(conn, ctx)
+    summary.status = "error"
+    summary.error = error
+    return summary
 
 
 def start_run(conn: psycopg.Connection, now: datetime, runner: str = "windows") -> RunContext:

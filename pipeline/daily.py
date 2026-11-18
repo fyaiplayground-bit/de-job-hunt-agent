@@ -316,20 +316,29 @@ def run_daily(
 ) -> DailySummary:
     """Fetch, gate, brief and score today's new jobs (when `llm` is given) and summarize, one
     step after another (pipeline/daily_steps.py, decision #45). The caller holds the lock and
-    records the run; without a `run_id` a run is opened here."""
+    records the run; without a `run_id` a run is opened here. A run that stopped part-way is
+    resumed: steps it already saved are skipped (decision #58)."""
     from pipeline import daily_steps as steps
 
     ctx = steps.run_context(conn, run_id) if run_id else steps.start_run(conn, now())
-    steps.fetch(conn, ctx, client, targets=targets, sleep=sleep)
-    steps.gate(conn, ctx)
-    steps.summarize(conn, ctx)
+    done = steps.completed_steps(conn, ctx)
+    if not any(step.startswith("fetch:") for step in done):
+        steps.fetch(conn, ctx, client, targets=targets, sleep=sleep)
+    if "gate" not in done:
+        steps.gate(conn, ctx)
+    if "summarize" not in done:
+        steps.summarize(conn, ctx)
     if llm is not None:
-        settings = llm_config or jd_analysis_settings()
-        if steps.analyze(conn, ctx, llm, settings, daily_max, scope) in ("ok", "partial"):
+        if "analyze" in done:
+            briefing = done["analyze"]["fields"].get("jd_status")
+        else:
+            settings = llm_config or jd_analysis_settings()
+            briefing = steps.analyze(conn, ctx, llm, settings, daily_max, scope)
+        if briefing in ("ok", "partial") and "score" not in done:
             steps.score(conn, ctx, profile_folder)
-    if analytics is not None:
+    if analytics is not None and "analytics" not in done:
         steps.analytics(conn, ctx, analytics, profile_folder)
-    if backup is not None:
+    if backup is not None and "backup" not in done:
         steps.backup(conn, ctx, backup)
     return steps.assemble(conn, ctx)
 
@@ -517,19 +526,27 @@ def main(argv: list[str] | None = None) -> int:
         print(f"error: database not reachable; report: {path}")
         return 1
 
-    with conn:
+    from pipeline import daily_steps as steps
+
+    try:
         migrate(conn)
         if not acquire_lock(conn):
             print("another daily run is in progress; nothing to do")
             return 0
-        from pipeline import daily_steps as steps
-
-        running = steps.run_in_progress(conn)  # e.g. an Airflow run (decision #46)
+        # Windows runs are covered by the lock; this catches an Airflow run (decision #46).
+        running = steps.run_in_progress(conn, runner="airflow")
         if running is not None:
             print(f"daily run {running} is still in progress; nothing to do")
             return 0
-        ctx = steps.start_run(conn, now)
+        today = date.fromisoformat(local_date)
+        for run_id in steps.close_abandoned(conn, today):
+            print(f"daily run {run_id} from an earlier day never finished; marked as an error")
+        resumed = steps.resumable_run(conn, today)
+        if resumed is not None:
+            print(f"resuming daily run {resumed}: the steps it saved are skipped")
+        ctx = steps.run_context(conn, resumed) if resumed else steps.start_run(conn, now)
         analysis = daily_analysis_settings()
+        error = None
         try:
             with make_client() as client:
                 summary = run_daily(
@@ -541,10 +558,23 @@ def main(argv: list[str] | None = None) -> int:
                     run_id=ctx.daily_run_id,
                 )
         except Exception as exc:  # record any crash, write the report, exit non-zero
-            summary = DailySummary(local_date=local_date, window_days=0, status="error")
-            summary.error = f"{type(exc).__name__}: {exc}"
+            error = f"{type(exc).__name__}: {exc}"
+        if error is not None:
+            if conn.closed or conn.broken:  # e.g. Docker restarted Postgres mid-run (#58)
+                conn.close()
+                conn = wait_for_database(settings, start_docker_desktop)
+            if conn is None:
+                summary = DailySummary(local_date=local_date, window_days=0, status="error")
+                summary.error = f"{error}; the database didn't come back, so nothing was recorded"
+                path = write_report(render_report(summary), local_date)
+                print(f"error: {summary.error}; report: {path}")
+                return 1
+            summary = steps.crash_summary(conn, ctx, error)
         path = write_report(render_report(summary), summary.local_date)
         steps.finish_run(conn, ctx, summary, path)
+    finally:
+        if conn is not None:
+            conn.close()
     print(render_report(summary).splitlines()[2])
     print(f"report: {path}")
     return 0 if summary.status == "ok" else 1

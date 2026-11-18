@@ -314,6 +314,8 @@ PowerShell（Windows 自带）、Git Bash（装 Git 时附带）、Ubuntu/WSL（
 | 查备份能不能用 | 让 Claude 跑 `uv run python -m pipeline.backup restore-check`：下载最新一份，恢复到临时库，比对行数 |
 | 看看板 | 跟 Claude 说"打开看板"，或者运行 `uv run streamlit run dashboard/app.py`，只有这台电脑能打开 |
 | 重建分析表 | 每日运行会自动做；手动让 Claude 跑 `uv run python -m pipeline.analytics` |
+| 记申请的进展（电话面、被拒、offer……） | 在聊天里告诉 Claude，比如"Disney 约了电话面"；它会跑 `uv run python -m agents.application_queue track <号> --to recruiter_screen --date <批次日期>`。看所有申请：`... list`，或者看板的 Applications 页 |
+| 每日运行半路崩了 | 不用管：同一天下次运行（登录后自动那次，或者跟 Claude 说"跑一下今天的"）会接着跑没做完的步骤 |
 | 给职位改写简历 | 让 Claude 跑 `uv run python -m agents.tailor run --top 5`（每份约 $0.18；先加 `--dry-run` 只看选了哪些，不花钱）。结果看 `output/tailored/index.html` |
 | 试一个拆解提示词或词表的提议，对真实职位有什么影响 | 让 Claude 跑 `uv run python -m agents.evaluate_scoring --jd-proposal <提议> --vocabulary <提议> --jobs <编号...> --review`，看 `output/scoring_review.html`；什么都不会写进真数据 |
 | 暂停每天的 AI 拆解 | 在 `.env` 里设 `JD_ANALYSIS_ENABLED=false`（抓取照常）；每天最多拆几个用 `JD_ANALYSIS_DAILY_MAX` 调 |
@@ -354,6 +356,7 @@ PowerShell（Windows 自带）、Git Bash（装 Git 时附带）、Ubuntu/WSL（
 - **装完 uv 后找不到 uv 命令** → 安装程序改的命令路径要等终端重开才生效 → Claude 用完整路径 `%USERPROFILE%\.local\bin\uv.exe` 运行。
 - **uv 报 `Missing expected target directory for Python minor version link`** → 在 Git Bash 里运行 uv 时，它建的链接是 Windows 认不出的那种 → 删掉 `%APPDATA%\uv\python\cpython-3.12-windows-x86_64-none`，在 PowerShell 里执行 `uv python install 3.12 --reinstall` 重新创建。之后那行报错可能还会出现，但 `uv python find 3.12` 能找到就不影响使用。
 - **定时任务没在 8:30 跑，醒来后也没马上补跑** → 电脑从前一晚 9:21 一直睡到早上 9:03，而任务设置的是"不唤醒电脑"。"错过后补跑"不是醒来立刻就跑：Windows 会先等几分钟（11/02 实测是醒来后 6 分钟自动补跑，**已验证可用**）；每 15 分钟醒几秒的维护唤醒不算。另外，**改任务的触发时间会把"错过了几次"清零**，排队中的补跑也就没了 → 平时不用管，醒来几分钟后会自己补；改触发时间之前，先确认当天已经跑过。
+- **每日运行报告写着"0 个来源、0 个新职位"，其实抓到了 818 个** → 运行到一半 Docker 重启了数据库，连接断了；出错时的那段代码直接写了一份空报告，记录这次运行时又用了已经断掉的连接，所以这次运行一直显示"进行中" → 出错后先重连，按已经存下的步骤写报告；同一天下一次运行接着跑没做完的步骤（#58）。
 
 ---
 

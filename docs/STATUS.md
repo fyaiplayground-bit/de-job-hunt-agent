@@ -52,7 +52,7 @@ Update this file at the end of every work session: what got done, what's next, w
 
 ### Milestone 4 · Week 4 · Production polish
 - [x] Airflow DAG calling the pipeline steps (4.3, 4.4 on 2026-11-09; run by hand only, the Windows task keeps 9:30: #45-#47)
-- [ ] FastAPI endpoints: set aside until the cloud decision before Milestone 5 (#45)
+- [x] ~~FastAPI endpoints~~: dropped with the cloud move (#59, 2026-11-17)
 - [x] S3 backup after each daily run (#44; first real backup and restore check 2026-11-09)
 - [x] README with architecture diagram; M4 interview note (2026-11-10)
 
@@ -86,7 +86,7 @@ Update this file at the end of every work session: what got done, what's next, w
 
 **Laptop sleep:** a run that starts and then the laptop sleeps freezes until it wakes (run 14 started 11/11 19:08, finished 11/12 20:26, all ok). The scheduled task then counts as still running, so the next day's 9:30 start is skipped; the following run's search window catches up the missed days, so nothing is lost.
 
-**Then:** decide with FL whether to move to a small cloud server before Milestone 5 (design first: what moves, monthly cost, EventBridge vs an always-on scheduler, FastAPI if it moves; #45, #47). Otherwise start Milestone 5. Airflow is stopped; start it only on request (NOTES, 常用操作).
+**Cloud and FastAPI:** not doing them (#59); revisit only if submission itself becomes automatic. Airflow is stopped; start it only on request (NOTES, 常用操作).
 
 Standing facts: JD briefs run on Claude Haiku 5.5 (`JD_ANALYSIS_MODEL` in `.env`) and resume work on Opus 5.5 until Milestone 5 (#48); remove that line to go back to Opus. Fit-scoring rules v4 (DE ranked above AE, #49) and vocabulary v3 are live (#42); the next daily run is their first real use. The 87 `jd-analysis@3` briefs stay as they are and are not re-briefed (FL, 2026-11-04); scoring and tailoring work from new jobs only. jd-analysis v4, resume-tailoring v4, resume-reviewer v2 and vocabulary v2 are live (#39). A skill named only in a posting's duties can drop out of the brief (totalwine's semantic layers); FL accepted this for now. The daily AI cap stays at 50 (FL, 2026-11-03). On a busy day the jobs over the cap are not briefed or retried: run 8 had 70 in scope and left 20, chosen by newest posting id rather than quality; the report shows the count, so revisit it once there are more days of volume. The clearance rule is on (fit-scoring rules v2, #37); FL fills in `has_security_clearance` and `can_obtain_security_clearance` at Milestone 5 (the sample has both false). Fit scoring skips only jobs outside the US during the test phase (rules v5, #51); salary is ignored for now (the profile's floor is a test value), and the big-tech phase will limit location to California, Washington, Texas. The daily run happens by itself at 9:30 LA (#29), catches up about 6 minutes after the laptop wakes, and also starts 5 minutes after login if today hasn't run (#43); check it at session start.
 
@@ -159,3 +159,4 @@ Standing facts: JD briefs run on Claude Haiku 5.5 (`JD_ANALYSIS_MODEL` in `.env`
 - 2026-11-16 — Second real application: Disney Sr Data Engineer, filled in the built-in browser over 4 pages (no account; resume upload re-fills fields, so check after uploading), FL submitted, confirmation seen, marked applied.
 - 2026-11-17 — Run 18 (started 20:10 after login) crashed when Docker restarted Postgres mid-run; resumed by hand from its saved steps: 818 new jobs, 135 DE, 35 briefed for $0.05. Application tracking built with FL's OK (#57): `track` and `list` commands, `mart_applications`, an Applications tab on the dashboard. 761 tests pass.
 - 2026-11-17 — Daily run crash-safety with FL's OK (#58): reconnect and report from saved steps after a crash; the next run the same day resumes it; earlier days' stuck runs closed. 765 tests pass.
+- 2026-11-17 — FL dropped FastAPI and the cloud move (#59): submitting needs the computer, and the daily run starts when it is on.

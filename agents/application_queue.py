@@ -101,6 +101,10 @@ class QueueRules:
     never_guess: tuple[re.Pattern[str], ...]
     fields: tuple[tuple[re.Pattern[str], str, str], ...]
     exclude_companies: frozenset[str] = frozenset()  # company keys never queued
+    # Never queue the candidate's current employer, read from the profile's role with no end date
+    # (queue rules v4, decision #61): that move is an internal transfer, not an outside application.
+    # The name stays in the private profile; no public file says where FL works.
+    exclude_current_employer: bool = False
     # Hosts many companies share. On the first kind the first part of the path names the
     # company's board; on the second nothing in the address does (queue rules v3).
     company_in_path: tuple[str, ...] = ()
@@ -123,6 +127,7 @@ def load_queue_rules(path: Path = RULES_FILE) -> QueueRules:
         exclude_companies=frozenset(
             company_key(name) for name in data.get("exclude", {}).get("companies", [])
         ),
+        exclude_current_employer=bool(data.get("exclude", {}).get("current_employer", False)),
         company_in_path=tuple(data.get("same_site", {}).get("company_in_path", [])),
         many_companies=tuple(data.get("same_site", {}).get("many_companies", [])),
     )
@@ -135,6 +140,16 @@ def company_key(company: str) -> str:
     words = re.findall(r"[a-z0-9]+", company.lower())
     kept = [word for word in words if word not in COMPANY_NOISE]
     return " ".join(kept or words)
+
+
+def current_employers(profile: Profile) -> frozenset[str]:
+    """Company keys of the roles the candidate still holds (no end date)."""
+    return frozenset(company_key(role.employer) for role in profile.bank.roles if not role.end)
+
+
+def works_for(company: str, employers: frozenset[str]) -> bool:
+    """The same company, or one of its named parts ("Acme" and "Acme Labs")."""
+    return any(company == key or company.startswith(f"{key} ") for key in employers)
 
 
 def _title_words(title: str) -> str:
@@ -193,8 +208,10 @@ def pick_batch(
     seen_posting_ids: set[int],
     seen_job_keys: set[str],
     seen_title_keys: set[str],
+    employers: frozenset[str] = frozenset(),
 ) -> Batch:
-    """The best scored jobs for one batch. `seen_*` are what earlier batches already queued. Every
+    """The best scored jobs for one batch. `seen_*` are what earlier batches already queued;
+    `employers` are the candidate's current employers, left out when the rules say so. Every
     job left out for a reason is reported, so nothing quietly disappears."""
     chosen: list[Job] = []
     skipped: list[tuple[Job, str]] = []
@@ -208,6 +225,9 @@ def pick_batch(
             continue
         if company in rules.exclude_companies:
             skipped.append((job, "你排除了这家公司"))
+            continue
+        if rules.exclude_current_employer and works_for(company, employers):
+            skipped.append((job, "你现在就在这家公司：走内部转岗，不从外面投"))
             continue
         if job_key in job_seen or (title_key and title_key in title_seen):
             skipped.append((job, "和已经排进队列的职位是同一个"))
@@ -402,7 +422,7 @@ def candidates(
     if only:
         jobs = [job for job in jobs if job.posting_version_id in only]
     jobs = still_open(conn, jobs, batch_date, load_scope().open_within_days)
-    return pick_batch(jobs, rules, *_seen(conn, rules))
+    return pick_batch(jobs, rules, *_seen(conn, rules), current_employers(profile))
 
 
 def not_picked(batch: Batch, only: frozenset[int]) -> list[int]:

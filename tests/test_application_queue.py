@@ -20,6 +20,7 @@ from agents.application_queue import (
     candidates,
     company_key,
     company_site,
+    current_employers,
     job_keys,
     load_queue_rules,
     not_picked,
@@ -211,6 +212,24 @@ def test_an_excluded_company_is_never_picked_and_says_why():
     batch = pick([excluded, job(2, score=60, company="Acme")], rules)
     assert ids(batch) == [2]
     assert [(j.posting_version_id, why) for j, why in batch.skipped] == [(1, "你排除了这家公司")]
+
+
+def test_the_current_employer_is_never_picked_and_says_why():
+    """Decision #61: the profile's role with no end date names the employer; moving there is an
+    internal transfer. The sample's current employer is Quillfeather Outdoor."""
+    employers = current_employers(PROFILE)
+    assert employers == {"quillfeather outdoor"}
+    jobs = [
+        job(1, score=95, company="Quillfeather Outdoor, Inc.", host="q.example.com"),
+        job(2, score=90, company="Quillfeather Outdoor Labs", host="qws.example.com"),
+        job(3, score=60, company="Quillfeatherly", host="other.example.com"),  # not a part of it
+    ]
+    batch = pick_batch(jobs, RULES, set(), set(), set(), employers)
+    assert RULES.exclude_current_employer is True  # the adopted rules (v4)
+    assert ids(batch) == [3]
+    assert {j.posting_version_id for j, why in batch.skipped if "内部转岗" in why} == {1, 2}
+    off = replace(RULES, exclude_current_employer=False)
+    assert ids(pick_batch(jobs, off, set(), set(), set(), employers)) == [1, 2, 3]
 
 
 def test_the_exclude_list_is_read_like_the_queue_reads_companies(tmp_path):

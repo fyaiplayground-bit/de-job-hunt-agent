@@ -1,0 +1,114 @@
+# v4 (adopted 2026-11-22, decision #61): never queue the candidate's current employer, read from the
+# profile's role with no end date. Only current_employer in the exclude section changes from v3.
+# v3 (adopted 2026-11-16, decision #54): the duplicate check knows which hosts many companies share. v2
+# counted every Greenhouse "Data Engineer" as one job, because the check compared title + host and
+# all Greenhouse companies share one host. Only [same_site] changes from v2.
+# v2 (adopted 2026-11-15, decision #52): an exclude list. FL passed on SynergisticIT after the
+# first real dry run: a junior title mixing three roles, an aggregator link, and a training and
+# placement firm rather than the employer. Only the exclude list changes from v1.
+
+# The approval queue (decision #40). Code applies these; no LLM is involved. Rules as data: change
+# them through the loop (propose, show what moves, FL approves, bump version, record in DECISIONS).
+
+version = 4
+
+daily_jobs = 5     # jobs to prepare in a batch: enough to run the whole flow (FL, 2026-11-04)
+per_company = 1    # at most this many jobs from one company in a batch: more reads as a mass mailing
+
+# Companies never queued, whatever they score (FL's call, one by one). Matched like the queue
+# matches companies: lower case, punctuation and words like "Inc" or "LLC" ignored. The job still
+# shows in the daily report; it just never takes a place in a batch. Each one says why.
+[exclude]
+# The candidate's current employer (the profile's role with no end date) is never queued either:
+# moving there is an internal transfer, not an outside application. The name stays in the
+# private profile, so no public file says where FL works (decision #61).
+current_employer = true
+companies = [
+    "SynergisticIT",  # training and placement firm, not the employer (FL, 2026-11-15)
+]
+
+# Two postings are one job when the company and title match, or when the title matches on the
+# same company's application site (that second check catches one company spelled two ways, such
+# as a hospital and its initials). Most hosts belong to one company, so the host is the site. On
+# hosts many companies share, the host alone would make every same-titled job at any company look
+# like one job:
+# - company_in_path: the first part of the path names the company's board, and that is the site
+#   (job-boards.greenhouse.io/sigmacomputing, jobs.lever.co/acme).
+# - many_companies: nothing in the address names the company, so only company + title counts.
+# Hosts are matched by their end, like the site kinds below. Seen in the jobs worth applying on 2026-11-16.
+[same_site]
+company_in_path = [
+    "greenhouse.io", "lever.co", "ashbyhq.com", "smartrecruiters.com", "ukg.net", "ultipro.com",
+    "careers-page.com", "ats.rippling.com", "myjobs.adp.com", "apply.clearcompany.com",
+]
+many_companies = [
+    "linkedin.com", "adzuna.com", "builtin.com", "wellfound.com", "himalayas.app", "whatjobs.com",
+    "devglobaljobs.com", "loxo.co", "apply.workable.com", "recruitingbypaycor.com",
+    "recruiting.paylocity.com", "workforcenow.adp.com", "paycomonline.net", "jobs.dayforcehcm.com",
+    "saashr.com", "tbe.taleo.net", "myworkdaysite.com",
+]
+
+# How an application site works, by the end of its web address. Sorted by what it means for FL:
+# no_account sites can be filled straight away; account sites need FL to register and log in
+# once, because Claude never creates accounts or enters passwords (decision #10); aggregator
+# links aren't the application itself. Anything else shows as unknown. Rough, from what these
+# systems usually do: a site can differ.
+[sites]
+no_account = ["greenhouse.io", "lever.co", "ashbyhq.com"]
+account = [
+    "myworkdayjobs.com", "oraclecloud.com", "ukg.net", "ultipro.com", "icims.com",
+    "recruitingbypaycor.com", "paylocity.com", "jibeapply.com",
+]
+aggregator = ["adzuna.com"]
+
+# Answers to likely form questions, read from the Applicant Profile by code. A question matching
+# `never_guess` is always left for FL, even if it matches an answer too: experience claims can't
+# be read off a form field. A question matching nothing is also left for FL. Regular expressions,
+# ignoring case.
+[answers]
+never_guess = ['\byears?\b', '\bexperience\b', '\bdegree\b', '\bbachelor', '\bmaster', '\bcertif']
+
+[[answers.fields]]
+pattern = 'authori[sz]ed|authori[sz]ation|legally'
+field = "work_authorization.authorized_us"
+label = "Authorized to work in the US"
+
+[[answers.fields]]
+pattern = 'sponsor|visa'
+field = "work_authorization.needs_sponsorship_now"
+label = "Needs sponsorship now"
+
+[[answers.fields]]
+pattern = 'sponsor|visa'
+field = "work_authorization.needs_sponsorship_future"
+label = "Needs sponsorship in the future"
+
+[[answers.fields]]
+pattern = 'salary|compensation|pay expectation'
+field = "compensation.base_salary_target"
+label = "Target base salary"
+
+[[answers.fields]]
+pattern = '\bstart\b|notice|availab'
+field = "availability.notice_period_weeks"
+label = "Notice period, weeks"
+
+[[answers.fields]]
+pattern = 'relocat'
+field = "location.relocate"
+label = "Willing to relocate"
+
+[[answers.fields]]
+pattern = 'background check'
+field = "background.background_check_ok"
+label = "OK with a background check"
+
+[[answers.fields]]
+pattern = 'clearance'
+field = "background.has_security_clearance"
+label = "Has a security clearance"
+
+[[answers.fields]]
+pattern = '\b18\b|over the age'
+field = "background.age_18_or_over"
+label = "18 or over"

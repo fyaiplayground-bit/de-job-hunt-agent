@@ -1,0 +1,5 @@
+#!/bin/sh
+# Privacy check (decision #62): block a commit whose added lines name FL, her employers or
+# schools, or her contact details. The words come from private/, which is never committed.
+UV="$(command -v uv || echo "$HOME/.local/bin/uv.exe")"
+exec "$UV" run --quiet python -m pipeline.privacy_check --staged

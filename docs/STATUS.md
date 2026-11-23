@@ -162,3 +162,4 @@ Standing facts: JD briefs run on Claude Haiku 5.5 (`JD_ANALYSIS_MODEL` in `.env`
 - 2026-11-17 — FL dropped FastAPI and the cloud move (#59): submitting needs the computer, and the daily run starts when it is on.
 - 2026-11-17 — Third application: Rhythm Energy on Wellfound (first account site; FL signed up and submitted). `build --only` added (#60).
 - 2026-11-22 — Runs 19 (11/20) and 20 (11/22) ok; no 11/18, 11/19 or 11/21 run (laptop off). Queue rules v4 with FL's OK (#61): never queue her current employer, read from the private profile. Employer names written into public docs on 11/16-17 removed; older commits still have them. 768 tests pass.
+- 2026-11-22 — Pre-commit privacy check with FL's OK (#62): name, employers, schools and contact details read from private/ block a commit or message; whole tree scanned clean. Rewriting older history is FL's call, not done. 786 tests pass.

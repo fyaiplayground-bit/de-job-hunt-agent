@@ -1,0 +1,4 @@
+#!/bin/sh
+# Privacy check (decision #62) on the commit message itself.
+UV="$(command -v uv || echo "$HOME/.local/bin/uv.exe")"
+exec "$UV" run --quiet python -m pipeline.privacy_check --message "$1"

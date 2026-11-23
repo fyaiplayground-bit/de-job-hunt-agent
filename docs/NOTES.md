@@ -323,6 +323,7 @@ PowerShell（Windows 自带）、Git Bash（装 Git 时附带）、Ubuntu/WSL（
 | 看 AI 花了多少钱 | 让 Claude 跑 `uv run python -m agents.llm costs`（今天、本月、总计） |
 | 检查提示词版本 | 让 Claude 跑 `uv run python -m agents.skills check`；升了版本号之后用 `... lock` 记录 |
 | 检查档案（事实库、申请资料、简历） | 让 Claude 跑 `uv run python -m agents.profile check`；M5 之后检查真档案用 `... check private` |
+| 检查公开文件里有没有我的隐私 | 每次提交前自动检查（#62）。手动查所有文件：让 Claude 跑 `uv run python -m pipeline.privacy_check --all`。新克隆的仓库要先跑一次 `git config core.hooksPath .githooks` 才会自动检查 |
 | ⚠️ 千万别做 | `docker compose down -v`（`-v` 会删掉所有数据） |
 | 每次开工 | 跟 Claude 说"继续"，它会先读 `CLAUDE.md` 和 `STATUS.md` |
 
@@ -357,6 +358,7 @@ PowerShell（Windows 自带）、Git Bash（装 Git 时附带）、Ubuntu/WSL（
 - **uv 报 `Missing expected target directory for Python minor version link`** → 在 Git Bash 里运行 uv 时，它建的链接是 Windows 认不出的那种 → 删掉 `%APPDATA%\uv\python\cpython-3.12-windows-x86_64-none`，在 PowerShell 里执行 `uv python install 3.12 --reinstall` 重新创建。之后那行报错可能还会出现，但 `uv python find 3.12` 能找到就不影响使用。
 - **定时任务没在 8:30 跑，醒来后也没马上补跑** → 电脑从前一晚 9:21 一直睡到早上 9:03，而任务设置的是"不唤醒电脑"。"错过后补跑"不是醒来立刻就跑：Windows 会先等几分钟（11/02 实测是醒来后 6 分钟自动补跑，**已验证可用**）；每 15 分钟醒几秒的维护唤醒不算。另外，**改任务的触发时间会把"错过了几次"清零**，排队中的补跑也就没了 → 平时不用管，醒来几分钟后会自己补；改触发时间之前，先确认当天已经跑过。
 - **每日运行报告写着"0 个来源、0 个新职位"，其实抓到了 818 个** → 运行到一半 Docker 重启了数据库，连接断了；出错时的那段代码直接写了一份空报告，记录这次运行时又用了已经断掉的连接，所以这次运行一直显示"进行中" → 出错后先重连，按已经存下的步骤写报告；同一天下一次运行接着跑没做完的步骤（#58）。
+- **公开文档里出现了雇主名** → 解释简历删了哪条时，Claude 照搬了简历上按公司名分段的说法，写进了 DECISIONS、JOURNAL、STATUS 和提交说明；规定只靠记忆，提交前没有检查 → 改成"现在这份工作""以前的工作"，并加了提交前的自动隐私检查（#61、#62）。
 
 ---
 

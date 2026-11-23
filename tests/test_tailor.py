@@ -619,9 +619,9 @@ def test_trim_keeps_a_bullet_that_alone_says_a_keyword():
 
 
 def test_trim_keeps_the_last_job_bullet_for_a_keyword_a_project_also_says():
-    """Decision #55, from Disney's resume (2026-11-16): the current role's PySpark bullets were cut because
-    a side project also said PySpark. A keyword said only at work now counts as lost when its last
-    work bullet goes, so a bullet that adds nothing goes first, then the project's copy."""
+    """Decision #55, from Disney's resume (2026-11-16): the current role's PySpark bullets were cut
+    because a side project also said PySpark. A keyword said only at work now counts as lost when
+    its last work bullet goes, so a bullet that adds nothing goes first, then the project's copy."""
     pipelines = {"text": "Built daily data pipelines in Python loading 6 source systems",
                  "evidence": ["qf-glue-redshift"]}
     nothing_new = {"text": "Set up Athena tables over 2 years of clickstream logs in S3",

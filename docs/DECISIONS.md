@@ -346,3 +346,8 @@ Format: number · date · decision · why · alternatives considered.
 - **Why:** Employer names reached DECISIONS, JOURNAL, STATUS, a test and a commit message on 2026-11-16/17 (#61). The rule (#17) relied on Claude remembering it, and a long session with a compacted context and resume text in view was enough to break it. FL called it a serious error and asked for an automatic check. A first `--all` scan found only one web address, which led to the web-address exception; the tree is otherwise clean.
 - **Alternatives:** a committed list of banned words (would itself publish them); a check in the test suite only (runs after the fact, and not on commit messages); relying on review (what failed).
 - **Limit:** history before this decision is not rewritten; a commit made with `--no-verify` skips the hooks, and Claude never uses it (CLAUDE.md).
+
+### #63 · 2026-11-23 · Public history rewritten to remove the employer names
+- **Decision:** With FL's OK, the four commits from the #55 trim fix to #61 were rewritten with `git filter-repo` (text replacements in their files and one commit message) and force-pushed: every employer name became "current role" / "an earlier role", and the fictional "... Web Services" examples became "... Labs". Commits before #55 kept their hashes; #55 and later have new ones. The current files are byte-for-byte what they were; a scan of every commit and message now finds nothing (#62's limit no longer applies). A bundle of the old history is kept in `private/backups/`.
+- **Why:** FL (2026-11-22) wanted the leak gone from the history too, not only from the latest files.
+- **Limit:** GitHub may keep the old commits reachable by their old hashes for a while; nothing links to them.
